@@ -1,3 +1,4 @@
+import { firestoreEmployees } from "@/lib/firestore-employees";
 import { prisma } from "@/lib/db";
 
 export default async function OverviewPage() {
@@ -6,9 +7,9 @@ export default async function OverviewPage() {
     where: { status: "Chờ phê duyệt" }
   });
 
-  // Lấy số nhân viên đang sử dụng
-  const activeEmployeeCount = await prisma.employee.count({
-    where: { status: "ACTIVE" }
+  // Lấy số nhân viên đang sử dụng từ Firestore
+  const activeEmployeeCount = await firestoreEmployees.count({
+    status: "ACTIVE"
   });
 
   const stats = [

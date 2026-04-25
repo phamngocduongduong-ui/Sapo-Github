@@ -1,5 +1,6 @@
 "use server";
 
+import { firestoreEmployees } from "@/lib/firestore-employees";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
@@ -21,24 +22,25 @@ export async function createEmployee(formData: FormData) {
     throw new Error("Vui lòng điền đầy đủ các thông tin bắt buộc (*)");
   }
 
-  const existing = await prisma.employee.findUnique({ where: { employeeCode } });
+  // Chú ý: Việc kiểm tra trùng mã trên Firestore cần một query query
+  const allEmployees = await firestoreEmployees.getAll();
+  const existing = allEmployees.find(e => e.employeeCode === employeeCode);
   if (existing) throw new Error("Mã nhân viên đã tồn tại.");
 
-  await prisma.employee.create({
-    data: {
-      employeeCode,
-      fullName,
-      position,
-      department,
-      phone: phone || null,
-      email: email || null,
-      gender: gender || null,
-      idCardNumber: idCardNumber || null,
-      idCardDate: idCardDate ? new Date(idCardDate) : null,
-      address: address || null,
-      startDate: startDate ? new Date(startDate) : null,
-      endDate: endDate ? new Date(endDate) : null,
-    },
+  await firestoreEmployees.create({
+    employeeCode,
+    fullName,
+    position,
+    department,
+    phone: phone || "",
+    email: email || "",
+    gender: gender || "",
+    idCardNumber: idCardNumber || "",
+    idCardDate: idCardDate || null,
+    address: address || "",
+    startDate: startDate || null,
+    endDate: endDate || null,
+    status: "ACTIVE",
   });
 
   revalidatePath("/nhan-su/nhan-vien");
@@ -58,46 +60,38 @@ export async function updateEmployee(id: string, formData: FormData) {
   const startDate = formData.get("startDate") as string;
   const endDate = formData.get("endDate") as string;
 
-  // Lấy thông tin cũ để kiểm tra xem tên có đổi không
-  const oldEmployee = await prisma.employee.findUnique({ where: { id } });
+  const oldEmployee = await firestoreEmployees.getById(id);
   if (!oldEmployee) throw new Error("Nhân viên không tồn tại.");
 
   const oldName = oldEmployee.fullName;
 
-  // Cập nhật thông tin nhân viên
-  await prisma.employee.update({
-    where: { id },
-    data: {
-      fullName,
-      position,
-      department,
-      phone: phone || null,
-      email: email || null,
-      status,
-      gender: gender || null,
-      idCardNumber: idCardNumber || null,
-      idCardDate: idCardDate ? new Date(idCardDate) : null,
-      address: address || null,
-      startDate: startDate ? new Date(startDate) : null,
-      endDate: endDate ? new Date(endDate) : null,
-    },
+  await firestoreEmployees.update(id, {
+    fullName,
+    position,
+    department,
+    phone: phone || "",
+    email: email || "",
+    status,
+    gender: gender || "",
+    idCardNumber: idCardNumber || "",
+    idCardDate: idCardDate || null,
+    address: address || "",
+    startDate: startDate || null,
+    endDate: endDate || null,
   });
 
-  // Nếu tên thay đổi, cập nhật tự động ở các bảng liên quan
+  // Cập nhật ở các bảng khác (vẫn đang ở Prisma)
   if (oldName !== fullName) {
-    // 1. Cập nhật trong bảng Tài khoản (User)
     await prisma.user.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
-    // 2. Cập nhật trong bảng Nghỉ phép (LeaveRequest)
     await prisma.leaveRequest.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
-    // 3. Cập nhật trong bảng Lệnh điều động (DispatchOrder)
     await prisma.dispatchOrder.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }

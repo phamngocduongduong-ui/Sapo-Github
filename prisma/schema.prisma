@@ -1,0 +1,251 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  password     String
+  employeeName String?  // Tên nhân viên
+  branch       String?  // Chi nhánh (lưu nhiều giá trị cách nhau bằng dấu phẩy)
+  role         String   @default("SALES")
+  status       String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+
+model Branch {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String   @unique
+  address   String?
+  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+
+model Order {
+  id                    String      @id @default(uuid())
+  orderCode             String      @unique  // Mã đơn hàng
+  customerCode          String               // Mã khách hàng
+  employeeName          String               // Tên nhân viên thực hiện
+  orderDate             DateTime    @default(now()) // Ngày thực hiện
+  branch                String?              // Chi nhánh
+  requestDeliveryDate   DateTime?            // Ngày đề nghị giao hàng
+  productionFinishDate  DateTime?            // Ngày dự kiến hoàn thành sản xuất
+  shipDate              DateTime?            // Ngày dự kiến xuất hàng
+  thermometer           Boolean     @default(false) // Nhiệt kế
+  status                String      @default("Tạo mới") // Tạo mới, Chờ kế hoạch sản xuất, ...
+  note                  String?              // Ghi chú
+  items                 OrderItem[]
+
+  materialPlanId        String?
+  materialPlan          MaterialPlan? @relation(fields: [materialPlanId], references: [id])
+  
+  productionPlan        ProductionPlan?
+  purchasingPlan        PurchasingPlan?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+}
+
+model MaterialPlan {
+  id           String   @id @default(uuid())
+  planNumber   String   @unique  // Số kế hoạch
+  planDate     DateTime @default(now()) // Ngày tạo
+  creator      String            // Người tạo
+  status       String   @default("Tạo mới") // Tạo mới, Đã phê duyệt, ...
+  note         String?           // Ghi chú
+  orders       Order[]           // Danh sách đơn hàng trong kế hoạch
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productName     String   // Tên hàng hóa
+  packaging       String?  // Quy cách đóng gói
+  quantity        Int      @default(0)
+  hasPallet       Boolean  @default(false) // Pallet
+  hasCornerGuard  Boolean  @default(false) // Nẹp giấy
+  note            String?  // Ghi chú
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+
+model ProductionPlan {
+  id          String   @id @default(uuid())
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      String   @default("PENDING") // PENDING, IN_PROGRESS, DONE
+  startDate   DateTime?
+  endDate     DateTime?
+  items       ProductionPlanItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ProductionPlanItem {
+  id               String         @id @default(uuid())
+  productionPlanId String
+  productionPlan   ProductionPlan @relation(fields: [productionPlanId], references: [id], onDelete: Cascade)
+  product          String
+  quantity         Int
+  producedQuantity Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model PurchasingPlan {
+  id          String   @id @default(uuid())
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      String   @default("PENDING") // PENDING, APPROVED, PURCHASED
+  items       PurchasingPlanItem[]
+  dispatchOrders DispatchOrder[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PurchasingPlanItem {
+  id               String         @id @default(uuid())
+  purchasingPlanId String
+  purchasingPlan   PurchasingPlan @relation(fields: [purchasingPlanId], references: [id], onDelete: Cascade)
+  material         String
+  quantity         Int
+  unit             String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model DispatchOrder {
+  id               String   @id @default(uuid())
+  purchasingPlanId String?
+  purchasingPlan   PurchasingPlan? @relation(fields: [purchasingPlanId], references: [id], onDelete: SetNull)
+  employeeName     String   // Tên nhân viên
+  dispatchDate     DateTime // Ngày điều động
+  expectedDate     DateTime // Ngày dự kiến hoàn thành
+  origin           String   // Nơi đi
+  destination      String   // Nơi đến
+  dispatcher       String   // Người điều động
+  status           String   @default("PENDING") // Trạng thái
+  note             String?  // Ghi chú
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Employee {
+  id           String   @id @default(uuid())
+  employeeCode String   @unique  // Mã nhân viên
+  fullName     String            // Tên nhân viên
+  position     String            // Chức vụ
+  department   String            // Phòng ban
+  phone        String?           // Số điện thoại
+  email        String?           // Email
+  gender       String?           // Nam, Nữ
+  idCardNumber String?           // Số CCCD
+  idCardDate   DateTime?         // Ngày cấp CCCD
+  address      String?           // Địa chỉ
+  startDate    DateTime?         // Ngày bắt đầu
+  endDate      DateTime?         // Ngày kết thúc
+  status       String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+
+model Customer {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductCategory {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id          String          @id @default(uuid())
+  code        String          @unique
+  name        String
+  unit        String
+  categoryId  String
+  category    ProductCategory @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Position {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Country {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model LeaveRequest {
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now())
+  employeeName String   // Tên nhân viên (lấy từ user đăng nhập)
+  startDate    DateTime
+  endDate      DateTime
+  totalDays    Int
+  reason       String   // Nghỉ phép hàng năm, Nghỉ việc hưởng lương, ...
+  status       String   @default("Tạo mới") // Tạo mới, Chờ phê duyệt, Đã phê duyệt, Hủy
+  approver     String?  // Người phê duyệt
+  note         String?  // Ghi chú
+  updatedAt    DateTime @updatedAt
+}
+
+

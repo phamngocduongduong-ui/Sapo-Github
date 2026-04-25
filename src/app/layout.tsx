@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Phần mềm quản lý doanh nghiệp tích hợp Kinh Doanh, Sản Xuất, Thu Mua",
 };
 
+import FirebaseAnalytics from "@/components/FirebaseAnalytics";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -13,7 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body>
+        <FirebaseAnalytics />
+        {children}
+      </body>
     </html>
   );
 }

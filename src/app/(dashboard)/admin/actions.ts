@@ -5,3 +5,4 @@ export async function ensureDefaultAdmin() {
     console.log("ensureDefaultAdmin: Skipped (Static Export)");
     return;
 }
+

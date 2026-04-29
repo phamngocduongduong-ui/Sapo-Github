@@ -10,6 +10,7 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
   const [isViewMode, setIsViewMode] = useState(false);
   const [editingOrder, setEditingOrder] = useState<any | null>(null);
   const [items, setItems] = useState<any[]>([{ productName: "", packaging: "", quantity: 1, hasPallet: false, hasCornerGuard: false, note: "" }]);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   
   // State bộ lọc
   const [filterCustomer, setFilterCustomer] = useState("");
@@ -45,6 +46,10 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
       return matchCustomer && matchStatus && matchEmployee && matchMonth;
     });
   }, [orders, filterCustomer, filterStatus, filterEmployee, filterMonth]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedOrderId(prev => prev === id ? null : id);
+  };
 
   // Lấy danh sách mã KH duy nhất từ bảng đơn hàng cho bộ lọc
   const uniqueCustomersInOrders = useMemo(() => {
@@ -172,26 +177,72 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
           </thead>
           <tbody>
             {filteredOrders.map((order, idx) => (
-              <tr key={order.id} onDoubleClick={() => handleView(order)} title="Nhấp đúp để xem chi tiết" style={{ cursor: "pointer" }}>
-                <td style={{ textAlign: "center" }}>{idx + 1}</td>
-                <td style={{ fontWeight: 600 }}>{order.orderCode}</td>
-                <td>{order.customerCode}</td>
-                <td>{order.employeeName}</td>
-                <td>{new Date(order.orderDate).toLocaleDateString("vi-VN")}</td>
-                <td>{order.branch}</td>
-                <td>{order.requestDeliveryDate ? new Date(order.requestDeliveryDate).toLocaleDateString("vi-VN") : "—"}</td>
-                <td><span className="badge badge-info">{order.status}</span></td>
-                <td>{order.shipDate ? new Date(order.shipDate).toLocaleDateString("vi-VN") : "—"}</td>
-                <td style={{ textAlign: "center" }}>{order.thermometer ? "✅ Có" : "❌ Không"}</td>
-                <td style={{ textAlign: "center" }}>
-                  <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
-                    <button onClick={(e) => { e.stopPropagation(); handleEdit(order); }} className="btn-icon">✏️</button>
-                    {order.status === "Tạo mới" && (
-                      <button onClick={(e) => { e.stopPropagation(); handleApprove(order.id); }} className="btn-icon" title="Phê duyệt" style={{ color: "#27ae60" }}>✔️</button>
-                    )}
-                  </div>
-                </td>
-              </tr>
+              <>
+                <tr 
+                  key={order.id} 
+                  onClick={() => toggleExpand(order.id)}
+                  onDoubleClick={() => handleView(order)} 
+                  title="Nhấp 1 lần để xem nhanh hàng hóa, nhấp đúp để xem chi tiết" 
+                  style={{ cursor: "pointer", background: expandedOrderId === order.id ? "#f0f7ff" : "inherit" }}
+                >
+                  <td style={{ textAlign: "center" }}>{idx + 1}</td>
+                  <td style={{ fontWeight: 600 }}>{order.orderCode}</td>
+                  <td>{order.customerCode}</td>
+                  <td>{order.employeeName}</td>
+                  <td>{new Date(order.orderDate).toLocaleDateString("vi-VN")}</td>
+                  <td>{order.branch}</td>
+                  <td>{order.requestDeliveryDate ? new Date(order.requestDeliveryDate).toLocaleDateString("vi-VN") : "—"}</td>
+                  <td><span className="badge badge-info">{order.status}</span></td>
+                  <td>{order.shipDate ? new Date(order.shipDate).toLocaleDateString("vi-VN") : "—"}</td>
+                  <td style={{ textAlign: "center" }}>{order.thermometer ? "✅ Có" : "❌ Không"}</td>
+                  <td style={{ textAlign: "center" }}>
+                    <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleEdit(order); }} className="btn-icon">✏️</button>
+                      {order.status === "Tạo mới" && (
+                        <button onClick={(e) => { e.stopPropagation(); handleApprove(order.id); }} className="btn-icon" title="Phê duyệt" style={{ color: "#27ae60" }}>✔️</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+                {expandedOrderId === order.id && (
+                  <tr>
+                    <td colSpan={11} style={{ padding: "0.75rem 1.5rem", background: "#f8fafc" }}>
+                      <div style={{ padding: "1rem", background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)" }}>
+                        <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#475569", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          📦 Chi tiết hàng hóa (Đơn: {order.orderCode})
+                        </h4>
+                        <table className="table" style={{ fontSize: "0.8rem", marginBottom: 0 }}>
+                          <thead>
+                            <tr style={{ background: "#f1f5f9" }}>
+                              <th>Tên hàng hóa</th>
+                              <th>Quy cách</th>
+                              <th>Số lượng</th>
+                              <th style={{ textAlign: "center" }}>Pallet</th>
+                              <th style={{ textAlign: "center" }}>Nẹp góc</th>
+                              <th>Ghi chú</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {order.items.map((item: any, i: number) => (
+                              <tr key={i}>
+                                <td style={{ fontWeight: 500 }}>{item.productName}</td>
+                                <td>{item.packaging}</td>
+                                <td style={{ fontWeight: 600, color: "#2563eb" }}>{item.quantity}</td>
+                                <td style={{ textAlign: "center" }}>{item.hasPallet ? "✅" : "—"}</td>
+                                <td style={{ textAlign: "center" }}>{item.hasCornerGuard ? "✅" : "—"}</td>
+                                <td style={{ color: "#64748b", fontStyle: "italic" }}>{item.note || "—"}</td>
+                              </tr>
+                            ))}
+                            {order.items.length === 0 && (
+                              <tr><td colSpan={6} style={{ textAlign: "center", color: "#94a3b8" }}>Không có chi tiết hàng hóa.</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
             ))}
           </tbody>
         </table>

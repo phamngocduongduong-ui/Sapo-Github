@@ -53,9 +53,9 @@ export default async function SalesPage() {
                 <tbody>
                   {orders.map((order) => (
                     <tr key={order.id}>
-                      <td>{order.id.slice(0, 8)}</td>
-                      <td>{order.customerName}</td>
-                      <td>{new Date(order.expectedDate).toLocaleDateString('vi-VN')}</td>
+                      <td>{order.orderCode}</td>
+                      <td>{order.customerCode}</td>
+                      <td>{order.requestDeliveryDate ? new Date(order.requestDeliveryDate).toLocaleDateString('vi-VN') : '—'}</td>
                       <td>
                         <span className="badge badge-warning">{order.status}</span>
                       </td>

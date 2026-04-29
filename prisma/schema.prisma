@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,158 +11,155 @@ model User {
   id           String   @id @default(uuid())
   username     String   @unique
   password     String
-  employeeName String?  // Tên nhân viên
-  branch       String?  // Chi nhánh (lưu nhiều giá trị cách nhau bằng dấu phẩy)
+  employeeName String?
+  employeeId   String?
+  branch       String?
   role         String   @default("SALES")
-  status       String   @default("ACTIVE") // ACTIVE, INACTIVE
+  status       String   @default("ACTIVE")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
-
 
 model Branch {
   id        String   @id @default(uuid())
   code      String   @unique
   name      String   @unique
   address   String?
-  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
+  status    String   @default("ACTIVE")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-
-
 model Order {
-  id                    String      @id @default(uuid())
-  orderCode             String      @unique  // Mã đơn hàng
-  customerCode          String               // Mã khách hàng
-  employeeName          String               // Tên nhân viên thực hiện
-  orderDate             DateTime    @default(now()) // Ngày thực hiện
-  branch                String?              // Chi nhánh
-  requestDeliveryDate   DateTime?            // Ngày đề nghị giao hàng
-  productionFinishDate  DateTime?            // Ngày dự kiến hoàn thành sản xuất
-  shipDate              DateTime?            // Ngày dự kiến xuất hàng
-  thermometer           Boolean     @default(false) // Nhiệt kế
-  status                String      @default("Tạo mới") // Tạo mới, Chờ kế hoạch sản xuất, ...
-  note                  String?              // Ghi chú
-  items                 OrderItem[]
-
-  materialPlanId        String?
-  materialPlan          MaterialPlan? @relation(fields: [materialPlanId], references: [id])
-  
-  productionPlan        ProductionPlan?
-  purchasingPlan        PurchasingPlan?
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
+  id                   String          @id @default(uuid())
+  orderCode            String          @unique
+  customerCode         String
+  employeeName         String
+  orderDate            DateTime        @default(now())
+  branch               String?
+  requestDeliveryDate  DateTime?
+  productionFinishDate DateTime?
+  shipDate             DateTime?
+  thermometer          Boolean         @default(false)
+  status               String          @default("Tạo mới")
+  note                 String?
+  materialPlanId       String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  materialPlan         MaterialPlan?   @relation(fields: [materialPlanId], references: [id])
+  items                OrderItem[]
+  productionPlan       ProductionPlan?
+  purchasingPlan       PurchasingPlan?
 }
 
 model MaterialPlan {
-  id           String   @id @default(uuid())
-  planNumber   String   @unique  // Số kế hoạch
-  planDate     DateTime @default(now()) // Ngày tạo
-  creator      String            // Người tạo
-  status       String   @default("Tạo mới") // Tạo mới, Đã phê duyệt, ...
-  note         String?           // Ghi chú
-  orders       Order[]           // Danh sách đơn hàng trong kế hoạch
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String   @id @default(uuid())
+  planNumber String   @unique
+  planDate   DateTime @default(now())
+  creator    String
+  status     String   @default("Tạo mới")
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  orders     Order[]
 }
 
 model OrderItem {
-  id              String   @id @default(uuid())
-  orderId         String
-  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productName     String   // Tên hàng hóa
-  packaging       String?  // Quy cách đóng gói
-  quantity        Int      @default(0)
-  hasPallet       Boolean  @default(false) // Pallet
-  hasCornerGuard  Boolean  @default(false) // Nẹp giấy
-  note            String?  // Ghi chú
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(uuid())
+  orderId        String
+  productName    String
+  packaging      String?
+  quantity       Int      @default(0)
+  hasPallet      Boolean  @default(false)
+  hasCornerGuard Boolean  @default(false)
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
-
 model ProductionPlan {
-  id          String   @id @default(uuid())
-  orderId     String   @unique
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  status      String   @default("PENDING") // PENDING, IN_PROGRESS, DONE
-  startDate   DateTime?
-  endDate     DateTime?
-  items       ProductionPlanItem[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String               @id @default(uuid())
+  orderId   String               @unique
+  status    String               @default("PENDING")
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  order     Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  items     ProductionPlanItem[]
 }
 
 model ProductionPlanItem {
   id               String         @id @default(uuid())
   productionPlanId String
-  productionPlan   ProductionPlan @relation(fields: [productionPlanId], references: [id], onDelete: Cascade)
   product          String
   quantity         Int
   producedQuantity Int            @default(0)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+  productionPlan   ProductionPlan @relation(fields: [productionPlanId], references: [id], onDelete: Cascade)
 }
 
 model PurchasingPlan {
-  id          String   @id @default(uuid())
-  orderId     String   @unique
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  status      String   @default("PENDING") // PENDING, APPROVED, PURCHASED
-  items       PurchasingPlanItem[]
+  id             String               @id @default(uuid())
+  orderId        String               @unique
+  status         String               @default("PENDING")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
   dispatchOrders DispatchOrder[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  order          Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  items          PurchasingPlanItem[]
 }
 
 model PurchasingPlanItem {
   id               String         @id @default(uuid())
   purchasingPlanId String
-  purchasingPlan   PurchasingPlan @relation(fields: [purchasingPlanId], references: [id], onDelete: Cascade)
   material         String
   quantity         Int
   unit             String
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+  purchasingPlan   PurchasingPlan @relation(fields: [purchasingPlanId], references: [id], onDelete: Cascade)
 }
 
 model DispatchOrder {
-  id               String   @id @default(uuid())
+  id               String          @id @default(uuid())
   purchasingPlanId String?
-  purchasingPlan   PurchasingPlan? @relation(fields: [purchasingPlanId], references: [id], onDelete: SetNull)
-  employeeName     String   // Tên nhân viên
-  dispatchDate     DateTime // Ngày điều động
-  expectedDate     DateTime // Ngày dự kiến hoàn thành
-  origin           String   // Nơi đi
-  destination      String   // Nơi đến
-  dispatcher       String   // Người điều động
-  status           String   @default("PENDING") // Trạng thái
-  note             String?  // Ghi chú
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  employeeName     String
+  dispatchDate     DateTime
+  expectedDate     DateTime
+  origin           String
+  destination      String
+  dispatcher       String
+  status           String          @default("PENDING")
+  note             String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  purchasingPlan   PurchasingPlan? @relation(fields: [purchasingPlanId], references: [id])
 }
 
 model Employee {
-  id           String   @id @default(uuid())
-  employeeCode String   @unique  // Mã nhân viên
-  fullName     String            // Tên nhân viên
-  position     String            // Chức vụ
-  department   String            // Phòng ban
-  phone        String?           // Số điện thoại
-  email        String?           // Email
-  gender       String?           // Nam, Nữ
-  idCardNumber String?           // Số CCCD
-  idCardDate   DateTime?         // Ngày cấp CCCD
-  address      String?           // Địa chỉ
-  startDate    DateTime?         // Ngày bắt đầu
-  endDate      DateTime?         // Ngày kết thúc
-  status       String   @default("ACTIVE") // ACTIVE, INACTIVE
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String    @id @default(uuid())
+  employeeCode   String    @unique
+  fullName       String
+  position       String
+  department     String
+  phone          String?
+  email          String?
+  gender         String?
+  idCardNumber   String?
+  idCardDate     DateTime?
+  address        String?
+  startDate      DateTime?
+  endDate        DateTime?
+  status         String    @default("ACTIVE")
+  educationLevel String?
+  maritalStatus  String?
+  workplace      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
-
 
 model Customer {
   id        String   @id @default(uuid())
@@ -193,36 +187,40 @@ model ProductCategory {
   id          String    @id @default(uuid())
   name        String    @unique
   description String?
-  products    Product[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  products    Product[]
 }
 
 model Product {
-  id          String          @id @default(uuid())
-  code        String          @unique
-  name        String
-  unit        String
-  categoryId  String
-  category    ProductCategory @relation(fields: [categoryId], references: [id])
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id         String          @id @default(uuid())
+  code       String          @unique
+  name       String
+  unit       String
+  categoryId String
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  category   ProductCategory @relation(fields: [categoryId], references: [id])
 }
 
 model Department {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String   @unique
+  status    String   @default("ACTIVE")
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Position {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String   @unique
+  status    String   @default("ACTIVE")
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Country {
@@ -233,19 +231,179 @@ model Country {
   updatedAt DateTime @updatedAt
 }
 
-
 model LeaveRequest {
   id           String   @id @default(uuid())
   createdAt    DateTime @default(now())
-  employeeName String   // Tên nhân viên (lấy từ user đăng nhập)
+  employeeName String
   startDate    DateTime
   endDate      DateTime
   totalDays    Int
-  reason       String   // Nghỉ phép hàng năm, Nghỉ việc hưởng lương, ...
-  status       String   @default("Tạo mới") // Tạo mới, Chờ phê duyệt, Đã phê duyệt, Hủy
-  approver     String?  // Người phê duyệt
-  note         String?  // Ghi chú
+  reason       String
+  status       String   @default("Tạo mới")
+  approver     String?
+  note         String?
   updatedAt    DateTime @updatedAt
 }
 
+model SalaryIncreaseRequest {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now())
+  employeeName   String
+  currentSalary  Float?
+  proposedSalary Float
+  reason         String
+  status         String   @default("Tạo mới")
+  approver       String?
+  note           String?
+  updatedAt      DateTime @updatedAt
+}
 
+model LaborContract {
+  id                      String    @id @default(uuid())
+  employeeName            String
+  contractNumber          String    @unique
+  contractType            String
+  contractDate            DateTime
+  startDate               DateTime
+  endDate                 DateTime?
+  position                String
+  department              String
+  salaryLevel             String?
+  salaryBase              Float     @default(0)
+  attendanceAllowance     Float     @default(0)
+  performanceAllowance    Float     @default(0)
+  responsibilityAllowance Float     @default(0)
+  attractionAllowance     Float     @default(0)
+  positionAllowance       Float     @default(0)
+  otherAllowance          Float     @default(0)
+  socialInsurance         Float     @default(0)
+  createdDate             DateTime  @default(now())
+  status                  String    @default("Tạo mới")
+  creator                 String
+  approver                String?
+  note                    String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+model Attendance {
+  id                   String   @id @default(uuid())
+  employeeCode         String
+  employeeName         String
+  gender               String?
+  department           String?
+  annualLeaveDays      Float    @default(0)
+  paidLeaveDays        Float    @default(0)
+  unpaidLeaveDays      Float    @default(0)
+  sundayOvertimeHours  Float    @default(0)
+  holidayOvertimeHours Float    @default(0)
+  weekdayOvertimeHours Float    @default(0)
+  month                Int
+  year                 Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([employeeCode, month, year])
+}
+
+model Payroll {
+  id        String          @id @default(uuid())
+  month     Int
+  year      Int
+  creator   String
+  approver  String
+  note      String?
+  status    String          @default("Tạo mới")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  details   PayrollDetail[]
+
+  @@unique([month, year])
+}
+
+model PayrollDetail {
+  id                       String   @id @default(uuid())
+  payrollId                String
+  employeeCode             String
+  employeeName             String?
+  incomePerWorkday         Float    @default(0)
+  attendanceBonus          Float    @default(0) // Số tiền chuyên cần
+  performanceBonus         Float    @default(0) // Tiền hiệu quả
+  responsibilityBonus      Float    @default(0) // Tiền trách nhiệm
+  overtimePay              Float    @default(0) // Tiền làm thêm giờ
+  socialInsuranceDeduction Float    @default(0) // BHXH (Nhân viên đóng)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  payroll                  Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+}
+model SalaryChange {
+  id                  String   @id @default(uuid())
+  requestDate         DateTime @default(now())
+  type                String   // Tăng lương / Giảm lương
+  isSelf              Boolean  @default(false)
+  employeeName        String
+  currentSalaryLevel  String?
+  proposedSalaryLevel String
+  effectiveMonth      Int
+  effectiveYear       Int
+  status              String   @default("Tạo mới")
+  creator             String
+  approver            String?
+  reason              String?
+  note                String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model TransferPromotion {
+  id                 String   @id @default(uuid())
+  requestDate        DateTime @default(now())
+  employeeName       String
+  currentPosition    String
+  newPosition        String
+  currentDepartment  String
+  newDepartment      String
+  currentSalaryLevel String?
+  newSalaryLevel     String?
+  effectiveDate      DateTime
+  status             String   @default("Tạo mới")
+  creator            String
+  note               String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  title       String
+  message     String
+  link        String?
+  isRead      Boolean  @default(false)
+  type        String?  // e.g., 'APPROVAL'
+  targetRole  String?  // Who should see this
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SalaryLevel {
+  id                  String   @id @default(uuid())
+  stt                 Int
+  levelCode           String   @unique
+  baseSalary          Float
+  attendanceBonus     Float    @default(0)
+  performanceBonus    Float    @default(0)
+  responsibilityBonus Float    @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Violation {
+  id           String   @id @default(uuid())
+  employeeName String
+  date         DateTime @default(now())
+  reason       String
+  level        String?
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

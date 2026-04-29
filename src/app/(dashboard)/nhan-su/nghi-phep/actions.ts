@@ -4,9 +4,18 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 
+async function getCurrentEmployeeName(session: any) {
+  const user = await prisma.user.findUnique({
+    where: { username: session.username }
+  });
+  return user?.employeeName || session.username;
+}
+
 export async function createLeaveRequest(formData: FormData) {
   const session = await getSession();
   if (!session) throw new Error("Bạn chưa đăng nhập.");
+
+  const employeeName = await getCurrentEmployeeName(session);
 
   const startDateStr = formData.get("startDate") as string;
   const endDateStr = formData.get("endDate") as string;
@@ -25,13 +34,12 @@ export async function createLeaveRequest(formData: FormData) {
     throw new Error("Ngày kết thúc không được nhỏ hơn ngày bắt đầu.");
   }
 
-  // Tính số ngày nghỉ (bao gồm cả ngày bắt đầu và kết thúc)
   const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
   const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
   await prisma.leaveRequest.create({
     data: {
-      employeeName: session.employeeName || session.username, // Ưu tiên tên nhân viên thực tế
+      employeeName,
       startDate,
       endDate,
       totalDays,
@@ -42,6 +50,7 @@ export async function createLeaveRequest(formData: FormData) {
   });
 
   revalidatePath("/nhan-su/nghi-phep");
+  revalidatePath("/profile");
 }
 
 export async function updateLeaveRequest(id: string, formData: FormData) {
@@ -77,6 +86,7 @@ export async function updateLeaveRequest(id: string, formData: FormData) {
   });
 
   revalidatePath("/nhan-su/nghi-phep");
+  revalidatePath("/profile");
 }
 
 export async function updateLeaveStatus(id: string, newStatus: string) {
@@ -85,4 +95,5 @@ export async function updateLeaveStatus(id: string, newStatus: string) {
     data: { status: newStatus },
   });
   revalidatePath("/nhan-su/nghi-phep");
+  revalidatePath("/profile");
 }

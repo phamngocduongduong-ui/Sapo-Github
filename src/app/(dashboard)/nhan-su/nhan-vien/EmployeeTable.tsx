@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
+import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 import { createEmployee, updateEmployee } from "./actions";
 import { Pencil, Trash2 } from "lucide-react";
 
@@ -65,23 +66,7 @@ export default function EmployeeTable({
   const formRef = useRef<HTMLFormElement>(null);
 
   // Real-time Auto Sync
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch("/api/employees");
-        if (res.ok) {
-          const data = await res.json();
-          // Kiểm tra xem dữ liệu có thay đổi không để tránh re-render thừa
-          if (JSON.stringify(data) !== JSON.stringify(employees)) {
-            setEmployees(data);
-          }
-        }
-      } catch (e) {
-        console.error("Sync error:", e);
-      }
-    }, 3000); // 3 giây cập nhật 1 lần
-    return () => clearInterval(interval);
-  }, [employees]);
+  useRealTimeSync("employees", employees, setEmployees);
 
   function handleClose() {
     setShowModal(false);

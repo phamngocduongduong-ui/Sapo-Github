@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect, useMemo } from "react";
+import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 import { createOrder, updateOrder, deleteOrder, approveOrder } from "./actions";
 
 export default function OrderTable({ initialOrders, customers, branches, salesEmployees, currentUser }: { initialOrders: any[], customers: string[], branches: string[], salesEmployees: string[], currentUser: string }) {
@@ -21,20 +22,9 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-
+  
   // Auto-Sync
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch("/api/sales/orders");
-        if (res.ok) {
-          const data = await res.json();
-          if (JSON.stringify(data) !== JSON.stringify(orders)) setOrders(data);
-        }
-      } catch (e) { console.error(e); }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [orders]);
+  useRealTimeSync("orders", orders, setOrders);
 
   // Logic lọc dữ liệu
   const filteredOrders = useMemo(() => {

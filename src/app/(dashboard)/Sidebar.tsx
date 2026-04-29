@@ -91,7 +91,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
         <Link 
           href="/" 
           className={`nav-item ${pathname === "/" ? "active" : ""}`}
-          style={{ fontSize: "1.1rem", fontWeight: "600" }}
+          style={{ fontSize: "1.0rem", fontWeight: "600" }}
         >
           <span>Tổng quan</span>
         </Link>
@@ -99,7 +99,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
         <Link 
           href="/admin" 
           className={`nav-item ${pathname.startsWith("/admin") ? "active" : ""}`}
-          style={{ fontSize: "1.1rem", fontWeight: "600" }}
+          style={{ fontSize: "1.0rem", fontWeight: "600" }}
         >
           <span>Tài khoản (Admin)</span>
         </Link>
@@ -112,7 +112,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
               style={{ 
                 width: "100%", 
                 justifyContent: "space-between",
-                fontSize: "1.1rem",
+                fontSize: "1.0rem",
                 fontWeight: "600" 
               }}
             >
@@ -138,7 +138,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
                   className={`nav-item ${pathname.startsWith(item.href) ? "active" : ""}`}
                   style={{ 
                     paddingLeft: "1.5rem", 
-                    fontSize: "1rem", 
+                    fontSize: "0.9rem", 
                     margin: "2px 0.75rem",
                     fontWeight: "400"
                   }}
@@ -152,7 +152,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
 
         <div style={{ marginTop: "auto", borderTop: "1px solid var(--border-color)", padding: "1rem 0" }}>
           <form action={logout}>
-            <button type="submit" className="nav-item" style={{ width: "100%", color: "var(--danger-color)", fontSize: "1.1rem", fontWeight: "600" }}>
+            <button type="submit" className="nav-item" style={{ width: "100%", color: "var(--danger-color)", fontSize: "1.0rem", fontWeight: "600" }}>
               <LogOut size={20} style={{ marginRight: "0.75rem" }} />
               <span>Đăng xuất</span>
             </button>

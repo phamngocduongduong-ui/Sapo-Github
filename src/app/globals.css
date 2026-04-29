@@ -209,9 +209,7 @@ button {
     padding: 1rem;
   }
   
-  .page-title {
-    font-size: 1.5rem;
-  }
+  /* .page-title override removed to keep it consistent 1.2rem */
   
   .card {
     padding: 1rem;
@@ -223,7 +221,7 @@ button {
 }
 
 .page-title {
-  font-size: 1.875rem;
+  font-size: 1.2rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
 }

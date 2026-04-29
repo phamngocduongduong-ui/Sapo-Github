@@ -22,7 +22,7 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  
+
   // Auto-Sync
   useRealTimeSync("orders", orders, setOrders);
 
@@ -41,7 +41,6 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
     setExpandedOrderId(prev => prev === id ? null : id);
   };
 
-  // Lấy danh sách mã KH duy nhất từ bảng đơn hàng cho bộ lọc
   const uniqueCustomersInOrders = useMemo(() => {
     return Array.from(new Set(orders.map(o => o.customerCode)));
   }, [orders]);
@@ -110,7 +109,6 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
 
   return (
     <>
-      {/* Bộ lọc */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem", padding: "1rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
         <div>
           <label className="filter-label">Mã khách hàng</label>
@@ -251,7 +249,6 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
             {error && <div style={{ color: "#e74c3c", marginBottom: "1rem" }}>⚠️ {error}</div>}
             
             <form onSubmit={handleSubmit}>
-              {/* Tab 1 */}
               <div style={{ display: activeTab === 1 ? "grid" : "none", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.25rem" }}>
                 <div><label className="filter-label">Mã đơn hàng</label><input type="text" name="orderCode" className="input" defaultValue={editingOrder?.orderCode} disabled={!!editingOrder || isViewMode} required /></div>
                 <div>
@@ -290,7 +287,6 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
                 <div style={{ gridColumn: "span 3" }}><label className="filter-label">Ghi chú</label><input type="text" name="note" className="input" disabled={isViewMode} defaultValue={editingOrder?.note ?? ""} /></div>
               </div>
 
-              {/* Tab 2 */}
               <div style={{ display: activeTab === 2 ? "block" : "none" }}>
                 <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
                   <table className="table" style={{ fontSize: "0.85rem", width: "100%" }}>

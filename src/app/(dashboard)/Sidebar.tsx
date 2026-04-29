@@ -96,14 +96,6 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
         >
           <span>Tổng quan</span>
         </Link>
-        
-        <Link 
-          href="/admin" 
-          className={`nav-item ${pathname.startsWith("/admin") ? "active" : ""}`}
-          style={{ fontSize: "1.0rem", fontWeight: "600", paddingLeft: "1.75rem", margin: "2px 0.5rem" }}
-        >
-          <span>Tài khoản (Admin)</span>
-        </Link>
 
         {menuGroups.map((group) => (
           <div key={group.id} style={{ marginBottom: "1px" }}>
@@ -154,6 +146,14 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
             </div>
           </div>
         ))}
+
+        <Link 
+          href="/admin" 
+          className={`nav-item ${pathname.startsWith("/admin") ? "active" : ""}`}
+          style={{ fontSize: "1.0rem", fontWeight: "600", paddingLeft: "1.75rem", margin: "2px 0.5rem" }}
+        >
+          <span>Quản trị</span>
+        </Link>
 
         <div style={{ marginTop: "auto", borderTop: "1px solid var(--border-color)", padding: "0.75rem 0" }}>
           <form action={logout}>

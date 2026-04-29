@@ -1,24 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import { usePathname } from "next/navigation";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname]);
 
   return (
-    <div className="app-container" style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-      <Sidebar isCollapsed={isCollapsed} onToggle={() => setIsCollapsed(!isCollapsed)} />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", transition: "all 0.3s ease" }}>
-        <Header />
-        <div style={{ flex: 1, overflowY: "auto" }}>
+    <div className="app-container">
+      {/* Overlay for mobile */}
+      <div 
+        className={`sidebar-overlay ${isMobileOpen ? "show" : ""}`} 
+        onClick={() => setIsMobileOpen(false)}
+      />
+      
+      <Sidebar 
+        isMobileOpen={isMobileOpen} 
+        onClose={() => setIsMobileOpen(false)} 
+      />
+      
+      <div className="main-wrapper">
+        <Header onMenuClick={() => setIsMobileOpen(true)} />
+        <main className="main-content">
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );

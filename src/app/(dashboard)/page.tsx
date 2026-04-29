@@ -31,7 +31,7 @@ export default async function OverviewPage() {
   ];
 
   return (
-    <main className="main-content" style={{ padding: "2rem", width: "100%" }}>
+    <main className="main-content" style={{ width: "100%" }}>
       <header style={{ marginBottom: "2.5rem" }}>
         <h1 className="page-title" style={{ marginBottom: "0.5rem" }}>📊 Tổng quan hệ thống</h1>
         <p style={{ color: "#888", fontSize: "0.95rem" }}>Chào mừng bạn quay trở lại. Đây là tóm tắt tình hình nhân sự hiện tại.</p>
@@ -70,7 +70,7 @@ export default async function OverviewPage() {
       </div>
 
       {/* Trang trí thêm báo cáo giả lập để trông "đẹp" hơn */}
-      <div style={{ marginTop: "2.5rem", display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem" }}>
+      <div style={{ marginTop: "2.5rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
         <div className="card" style={{ padding: "1.5rem" }}>
           <h3 style={{ marginBottom: "1.5rem" }}>📈 Biểu đồ tăng trưởng (Minh họa)</h3>
           <div style={{ height: "200px", display: "flex", alignItems: "flex-end", gap: "1rem", padding: "0 1rem" }}>

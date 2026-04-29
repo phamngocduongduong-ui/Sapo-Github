@@ -112,7 +112,8 @@ button {
 /* Layout */
 .app-container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -121,6 +122,17 @@ button {
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  width: 100%;
 }
 
 .sidebar-header {
@@ -129,22 +141,27 @@ button {
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .sidebar-nav {
   flex: 1;
   padding: 1rem 0;
+  overflow-y: auto;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 1.25rem;
   color: var(--text-secondary);
   transition: all 0.2s ease;
   border-radius: 0.5rem;
   margin: 0.125rem 0.75rem;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .nav-item:hover, .nav-item.active {
@@ -152,19 +169,57 @@ button {
   color: var(--primary-color);
 }
 
-.nav-item--sub {
-  font-weight: 400;
-  opacity: 0.85;
-}
-
-.nav-item--expandable {
-  font-weight: 600;
-}
-
 .main-content {
   flex: 1;
-  padding: 2rem;
+  padding: 1.5rem;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+}
+
+/* Responsive Media Queries */
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed;
+    left: -250px;
+    top: 0;
+    bottom: 0;
+  }
+  
+  .sidebar.mobile-open {
+    left: 0;
+    box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+  }
+  
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 999;
+    backdrop-filter: blur(2px);
+    display: none;
+  }
+  
+  .sidebar-overlay.show {
+    display: block;
+  }
+}
+
+@media (max-width: 640px) {
+  .main-content {
+    padding: 1rem;
+  }
+  
+  .page-title {
+    font-size: 1.5rem;
+  }
+  
+  .card {
+    padding: 1rem;
+  }
+  
+  .table-container {
+    border-radius: 8px;
+  }
 }
 
 .page-title {

@@ -32,7 +32,7 @@ export default async function OverviewPage() {
 
   return (
     <main className="main-content" style={{ width: "100%" }}>
-      <header style={{ marginBottom: "2.5rem" }}>
+      <header style={{ marginBottom: "1rem" }}>
         <h1 className="page-title" style={{ marginBottom: "0.5rem" }}>📊 Tổng quan hệ thống</h1>
         <p style={{ color: "#888", fontSize: "0.95rem" }}>Chào mừng bạn quay trở lại. Đây là tóm tắt tình hình nhân sự hiện tại.</p>
       </header>

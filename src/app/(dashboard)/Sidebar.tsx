@@ -41,17 +41,25 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
       ]
     },
     {
+      id: "hr",
+      label: "Nhân sự",
+      items: [
+        { href: "/nhan-su/bac-luong", label: "Bậc lương" },
+        { href: "/nhan-su/nhan-vien", label: "Nhân viên" },
+        { href: "/nhan-su/hop-dong", label: "Hợp đồng lao động" },
+        { href: "/nhan-su/tang-giam-luong", label: "Tăng/Giảm lương" },
+        { href: "/nhan-su/thuyen-chuyen-bo-nhiem", label: "Thuyên chuyển, Bổ nhiệm" },
+        { href: "/nhan-su/cham-cong", label: "Chấm công" },
+        { href: "/nhan-su/bang-luong", label: "Bảng lương" },
+        { href: "/nhan-su/bo-phan", label: "Bộ phận" },
+        { href: "/nhan-su/chuc-vu", label: "Chức vụ" },
+      ]
+    },
+    {
       id: "sales",
       label: "Kinh doanh",
       items: [
         { href: "/sales/don-hang", label: "Đơn hàng" },
-      ]
-    },
-    {
-      id: "production",
-      label: "Sản xuất",
-      items: [
-        { href: "/production/ke-hoach-vat-tu", label: "Kế hoạch vật tư" },
       ]
     },
     {
@@ -63,35 +71,28 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
       ]
     },
     {
-      id: "hr",
-      label: "Nhân sự",
+      id: "production",
+      label: "Sản xuất",
       items: [
-        { href: "/nhan-su/nhan-vien", label: "Nhân viên" },
-        { href: "/nhan-su/hop-dong", label: "Hợp đồng lao động" },
-        { href: "/nhan-su/bo-phan", label: "Bộ phận" },
-        { href: "/nhan-su/chuc-vu", label: "Chức vụ" },
-        { href: "/nhan-su/bac-luong", label: "Bậc lương" },
-        { href: "/nhan-su/tang-giam-luong", label: "Tăng/Giảm lương" },
-        { href: "/nhan-su/cham-cong", label: "Chấm công" },
-        { href: "/nhan-su/bang-luong", label: "Bảng lương" },
+        { href: "/production/ke-hoach-vat-tu", label: "Kế hoạch vật tư" },
       ]
-    }
+    },
   ];
 
   return (
     <aside className={`sidebar ${isMobileOpen ? "mobile-open" : ""}`}>
       <div className="sidebar-header">
-        <span style={{ fontSize: "1.25rem" }}>EMS System</span>
+        <span style={{ fontSize: "1.1rem", fontWeight: "700", letterSpacing: "0.5px" }}>SAPO EMS</span>
         <button className="mobile-only-btn" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-          <X size={24} />
+          <X size={20} />
         </button>
       </div>
       
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" style={{ padding: "0.5rem 0" }}>
         <Link 
           href="/" 
           className={`nav-item ${pathname === "/" ? "active" : ""}`}
-          style={{ fontSize: "1.0rem", fontWeight: "600" }}
+          style={{ fontSize: "1.0rem", fontWeight: "600", paddingLeft: "1.75rem", margin: "2px 0.5rem" }}
         >
           <span>Tổng quan</span>
         </Link>
@@ -99,13 +100,13 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
         <Link 
           href="/admin" 
           className={`nav-item ${pathname.startsWith("/admin") ? "active" : ""}`}
-          style={{ fontSize: "1.0rem", fontWeight: "600" }}
+          style={{ fontSize: "1.0rem", fontWeight: "600", paddingLeft: "1.75rem", margin: "2px 0.5rem" }}
         >
           <span>Tài khoản (Admin)</span>
         </Link>
 
         {menuGroups.map((group) => (
-          <div key={group.id}>
+          <div key={group.id} style={{ marginBottom: "1px" }}>
             <button
               className={`nav-item ${pathname.startsWith(group.items[0].href.split('/')[1]) ? "active" : ""}`}
               onClick={() => toggleMenu(group.id)}
@@ -113,34 +114,38 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
                 width: "100%", 
                 justifyContent: "space-between",
                 fontSize: "1.0rem",
-                fontWeight: "600" 
+                fontWeight: "600",
+                paddingLeft: "1.75rem",
+                margin: "2px 0.5rem"
               }}
             >
               <span>{group.label}</span>
               <ChevronRight 
-                size={16} 
+                size={14} 
                 style={{ 
-                  transition: "transform 0.2s", 
-                  transform: openMenu === group.id ? "rotate(90deg)" : "rotate(0deg)" 
+                  transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
+                  transform: openMenu === group.id ? "rotate(90deg)" : "rotate(0deg)",
+                  opacity: 0.5
                 }} 
               />
             </button>
             <div style={{ 
               overflow: "hidden", 
               maxHeight: openMenu === group.id ? "1000px" : "0", 
-              transition: "max-height 0.3s ease-in-out",
-              background: "rgba(0,0,0,0.02)"
+              transition: "max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+              background: "rgba(0,0,0,0.015)"
             }}>
               {group.items.map((item) => (
                 <Link 
                   key={item.href} 
                   href={item.href} 
-                  className={`nav-item ${pathname.startsWith(item.href) ? "active" : ""}`}
+                  className={`nav-item ${pathname === item.href ? "active" : ""}`}
                   style={{ 
-                    paddingLeft: "1.5rem", 
+                    paddingLeft: "2.5rem", 
                     fontSize: "0.9rem", 
-                    margin: "2px 0.75rem",
-                    fontWeight: "400"
+                    margin: "1px 0.5rem",
+                    fontWeight: "400",
+                    opacity: 0.9
                   }}
                 >
                   {item.label}
@@ -150,10 +155,10 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
           </div>
         ))}
 
-        <div style={{ marginTop: "auto", borderTop: "1px solid var(--border-color)", padding: "1rem 0" }}>
+        <div style={{ marginTop: "auto", borderTop: "1px solid var(--border-color)", padding: "0.75rem 0" }}>
           <form action={logout}>
-            <button type="submit" className="nav-item" style={{ width: "100%", color: "var(--danger-color)", fontSize: "1.0rem", fontWeight: "600" }}>
-              <LogOut size={20} style={{ marginRight: "0.75rem" }} />
+            <button type="submit" className="nav-item" style={{ width: "100%", color: "var(--danger-color)", fontSize: "1.0rem", fontWeight: "600", paddingLeft: "1.75rem" }}>
+              <LogOut size={16} style={{ marginRight: "0.75rem" }} />
               <span>Đăng xuất</span>
             </button>
           </form>

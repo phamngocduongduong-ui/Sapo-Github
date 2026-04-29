@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { logout } from "@/app/login/actions";
-import { X, LayoutDashboard, Users, ShoppingCart, Factory, Database, UserCircle, LogOut, ChevronRight } from "lucide-react";
+import { X, ChevronRight, LogOut } from "lucide-react";
 
 interface SidebarProps {
   isMobileOpen?: boolean;
@@ -31,7 +31,6 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
     {
       id: "catalog",
       label: "Danh mục",
-      icon: <Database size={20} />,
       items: [
         { href: "/danh-muc/khach-hang", label: "Khách hàng" },
         { href: "/danh-muc/nha-cung-cap", label: "Nhà cung cấp" },
@@ -44,7 +43,6 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
     {
       id: "sales",
       label: "Kinh doanh",
-      icon: <ShoppingCart size={20} />,
       items: [
         { href: "/sales/don-hang", label: "Đơn hàng" },
       ]
@@ -52,7 +50,6 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
     {
       id: "production",
       label: "Sản xuất",
-      icon: <Factory size={20} />,
       items: [
         { href: "/production/ke-hoach-vat-tu", label: "Kế hoạch vật tư" },
       ]
@@ -60,7 +57,6 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
     {
       id: "purchasing",
       label: "Thu mua",
-      icon: <ShoppingCart size={20} />,
       items: [
         { href: "/purchasing", label: "Kế hoạch Thu mua" },
         { href: "/purchasing/dispatch", label: "Lệnh điều động" },
@@ -69,7 +65,6 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
     {
       id: "hr",
       label: "Nhân sự",
-      icon: <Users size={20} />,
       items: [
         { href: "/nhan-su/nhan-vien", label: "Nhân viên" },
         { href: "/nhan-su/hop-dong", label: "Hợp đồng lao động" },
@@ -86,21 +81,27 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
   return (
     <aside className={`sidebar ${isMobileOpen ? "mobile-open" : ""}`}>
       <div className="sidebar-header">
-        <span>EMS System</span>
+        <span style={{ fontSize: "1.25rem" }}>EMS System</span>
         <button className="mobile-only-btn" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
           <X size={24} />
         </button>
       </div>
       
       <nav className="sidebar-nav">
-        <Link href="/" className={`nav-item ${pathname === "/" ? "active" : ""}`}>
-          <LayoutDashboard size={20} />
-          <span style={{ marginLeft: "0.75rem" }}>Tổng quan</span>
+        <Link 
+          href="/" 
+          className={`nav-item ${pathname === "/" ? "active" : ""}`}
+          style={{ fontSize: "1.1rem", fontWeight: "600" }}
+        >
+          <span>Tổng quan</span>
         </Link>
         
-        <Link href="/admin" className={`nav-item ${pathname.startsWith("/admin") ? "active" : ""}`}>
-          <UserCircle size={20} />
-          <span style={{ marginLeft: "0.75rem" }}>Tài khoản (Admin)</span>
+        <Link 
+          href="/admin" 
+          className={`nav-item ${pathname.startsWith("/admin") ? "active" : ""}`}
+          style={{ fontSize: "1.1rem", fontWeight: "600" }}
+        >
+          <span>Tài khoản (Admin)</span>
         </Link>
 
         {menuGroups.map((group) => (
@@ -108,12 +109,14 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
             <button
               className={`nav-item ${pathname.startsWith(group.items[0].href.split('/')[1]) ? "active" : ""}`}
               onClick={() => toggleMenu(group.id)}
-              style={{ width: "100%", justifyContent: "space-between" }}
+              style={{ 
+                width: "100%", 
+                justifyContent: "space-between",
+                fontSize: "1.1rem",
+                fontWeight: "600" 
+              }}
             >
-              <div style={{ display: "flex", alignItems: "center" }}>
-                {group.icon}
-                <span style={{ marginLeft: "0.75rem" }}>{group.label}</span>
-              </div>
+              <span>{group.label}</span>
               <ChevronRight 
                 size={16} 
                 style={{ 
@@ -133,7 +136,12 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
                   key={item.href} 
                   href={item.href} 
                   className={`nav-item ${pathname.startsWith(item.href) ? "active" : ""}`}
-                  style={{ paddingLeft: "3rem", fontSize: "0.9rem", margin: "2px 0.75rem" }}
+                  style={{ 
+                    paddingLeft: "1.5rem", 
+                    fontSize: "1rem", 
+                    margin: "2px 0.75rem",
+                    fontWeight: "400"
+                  }}
                 >
                   {item.label}
                 </Link>
@@ -144,9 +152,9 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
 
         <div style={{ marginTop: "auto", borderTop: "1px solid var(--border-color)", padding: "1rem 0" }}>
           <form action={logout}>
-            <button type="submit" className="nav-item" style={{ width: "100%", color: "var(--danger-color)" }}>
-              <LogOut size={20} />
-              <span style={{ marginLeft: "0.75rem" }}>Đăng xuất</span>
+            <button type="submit" className="nav-item" style={{ width: "100%", color: "var(--danger-color)", fontSize: "1.1rem", fontWeight: "600" }}>
+              <LogOut size={20} style={{ marginRight: "0.75rem" }} />
+              <span>Đăng xuất</span>
             </button>
           </form>
         </div>

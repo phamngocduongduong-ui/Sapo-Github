@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 // Khởi tạo tài khoản admin mặc định
 export async function ensureDefaultAdmin() {
+  if (process.env.GITHUB_ACTIONS) return; // Bỏ qua việc tạo admin khi đang build trên GitHub Actions
+  
   const admin = await prisma.user.findUnique({
     where: { username: "admin" }
   });

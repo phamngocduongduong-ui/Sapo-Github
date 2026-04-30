@@ -57,7 +57,19 @@ async function calculatePayrollItem(code: string, month: number, year: number) {
     socialInsuranceBase = 0;
   }
 
-  if (salaryBase <= 0) return null;
+  if (salaryBase <= 0) {
+    return {
+      employeeCode: code,
+      employeeName: fullName,
+      incomePerWorkday: 0,
+      attendanceBonus: 0,
+      performanceBonus: 0,
+      responsibilityBonus: 0,
+      overtimePay: 0,
+      socialInsuranceDeduction: 0
+    };
+  }
+ Riverside
 
   // Lấy dữ liệu chấm công
   const attendance = await prisma.attendance.findUnique({

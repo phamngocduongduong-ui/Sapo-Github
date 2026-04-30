@@ -37,12 +37,14 @@ export default function ApprovalTabs(props: ApprovalTabsProps) {
   const activeData = tabs.find(t => t.key === activeTab);
 
   async function handleAction(id: string, type: string, action: string) {
-    if (!confirm(`Bạn có chắc chắn muốn ${action === 'approve' ? 'Phê duyệt' : 'Hủy phê duyệt'} bản ghi này?`)) return;
+    const confirmMsg = action === 'approve' ? 'Phê duyệt' : 'Trả lại';
+    if (!confirm(`Bạn có chắc chắn muốn ${confirmMsg} bản ghi này?`)) return;
     
     startTransition(async () => {
       try {
         const newStatus = action === 'approve' ? "Đã phê duyệt" : "Tạo mới";
         await updateApprovalStatus(id, type, newStatus);
+        window.location.reload();
       } catch (err: any) {
         alert(err.message);
       }

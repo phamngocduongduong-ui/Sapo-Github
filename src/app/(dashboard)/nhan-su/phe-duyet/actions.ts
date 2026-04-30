@@ -16,11 +16,28 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       revalidatePath("/nhan-su/nghi-phep");
       break;
     case "SalaryChange":
-      await prisma.salaryChange.update({ where: { id }, data });
+      const sc = await prisma.salaryChange.update({ where: { id }, data });
+      if (newStatus === "Đã phê duyệt") {
+        await prisma.employee.updateMany({
+          where: { fullName: sc.employeeName },
+          data: { salaryLevel: sc.proposedSalaryLevel }
+        });
+      }
       revalidatePath("/nhan-su/tang-giam-luong");
       break;
     case "TransferPromotion":
-      await prisma.transferPromotion.update({ where: { id }, data });
+      const tp = await prisma.transferPromotion.update({ where: { id }, data });
+      if (newStatus === "Đã phê duyệt") {
+        await prisma.employee.updateMany({
+          where: { fullName: tp.employeeName },
+          data: { 
+            position: tp.newPosition,
+            department: tp.newDepartment,
+            branch: tp.branch,
+            salaryLevel: tp.newSalaryLevel || undefined
+          }
+        });
+      }
       revalidatePath("/nhan-su/thuyen-chuyen-bo-nhiem");
       break;
     case "Resignation":
@@ -35,6 +52,7 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
           });
         }
       }
+      revalidatePath("/nhan-su/nghi-viec");
       break;
     case "Payroll":
       await prisma.payroll.update({ where: { id }, data });

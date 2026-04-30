@@ -78,6 +78,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
         { href: "/nhan-su/thuyen-chuyen-bo-nhiem", label: "8. Thuyên chuyển, Bổ nhiệm", key: "NS_DIEU_DONG" },
         { href: "/nhan-su/bac-luong", label: "9. Bậc lương", key: "NS_BAC_LUONG" },
         { href: "/nhan-su/phe-duyet", label: "10. Phê duyệt", key: "NS_APPROVE" },
+        { href: "/nhan-su/nghi-viec", label: "11. Nghỉ việc", key: "NS_NGHI_VIEC" },
       ]
     },
     {

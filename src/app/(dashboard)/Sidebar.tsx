@@ -213,14 +213,9 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
         </div>
       </nav>
 
-      <style jsx>{`
+      <style>{`
         .mobile-only-btn {
           display: none;
-        }
-        @keyframes pulse {
-          0% { opacity: 0.5; }
-          50% { opacity: 1; }
-          100% { opacity: 0.5; }
         }
         @media (max-width: 1024px) {
           .mobile-only-btn {

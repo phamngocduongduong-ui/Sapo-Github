@@ -4,8 +4,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { encrypt } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { ensureDefaultAdmin } from "../(dashboard)/admin/tai-khoan/actions";
 
 export async function login(prevState: any, formData: FormData) {
+  await ensureDefaultAdmin();
       const username = formData.get("username") as string;
       const password = formData.get("password") as string;
 

@@ -5,9 +5,7 @@ import { revalidatePath } from "next/cache";
 
 // Khởi tạo tài khoản admin mặc định
 export async function ensureDefaultAdmin() {
-  // Bỏ qua việc tạo admin khi đang build trên GitHub Actions hoặc Vercel
-  if (process.env.GITHUB_ACTIONS || process.env.VERCEL === "1" || process.env.NODE_ENV === "production") return;
-  
+  // Cho phép chạy trên Vercel để khởi tạo tài khoản đầu tiên
   try {
     const admin = await prisma.user.findUnique({
       where: { username: "admin" }

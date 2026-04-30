@@ -77,7 +77,6 @@ export default function EmployeeTable({
               <th>Mã NV</th>
               <th>Họ và tên</th>
               <th>Giới tính</th>
-              <th>Số điện thoại</th>
               <th>Chi nhánh</th>
               <th>Bộ phận</th>
               <th>Chức vụ</th>
@@ -93,7 +92,6 @@ export default function EmployeeTable({
                 <td style={{ fontWeight: 600 }}>{emp.employeeCode}</td>
                 <td style={{ fontWeight: 500 }}>{emp.fullName}</td>
                 <td>{emp.gender}</td>
-                <td>{emp.phone}</td>
                 <td>{emp.branch || "—"}</td>
                 <td>{emp.department}</td>
                 <td>{emp.position}</td>

@@ -258,25 +258,19 @@ export default function LaborContractTable({
                       ) : (
                         <>
                           {(c.status === "Tạo mới" || c.status === "Đã hủy") && (
-                            <button onClick={() => handleEdit(c)} className="btn btn-sm btn-outline" disabled={isPending}>Sửa</button>
+                            <button onClick={() => handleEdit(c)} className="btn btn-sm btn-outline">Sửa</button>
                           )}
                           
                           {c.status === "Tạo mới" && (
-                            <button onClick={() => handleStatusUpdate(c.id, "Chờ phê duyệt")} className="btn btn-sm btn-primary" disabled={isPending}>
-                              {isPending ? "..." : "Gửi"}
-                            </button>
+                            <button onClick={() => handleStatusUpdate(c.id, "Chờ phê duyệt")} className="btn btn-sm btn-primary">Gửi</button>
                           )}
                           
                           {c.status === "Chờ phê duyệt" && (
-                            <button onClick={() => handleStatusUpdate(c.id, "Tạo mới")} className="btn btn-sm btn-warning" disabled={isPending}>
-                              {isPending ? "..." : "Thu hồi"}
-                            </button>
+                            <button onClick={() => handleStatusUpdate(c.id, "Tạo mới")} className="btn btn-sm btn-warning">Thu hồi</button>
                           )}
 
                           {c.status === "Tạo mới" && (
-                            <button onClick={() => handleStatusUpdate(c.id, "Đã hủy")} className="btn btn-sm btn-danger" disabled={isPending}>
-                              {isPending ? "..." : "Hủy"}
-                            </button>
+                            <button onClick={() => handleStatusUpdate(c.id, "Đã hủy")} className="btn btn-sm btn-danger">Hủy</button>
                           )}
                         </>
                       )}

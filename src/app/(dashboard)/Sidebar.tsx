@@ -126,7 +126,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
     }))
     .filter(group => group.items.length > 0);
 
-  if (loading) return null; // Hoặc một loading skeleton nhỏ
+  // Removed if (loading) return null; to fix flicker
 
 
   return (
@@ -147,7 +147,13 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
           <span>Tổng quan</span>
         </Link>
 
-        {menuGroups.map((group) => (
+        {loading ? (
+          <div style={{ padding: "1rem 1.75rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} style={{ height: "1.25rem", background: "rgba(0,0,0,0.05)", borderRadius: "4px", width: i % 2 === 0 ? "70%" : "85%", animation: "pulse 1.5s infinite" }} />
+            ))}
+          </div>
+        ) : menuGroups.map((group) => (
           <div key={group.id} style={{ marginBottom: "1px" }}>
             <button
               className={`nav-item ${pathname.startsWith("/" + group.items[0].href.split('/')[1]) ? "active" : ""}`}
@@ -210,6 +216,11 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
       <style jsx>{`
         .mobile-only-btn {
           display: none;
+        }
+        @keyframes pulse {
+          0% { opacity: 0.5; }
+          50% { opacity: 1; }
+          100% { opacity: 0.5; }
         }
         @media (max-width: 1024px) {
           .mobile-only-btn {

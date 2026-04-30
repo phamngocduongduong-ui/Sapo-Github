@@ -27,11 +27,11 @@ type Payroll = {
   month: number;
   year: number;
   creator: string;
-  approver: string;
-  note: string | null;
+  approver?: string | null;
+  note?: string | null;
   status: string;
   createdAt: Date;
-  _count: { details: number };
+  _count?: { details: number };
 };
 
 type EmployeeShort = {
@@ -178,7 +178,7 @@ export default function PayrollTable({
                 <td style={{ textAlign: "center" }}>{idx + 1}</td>
                 <td style={{ textAlign: "center", fontWeight: 600, color: "var(--primary-color)" }}>{p.month}/{p.year}</td>
                 <td>{p.creator}</td>
-                <td style={{ textAlign: "center" }}>{p._count.details}</td>
+                <td style={{ textAlign: "center" }}>{p._count?.details || 0}</td>
                 <td>
                   <span className={`badge ${p.status === "Đã duyệt" ? "badge-success" : p.status === "Chờ phê duyệt" ? "badge-primary" : "badge-warning"}`}>
                     {p.status}

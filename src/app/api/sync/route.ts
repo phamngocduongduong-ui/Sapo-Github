@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       case "payroll":
         return NextResponse.json(await prisma.payroll.findMany({ 
           where: isAdmin ? {} : { branch: { in: userBranches } },
-          include: { details: true }, 
+          include: { _count: { select: { details: true } } }, 
           orderBy: { createdAt: "desc" } 
         }));
       case "salary-levels":

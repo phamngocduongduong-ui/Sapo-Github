@@ -5,27 +5,33 @@ import { revalidatePath } from "next/cache";
 
 // Khởi tạo tài khoản admin mặc định
 export async function ensureDefaultAdmin() {
-  if (process.env.GITHUB_ACTIONS) return; // Bỏ qua việc tạo admin khi đang build trên GitHub Actions
+  // Bỏ qua việc tạo admin khi đang build trên GitHub Actions hoặc Vercel
+  if (process.env.GITHUB_ACTIONS || process.env.VERCEL === "1" || process.env.NODE_ENV === "production") return;
   
-  const admin = await prisma.user.findUnique({
-    where: { username: "admin" }
-  });
-
-  if (!admin) {
-    // Lấy tất cả chi nhánh để gán cho admin
-    const allBranches = await prisma.branch.findMany({ select: { name: true } });
-    const branchNames = allBranches.map(b => b.name).join(",");
-
-    await prisma.user.create({
-      data: {
-        username: "admin",
-        password: "Admin123",
-        employeeName: "Admin",
-        branch: branchNames,
-        role: "Admin",
-        status: "ACTIVE"
-      }
+  try {
+    const admin = await prisma.user.findUnique({
+      where: { username: "admin" }
     });
+  
+    if (!admin) {
+      // Lấy tất cả chi nhánh để gán cho admin
+      const allBranches = await prisma.branch.findMany({ select: { name: true } });
+      const branchNames = allBranches.map(b => b.name).join(",");
+  
+      await prisma.user.create({
+        data: {
+          username: "admin",
+          password: "Admin123",
+          employeeName: "Admin",
+          branch: branchNames,
+          role: "Admin",
+          status: "ACTIVE"
+        }
+      });
+    }
+  } catch (e) {
+    // Ignore error if already exists (race condition)
+    console.log("Admin already exists or build environment restriction.");
   }
 }
 

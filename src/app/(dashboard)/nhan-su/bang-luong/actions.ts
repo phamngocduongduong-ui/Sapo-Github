@@ -156,7 +156,15 @@ export async function createPayroll(formData: FormData, selectedEmployeeCodes: s
 
 
   const payroll = await prisma.payroll.create({
-    data: { month, year, branch, creator, approver, note: note || "", status: "Tạo mới" }
+    data: { 
+      month, 
+      year, 
+      branch, 
+      creator, 
+      approver: approver || "", 
+      note: note || "", 
+      status: "Tạo mới" 
+    }
   });
 
   for (const code of selectedEmployeeCodes) {
@@ -184,7 +192,12 @@ export async function updatePayroll(id: string, formData: FormData) {
 
   await prisma.payroll.update({
     where: { id },
-    data: { month, year, note }
+    data: { 
+      month, 
+      year, 
+      approver: approver || "", 
+      note 
+    }
   });
   revalidatePath("/nhan-su/bang-luong");
 }

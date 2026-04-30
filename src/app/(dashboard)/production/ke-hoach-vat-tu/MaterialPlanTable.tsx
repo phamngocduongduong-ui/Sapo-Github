@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { createMaterialPlan, updateMaterialPlan, deleteMaterialPlan } from "./actions";
+import { Check } from "lucide-react";
 
 export default function MaterialPlanTable({ initialPlans, pendingItems, currentUser }: { initialPlans: any[], pendingItems: any[], currentUser: string }) {
   const [plans, setPlans] = useState<any[]>(initialPlans);
@@ -101,7 +102,15 @@ export default function MaterialPlanTable({ initialPlans, pendingItems, currentU
                     <td style={{ fontWeight: 600 }}>{plan.planNumber}</td>
                     <td>{new Date(plan.planDate).toLocaleDateString("vi-VN")}</td>
                     <td>{plan.creator}</td>
-                    <td><span className="badge badge-info">{plan.status}</span></td>
+                    <td>
+                      {plan.status === "Đã duyệt" ? (
+                        <span style={{ fontSize: "0.85rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                          <Check size={14} /> Hoàn tất
+                        </span>
+                      ) : (
+                        <span className="badge badge-info">{plan.status}</span>
+                      )}
+                    </td>
                     <td>{plan.note}</td>
                     <td style={{ textAlign: "center" }}>
                       <button onClick={() => handleEdit(plan)} className="btn-icon">✏️</button>
@@ -140,7 +149,15 @@ export default function MaterialPlanTable({ initialPlans, pendingItems, currentU
                       <td style={{ fontWeight: 600 }}>{item.quantity}</td>
                       <td>{item.hasPallet ? "✅" : "❌"}</td>
                       <td>{item.hasCornerGuard ? "✅" : "❌"}</td>
-                      <td><span className="badge badge-info">{plan.status}</span></td>
+                      <td>
+                        {plan.status === "Đã duyệt" ? (
+                          <span style={{ fontSize: "0.8rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                            <Check size={14} /> Hoàn tất
+                          </span>
+                        ) : (
+                          <span className="badge badge-info">{plan.status}</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ))}

@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef, useEffect, useMemo } from "react";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 import { createOrder, updateOrder, deleteOrder, approveOrder } from "./actions";
+import { Check } from "lucide-react";
 
 export default function OrderTable({ initialOrders, customers, branches, salesEmployees, currentUser }: { initialOrders: any[], customers: string[], branches: string[], salesEmployees: string[], currentUser: string }) {
   const [orders, setOrders] = useState<any[]>(initialOrders);
@@ -180,7 +181,20 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
                   <td>{new Date(order.orderDate).toLocaleDateString("vi-VN")}</td>
                   <td>{order.branch}</td>
                   <td>{order.requestDeliveryDate ? new Date(order.requestDeliveryDate).toLocaleDateString("vi-VN") : "—"}</td>
-                  <td><span className="badge badge-info">{order.status}</span></td>
+                  <td>
+                    {order.status === "Đã giao hàng" ? (
+                      <span style={{ fontSize: "0.85rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                        <Check size={14} /> Hoàn tất
+                      </span>
+                    ) : (
+                      <span className={`badge ${
+                        order.status === "Tạo mới" ? "badge-info" : 
+                        order.status === "Đã hủy" ? "badge-danger" : "badge-warning"
+                      }`}>
+                        {order.status}
+                      </span>
+                    )}
+                  </td>
                   <td>{order.shipDate ? new Date(order.shipDate).toLocaleDateString("vi-VN") : "—"}</td>
                   <td style={{ textAlign: "center" }}>{order.thermometer ? "✅ Có" : "❌ Không"}</td>
                   <td style={{ textAlign: "center" }}>

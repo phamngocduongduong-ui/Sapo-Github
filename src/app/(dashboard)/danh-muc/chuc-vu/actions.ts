@@ -14,7 +14,6 @@ export async function createPosition(formData: FormData) {
     data: { code, name, note: note || "", status: "ACTIVE" }
   });
 
-  revalidatePath("/nhan-su/chuc-vu");
   revalidatePath("/danh-muc/chuc-vu");
 }
 
@@ -29,7 +28,6 @@ export async function updatePosition(id: string, formData: FormData) {
     data: { name, note: note || "" }
   });
 
-  revalidatePath("/nhan-su/chuc-vu");
   revalidatePath("/danh-muc/chuc-vu");
 }
 
@@ -38,6 +36,5 @@ export async function updatePositionStatus(id: string, status: string) {
     where: { id },
     data: { status }
   });
-  revalidatePath("/nhan-su/chuc-vu");
   revalidatePath("/danh-muc/chuc-vu");
 }

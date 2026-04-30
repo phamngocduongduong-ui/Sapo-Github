@@ -5,20 +5,52 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 
 export async function getSalaryChanges() {
+  const session = await getSession();
+  if (!session) return [];
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId }
+  });
+
+  const isAdmin = user?.username === "admin" || user?.role === "Admin";
+  const userBranches = user?.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
+
   return await prisma.salaryChange.findMany({
+    where: isAdmin ? {} : {
+      branch: { in: userBranches }
+    },
     orderBy: { createdAt: "desc" },
   });
 }
 
+
 export async function getEmployees() {
+  const session = await getSession();
+  if (!session) return [];
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId }
+  });
+
+  const isAdmin = user?.username === "admin" || user?.role === "Admin";
+  const userBranches = user?.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
+
   return await prisma.employee.findMany({
-    where: { status: "ACTIVE" },
-    select: { id: true, fullName: true, employeeCode: true }
+    where: { 
+      status: "ACTIVE",
+      ...(isAdmin ? {} : { branch: { in: userBranches } })
+    },
+    select: { id: true, fullName: true, employeeCode: true, branch: true }
   });
 }
 
 export async function createSalaryChange(data: any) {
+  const employee = await prisma.employee.findFirst({
+    where: { fullName: data.employeeName }
+  });
+
   await prisma.salaryChange.create({
+
     data: {
       type: data.type,
       isSelf: data.isSelf,
@@ -30,6 +62,7 @@ export async function createSalaryChange(data: any) {
       creator: data.creator,
       reason: data.reason,
       note: data.note,
+      branch: employee?.branch || "",
       status: "Tạo mới",
     },
   });
@@ -89,7 +122,12 @@ export async function updateSalaryChangeStatus(id: string, status: string) {
 }
 
 export async function updateSalaryChange(id: string, data: any) {
+  const employee = await prisma.employee.findFirst({
+    where: { fullName: data.employeeName }
+  });
+
   await prisma.salaryChange.update({
+
     where: { id },
     data: {
       type: data.type,
@@ -101,6 +139,7 @@ export async function updateSalaryChange(id: string, data: any) {
       effectiveYear: data.effectiveYear,
       reason: data.reason,
       note: data.note,
+      branch: employee?.branch || undefined,
       // Status remains same or resets to 'Tạo mới' if user wants
     },
   });

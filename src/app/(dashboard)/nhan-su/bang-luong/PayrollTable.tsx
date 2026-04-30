@@ -10,7 +10,8 @@ import {
   Search,
   UserCheck,
   Pencil,
-  RefreshCw
+  RefreshCw,
+  Check
 } from "lucide-react";
 import { 
   createPayroll, 
@@ -187,9 +188,17 @@ export default function PayrollTable({
                 </td>
                 <td style={{ textAlign: "center" }}>
                   <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center", whiteSpace: "nowrap" }}>
-                    <button onClick={() => handleViewDetails(p.id)} className="btn btn-sm btn-outline" style={{ padding: "2px 8px", fontSize: "0.75rem" }}>Xem</button>
-                    <button onClick={() => { setEditingPayroll(p); setShowModal(true); }} className="btn btn-sm btn-outline" style={{ padding: "2px 8px", fontSize: "0.75rem" }}>Sửa</button>
-                    <button onClick={() => handleDelete(p.id)} className="btn btn-sm btn-danger" style={{ padding: "2px 8px", fontSize: "0.75rem" }}>Xóa</button>
+                    {p.status === "Đã duyệt" ? (
+                      <span style={{ fontSize: "0.8rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                        <Check size={14} /> Hoàn tất
+                      </span>
+                    ) : (
+                      <>
+                        <button onClick={() => handleViewDetails(p.id)} className="btn btn-sm btn-outline">Xem</button>
+                        <button onClick={() => { setEditingPayroll(p); setShowModal(true); }} className="btn btn-sm btn-outline">Sửa</button>
+                        <button onClick={() => handleDelete(p.id)} className="btn btn-sm btn-danger">Xóa</button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

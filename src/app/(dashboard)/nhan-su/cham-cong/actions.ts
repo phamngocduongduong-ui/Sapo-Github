@@ -42,7 +42,8 @@ export async function createAttendance(formData: FormData) {
     holidayOvertimeHours,
     weekdayOvertimeHours,
     month,
-    year
+    year,
+    branch: employee?.branch || ""
   };
 
   await prisma.attendance.upsert({
@@ -93,7 +94,8 @@ export async function updateAttendance(id: string, formData: FormData) {
       holidayOvertimeHours,
       weekdayOvertimeHours,
       month,
-      year
+      year,
+      branch: employee?.branch || ""
     }
   });
 
@@ -168,7 +170,8 @@ export async function importAttendances(data: any[]) {
       holidayOvertimeHours: parseFloat(item["Số giờ làm thêm ngày lễ"] || "0"),
       weekdayOvertimeHours: parseFloat(item["Số giờ làm thêm ngày thường"] || "0"),
       month,
-      year
+      year,
+      branch: employee?.branch || ""
     });
   }
 

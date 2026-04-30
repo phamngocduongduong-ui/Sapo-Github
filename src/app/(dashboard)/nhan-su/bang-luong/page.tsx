@@ -4,9 +4,19 @@ import { getSession } from "@/lib/session";
 
 export default async function PayrollPage() {
   const session = await getSession();
-  const userName = session?.employeeName || session?.username || "Admin";
+  const user = await prisma.user.findUnique({
+    where: { id: session?.userId || "" }
+  });
+
+  const isAdmin = user?.username === "admin" || user?.role === "Admin";
+  const userBranches = user?.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
+  const userName = user?.employeeName || user?.username || "User";
 
   const payrolls = await prisma.payroll.findMany({
+    where: isAdmin ? {} : {
+      branch: { in: userBranches }
+    },
+
     orderBy: [
       { year: "desc" },
       { month: "desc" }
@@ -18,8 +28,12 @@ export default async function PayrollPage() {
     }
   });
 
+
   const employees = await prisma.employee.findMany({
-    where: { status: "ACTIVE" },
+    where: { 
+      status: "ACTIVE",
+      ...(isAdmin ? {} : { branch: { in: user?.branch?.split(",").map(b => b.trim()).filter(Boolean) || [] } })
+    },
     select: { 
       employeeCode: true, 
       fullName: true, 

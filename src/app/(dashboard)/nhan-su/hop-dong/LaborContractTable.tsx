@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
+import { Check } from "lucide-react";
 import { createLaborContract, updateLaborContract, updateContractStatus } from "./actions";
+import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 
 type LaborContract = {
   id: string;
@@ -28,6 +30,7 @@ type LaborContract = {
   otherAllowance: number;
   socialInsurance: number;
   createdDate: Date;
+  branch: string | null;
 };
 
 const STATUS_MAP: Record<string, { label: string; badge: string }> = {
@@ -158,11 +161,60 @@ export default function LaborContractTable({
     });
   }
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState({
+    branch: "Tất cả",
+    position: "Tất cả",
+    department: "Tất cả"
+  });
+
+  // Real-time Auto Sync
+  useRealTimeSync("labor-contracts", contracts, (data: any) => setContracts(data));
+
+  const filteredContracts = contracts.filter(c => {
+    const matchSearch = c.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        c.contractNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchBranch = filters.branch === "Tất cả" || c.branch === filters.branch;
+    const matchPosition = filters.position === "Tất cả" || c.position === filters.position;
+    const matchDepartment = filters.department === "Tất cả" || c.department === filters.department;
+    return matchSearch && matchBranch && matchPosition && matchDepartment;
+  });
+
+  const uniqueBranches = ["Tất cả", ...new Set(contracts.map(c => c.branch).filter(Boolean) as string[])];
+
   return (
     <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
         <h3 style={{ margin: 0 }}>Danh sách Hợp đồng lao động</h3>
         <button className="btn btn-primary" onClick={() => { setEditingContract(null); setShowModal(true); }}>+ Thêm hợp đồng</button>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem", marginBottom: "1.5rem", background: "#f8fafc", padding: "1rem", borderRadius: "8px" }}>
+        <div>
+          <label className="filter-label">Tìm kiếm</label>
+          <input type="text" className="input" placeholder="Tên NV, Số HĐ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        </div>
+        <div>
+          <label className="filter-label">Chi nhánh</label>
+          <select className="input" value={filters.branch} onChange={(e) => setFilters({...filters, branch: e.target.value})}>
+            {uniqueBranches.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="filter-label">Bộ phận</label>
+          <select className="input" value={filters.department} onChange={(e) => setFilters({...filters, department: e.target.value})}>
+            <option value="Tất cả">Tất cả</option>
+            {departments.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="filter-label">Chức vụ</label>
+          <select className="input" value={filters.position} onChange={(e) => setFilters({...filters, position: e.target.value})}>
+            <option value="Tất cả">Tất cả</option>
+            {positions.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+          </select>
+        </div>
       </div>
 
       <div className="table-container" style={{ overflowX: "auto" }}>
@@ -172,58 +224,56 @@ export default function LaborContractTable({
               <th>STT</th>
               <th>Số hợp đồng</th>
               <th>Nhân viên</th>
+              <th>Chi nhánh</th>
               <th>Loại hợp đồng</th>
               <th>Ngày hợp đồng</th>
               <th>Bắt đầu</th>
-              <th>Kết thúc</th>
               <th>Chức vụ</th>
               <th>Bộ phận</th>
               <th>Trạng thái</th>
-              <th style={{ width: "220px", textAlign: "center" }}>Thao tác</th>
+              <th style={{ width: "200px", textAlign: "center" }}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            {initialContracts.map((c, idx) => {
+            {filteredContracts.map((c, idx) => {
               const st = STATUS_MAP[c.status] ?? { label: c.status, badge: "badge-warning" };
               return (
                 <tr key={c.id}>
                   <td>{idx + 1}</td>
                   <td style={{ fontWeight: 600 }}>{c.contractNumber}</td>
-                  <td>{c.employeeName}</td>
+                  <td style={{ fontWeight: 500 }}>{c.employeeName}</td>
+                  <td>{c.branch || "—"}</td>
                   <td>{c.contractType}</td>
                   <td>{new Date(c.contractDate).toLocaleDateString("vi-VN")}</td>
                   <td>{new Date(c.startDate).toLocaleDateString("vi-VN")}</td>
-                  <td>{c.endDate ? new Date(c.endDate).toLocaleDateString("vi-VN") : "—"}</td>
                   <td>{c.position}</td>
                   <td>{c.department}</td>
                   <td><span className={`badge ${st.badge}`}>{st.label}</span></td>
                   <td style={{ textAlign: "center" }}>
                     <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center", whiteSpace: "nowrap" }}>
-                      <button onClick={() => handleEdit(c)} className="btn btn-sm btn-outline" style={{ padding: "2px 8px", fontSize: "0.75rem" }}>
-                        Sửa
-                      </button>
-                      
-                      {c.status === "Tạo mới" && (
-                        <button onClick={() => handleStatusUpdate(c.id, "Chờ phê duyệt")} className="btn btn-sm btn-primary" style={{ padding: "2px 8px", fontSize: "0.75rem" }}>
-                          Gửi duyệt
-                        </button>
-                      )}
-                      
-                      {c.status === "Chờ phê duyệt" && (
+                      {c.status === "Đã phê duyệt" ? (
+                        <span style={{ fontSize: "0.8rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                          <Check size={14} /> Hoàn tất
+                        </span>
+                      ) : (
                         <>
-                          <button onClick={() => handleStatusUpdate(c.id, "Đã phê duyệt")} className="btn btn-sm btn-success" style={{ padding: "2px 8px", fontSize: "0.75rem" }}>
-                            Duyệt
-                          </button>
-                          <button onClick={() => handleStatusUpdate(c.id, "Tạo mới")} className="btn btn-sm btn-warning" style={{ padding: "2px 8px", fontSize: "0.75rem" }}>
-                            Trả lại
-                          </button>
-                        </>
-                      )}
+                          <button onClick={() => handleEdit(c)} className="btn btn-sm btn-outline">Sửa</button>
+                          
+                          {c.status === "Tạo mới" && (
+                            <button onClick={() => handleStatusUpdate(c.id, "Chờ phê duyệt")} className="btn btn-sm btn-primary">Gửi</button>
+                          )}
+                          
+                          {c.status === "Chờ phê duyệt" && (
+                            <>
+                              <button onClick={() => handleStatusUpdate(c.id, "Đã phê duyệt")} className="btn btn-sm btn-success">Duyệt</button>
+                              <button onClick={() => handleStatusUpdate(c.id, "Tạo mới")} className="btn btn-sm btn-warning">Trả lại</button>
+                            </>
+                          )}
 
-                      {c.status !== "Đã hủy" && c.status !== "Đã phê duyệt" && (
-                        <button onClick={() => handleStatusUpdate(c.id, "Đã hủy")} className="btn btn-sm btn-danger" style={{ padding: "2px 8px", fontSize: "0.75rem" }}>
-                          Hủy
-                        </button>
+                          {c.status !== "Đã hủy" && (
+                            <button onClick={() => handleStatusUpdate(c.id, "Đã hủy")} className="btn btn-sm btn-danger">Hủy</button>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
@@ -233,6 +283,7 @@ export default function LaborContractTable({
           </tbody>
         </table>
       </div>
+
 
         {showModal && (
           <div className="modal-overlay">
@@ -419,6 +470,13 @@ export default function LaborContractTable({
             </div>
           </div>
         )}
+      <style>{`
+        .filter-label { display: block; margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; }
+        .input { width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; outline: none; transition: border-color 0.2s; }
+        .input:focus { border-color: var(--primary-color); }
+        .btn-icon { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; font-size: 1.1rem; }
+        .btn-icon:hover { background: rgba(0,0,0,0.05); }
+      `}</style>
     </>
   );
 }

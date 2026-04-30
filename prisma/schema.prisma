@@ -3,22 +3,47 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
-  id           String   @id @default(uuid())
-  username     String   @unique
+  id           String           @id @default(uuid())
+  username     String           @unique
   password     String
   employeeName String?
   employeeId   String?
   branch       String?
-  role         String   @default("SALES")
-  status       String   @default("ACTIVE")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         String           @default("SALES")
+  status       String           @default("ACTIVE")
+  permissionId String?
+  permission   Permission?      @relation(fields: [permissionId], references: [id])
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 }
+
+model Permission {
+  id          String             @id @default(uuid())
+  code        String             @unique
+  name        String             @unique
+  status      String             @default("ACTIVE")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  users       User[]
+  details     PermissionDetail[]
+}
+
+model PermissionDetail {
+  id           String     @id @default(uuid())
+  permissionId String
+  moduleKey    String
+  canAccess    Boolean    @default(false)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([permissionId, moduleKey])
+}
+
+
 
 model Branch {
   id        String   @id @default(uuid())
@@ -145,6 +170,8 @@ model Employee {
   fullName       String
   position       String
   department     String
+  branch         String?
+  salaryLevel    String?
   phone          String?
   email          String?
   gender         String?
@@ -157,9 +184,12 @@ model Employee {
   educationLevel String?
   maritalStatus  String?
   workplace      String?
+  creator        String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
+
+
 
 model Customer {
   id        String   @id @default(uuid())
@@ -235,6 +265,7 @@ model LeaveRequest {
   id           String   @id @default(uuid())
   createdAt    DateTime @default(now())
   employeeName String
+  branch       String?
   startDate    DateTime
   endDate      DateTime
   totalDays    Int
@@ -261,6 +292,7 @@ model SalaryIncreaseRequest {
 model LaborContract {
   id                      String    @id @default(uuid())
   employeeName            String
+  branch                  String?
   contractNumber          String    @unique
   contractType            String
   contractDate            DateTime
@@ -286,10 +318,12 @@ model LaborContract {
   updatedAt               DateTime  @updatedAt
 }
 
+
 model Attendance {
   id                   String   @id @default(uuid())
   employeeCode         String
   employeeName         String
+  branch               String?
   gender               String?
   department           String?
   annualLeaveDays      Float    @default(0)
@@ -310,6 +344,7 @@ model Payroll {
   id        String          @id @default(uuid())
   month     Int
   year      Int
+  branch    String?
   creator   String
   approver  String
   note      String?
@@ -342,6 +377,7 @@ model SalaryChange {
   type                String   // Tăng lương / Giảm lương
   isSelf              Boolean  @default(false)
   employeeName        String
+  branch              String?
   currentSalaryLevel  String?
   proposedSalaryLevel String
   effectiveMonth      Int
@@ -359,6 +395,7 @@ model TransferPromotion {
   id                 String   @id @default(uuid())
   requestDate        DateTime @default(now())
   employeeName       String
+  branch             String?
   currentPosition    String
   newPosition        String
   currentDepartment  String
@@ -400,9 +437,23 @@ model SalaryLevel {
 model Violation {
   id           String   @id @default(uuid())
   employeeName String
+  branch       String?
   date         DateTime @default(now())
   reason       String
   level        String?
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+model Resignation {
+  id           String   @id @default(uuid())
+  employeeName String
+  branch       String?
+  requestDate  DateTime @default(now())
+  resignationDate DateTime
+  reason       String
+  status       String   @default("Tạo mới")
+  approver     String?
   note         String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

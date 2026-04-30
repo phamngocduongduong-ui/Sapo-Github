@@ -37,6 +37,10 @@ export async function createLaborContract(formData: FormData) {
   });
   if (existing) throw new Error("Số hợp đồng đã tồn tại.");
 
+  const employee = await prisma.employee.findFirst({
+    where: { fullName: employeeName }
+  });
+
   await prisma.laborContract.create({
     data: {
       employeeName,
@@ -51,6 +55,7 @@ export async function createLaborContract(formData: FormData) {
       creator,
       approver: approver || "",
       note: note || "",
+      branch: employee?.branch || "",
       status: "Tạo mới",
       salaryBase,
       attendanceAllowance,
@@ -89,6 +94,10 @@ export async function updateLaborContract(id: string, formData: FormData) {
   const otherAllowance = parseFloat(formData.get("otherAllowance") as string || "0");
   const socialInsurance = parseFloat(formData.get("socialInsurance") as string || "0");
 
+  const employee = await prisma.employee.findFirst({
+    where: { fullName: employeeName }
+  });
+
   await prisma.laborContract.update({
     where: { id },
     data: {
@@ -102,6 +111,7 @@ export async function updateLaborContract(id: string, formData: FormData) {
       salaryLevel: salaryLevel || "",
       approver: approver || "",
       note: note || "",
+      branch: employee?.branch || undefined,
       salaryBase,
       attendanceAllowance,
       performanceAllowance,

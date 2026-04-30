@@ -14,8 +14,7 @@ export async function createDepartment(formData: FormData) {
     data: { code, name, note: note || "", status: "ACTIVE" }
   });
 
-  revalidatePath("/nhan-su/bo-phan");
-  revalidatePath("/danh-muc/phong-ban");
+  revalidatePath("/danh-muc/bo-phan");
 }
 
 export async function updateDepartment(id: string, formData: FormData) {
@@ -29,8 +28,7 @@ export async function updateDepartment(id: string, formData: FormData) {
     data: { name, note: note || "" }
   });
 
-  revalidatePath("/nhan-su/bo-phan");
-  revalidatePath("/danh-muc/phong-ban");
+  revalidatePath("/danh-muc/bo-phan");
 }
 
 export async function updateDepartmentStatus(id: string, status: string) {
@@ -38,6 +36,5 @@ export async function updateDepartmentStatus(id: string, status: string) {
     where: { id },
     data: { status }
   });
-  revalidatePath("/nhan-su/bo-phan");
-  revalidatePath("/danh-muc/phong-ban");
+  revalidatePath("/danh-muc/bo-phan");
 }

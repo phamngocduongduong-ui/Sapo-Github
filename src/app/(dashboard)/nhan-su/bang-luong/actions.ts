@@ -145,8 +145,18 @@ export async function createPayroll(formData: FormData, selectedEmployeeCodes: s
   });
   if (existing) throw new Error(`Bảng lương tháng ${month}/${year} đã tồn tại.`);
 
+  // Lấy chi nhánh của nhân viên đầu tiên để gán cho bảng lương
+  let branch = "";
+  if (selectedEmployeeCodes.length > 0) {
+    const firstEmp = await prisma.employee.findUnique({
+      where: { employeeCode: selectedEmployeeCodes[0] }
+    });
+    branch = firstEmp?.branch || "";
+  }
+
+
   const payroll = await prisma.payroll.create({
-    data: { month, year, creator, approver, note: note || "", status: "Tạo mới" }
+    data: { month, year, branch, creator, approver, note: note || "", status: "Tạo mới" }
   });
 
   for (const code of selectedEmployeeCodes) {

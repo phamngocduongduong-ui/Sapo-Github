@@ -15,6 +15,26 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
+  const [userPerms, setUserPerms] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPerms() {
+      try {
+        const res = await fetch("/api/user-permissions");
+        const data = await res.json();
+        setUserPerms(data.permissions || []);
+        setIsAdmin(data.isAdmin || false);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPerms();
+  }, []);
+
   useEffect(() => {
     if (pathname.startsWith("/sales")) setOpenMenu("sales");
     else if (pathname.startsWith("/production")) setOpenMenu("production");
@@ -27,57 +47,87 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
     setOpenMenu(openMenu === menu ? null : menu);
   };
 
-  const menuGroups = [
+  const allMenuGroups = [
     {
       id: "catalog",
+      key: "DANH_MUC",
       label: "Danh mục",
       items: [
-        { href: "/danh-muc/khach-hang", label: "Khách hàng" },
-        { href: "/danh-muc/nha-cung-cap", label: "Nhà cung cấp" },
-        { href: "/danh-muc/nhom-san-pham", label: "Nhóm sản phẩm" },
-        { href: "/danh-muc/san-pham", label: "Sản phẩm" },
-        { href: "/danh-muc/chi-nhanh", label: "Chi nhánh" },
-        { href: "/danh-muc/quoc-gia", label: "Quốc gia" },
+        { href: "/danh-muc/bo-phan", label: "Bộ phận", key: "DM_BO_PHAN" },
+        { href: "/danh-muc/chi-nhanh", label: "Chi nhánh", key: "DM_CHI_NHANH" },
+        { href: "/danh-muc/chuc-vu", label: "Chức vụ", key: "DM_CHUC_VU" },
+        { href: "/danh-muc/khach-hang", label: "Khách hàng", key: "DM_KHACH_HANG" },
+        { href: "/danh-muc/nha-cung-cap", label: "Nhà cung cấp", key: "DM_NHA_CUNG_CAP" },
+        { href: "/danh-muc/nhom-san-pham", label: "Nhóm sản phẩm", key: "DM_NHOM_SP" },
+        { href: "/danh-muc/quoc-gia", label: "Quốc gia", key: "DM_QUOC_GIA" },
+        { href: "/danh-muc/san-pham", label: "Sản phẩm", key: "DM_SAN_PHAM" },
       ]
     },
     {
       id: "hr",
+      key: "NHAN_SU",
       label: "Nhân sự",
       items: [
-        { href: "/nhan-su/bac-luong", label: "Bậc lương" },
-        { href: "/nhan-su/nhan-vien", label: "Nhân viên" },
-        { href: "/nhan-su/hop-dong", label: "Hợp đồng lao động" },
-        { href: "/nhan-su/tang-giam-luong", label: "Tăng/Giảm lương" },
-        { href: "/nhan-su/thuyen-chuyen-bo-nhiem", label: "Thuyên chuyển, Bổ nhiệm" },
-        { href: "/nhan-su/cham-cong", label: "Chấm công" },
-        { href: "/nhan-su/bang-luong", label: "Bảng lương" },
-        { href: "/nhan-su/bo-phan", label: "Bộ phận" },
-        { href: "/nhan-su/chuc-vu", label: "Chức vụ" },
+        { href: "/nhan-su/nhan-vien", label: "1. Nhân viên", key: "NS_NHAN_VIEN" },
+        { href: "/nhan-su/hop-dong", label: "2. Hợp đồng lao động", key: "NS_HOP_DONG" },
+        { href: "/nhan-su/nghi-phep", label: "3. Nghỉ phép", key: "NS_NGHI_PHEP" },
+        { href: "/nhan-su/cham-cong", label: "4. Chấm công", key: "NS_CHAM_CONG" },
+        { href: "/nhan-su/bang-luong", label: "5. Bảng lương", key: "NS_BANG_LUONG" },
+        { href: "/nhan-su/tra-cuu-luong", label: "6. Tra cứu lương", key: "NS_TRA_CUU_LUONG" },
+        { href: "/nhan-su/tang-giam-luong", label: "7. Tăng/Giảm lương", key: "NS_TANG_GIAM_LUONG" },
+        { href: "/nhan-su/thuyen-chuyen-bo-nhiem", label: "8. Thuyên chuyển, Bổ nhiệm", key: "NS_DIEU_DONG" },
+        { href: "/nhan-su/bac-luong", label: "9. Bậc lương", key: "NS_BAC_LUONG" },
+        { href: "/nhan-su/phe-duyet", label: "10. Phê duyệt", key: "NS_APPROVE" },
       ]
     },
     {
       id: "sales",
+      key: "KINH_DOANH",
       label: "Kinh doanh",
       items: [
-        { href: "/sales/don-hang", label: "Đơn hàng" },
+        { href: "/sales/don-hang", label: "Đơn hàng", key: "KD_DON_HANG" },
       ]
     },
     {
       id: "purchasing",
+      key: "THU_MUA",
       label: "Thu mua",
       items: [
-        { href: "/purchasing", label: "Kế hoạch Thu mua" },
-        { href: "/purchasing/dispatch", label: "Lệnh điều động" },
+        { href: "/purchasing", label: "Kế hoạch Thu mua", key: "TM_KE_HOACH" },
+        { href: "/purchasing/dispatch", label: "Lệnh điều động", key: "TM_DIEU_DONG" },
       ]
     },
     {
       id: "production",
+      key: "SAN_XUAT",
       label: "Sản xuất",
       items: [
-        { href: "/production/ke-hoach-vat-tu", label: "Kế hoạch vật tư" },
+        { href: "/production/ke-hoach-vat-tu", label: "Kế hoạch vật tư", key: "SX_VAT_TU" },
+      ]
+    },
+    {
+      id: "admin",
+      key: "QUAN_TRI",
+      label: "Quản trị",
+      items: [
+        { href: "/admin/tai-khoan", label: "Tài khoản", key: "QT_TAI_KHOAN" },
+        { href: "/admin/muc-quyen", label: "Mục quyền", key: "QT_MUC_QUYEN" },
+        { href: "/admin/quyen-su-dung", label: "Phân quyền", key: "QT_PHAN_QUYEN" },
       ]
     },
   ];
+
+  // Lọc menu dựa trên quyền
+  const menuGroups = isAdmin ? allMenuGroups : allMenuGroups
+    .filter(group => userPerms.includes(group.key))
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => userPerms.includes(item.key))
+    }))
+    .filter(group => group.items.length > 0);
+
+  if (loading) return null; // Hoặc một loading skeleton nhỏ
+
 
   return (
     <aside className={`sidebar ${isMobileOpen ? "mobile-open" : ""}`}>
@@ -100,7 +150,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
         {menuGroups.map((group) => (
           <div key={group.id} style={{ marginBottom: "1px" }}>
             <button
-              className={`nav-item ${pathname.startsWith(group.items[0].href.split('/')[1]) ? "active" : ""}`}
+              className={`nav-item ${pathname.startsWith("/" + group.items[0].href.split('/')[1]) ? "active" : ""}`}
               onClick={() => toggleMenu(group.id)}
               style={{ 
                 width: "100%", 
@@ -146,14 +196,6 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
             </div>
           </div>
         ))}
-
-        <Link 
-          href="/admin" 
-          className={`nav-item ${pathname.startsWith("/admin") ? "active" : ""}`}
-          style={{ fontSize: "1.0rem", fontWeight: "600", paddingLeft: "1.75rem", margin: "2px 0.5rem" }}
-        >
-          <span>Quản trị</span>
-        </Link>
 
         <div style={{ marginTop: "auto", borderTop: "1px solid var(--border-color)", padding: "0.75rem 0" }}>
           <form action={logout}>

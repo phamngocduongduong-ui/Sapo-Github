@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getSession } from "@/lib/session";
 
 export async function createEmployee(formData: FormData) {
   const employeeCode = formData.get("employeeCode") as string;
@@ -19,6 +20,8 @@ export async function createEmployee(formData: FormData) {
   const educationLevel = formData.get("educationLevel") as string;
   const maritalStatus = formData.get("maritalStatus") as string;
   const workplace = formData.get("workplace") as string;
+  const branch = formData.get("branch") as string;
+  const salaryLevel = formData.get("salaryLevel") as string;
 
   if (!employeeCode || !fullName || !position || !department) {
     throw new Error("Vui lòng điền đầy đủ các thông tin bắt buộc (*)");
@@ -29,7 +32,11 @@ export async function createEmployee(formData: FormData) {
   });
   if (existing) throw new Error("Mã nhân viên đã tồn tại.");
 
-  await prisma.employee.create({
+  const session = await getSession();
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const creator = user?.employeeName || user?.username || "Hệ thống";
+
+  const newEmp = await prisma.employee.create({
     data: {
       employeeCode,
       fullName,
@@ -43,12 +50,17 @@ export async function createEmployee(formData: FormData) {
       address: address || "",
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
-      status: "ACTIVE",
+      status: "ACTIVE", // ACTIVE = Hoạt động
       educationLevel: educationLevel || "",
       maritalStatus: maritalStatus || "Không",
       workplace: workplace || "",
+      branch: branch || "",
+      salaryLevel: salaryLevel || "",
     }
   });
+
+  // Use raw SQL for creator field since prisma generate might have failed
+  await prisma.$executeRaw`UPDATE Employee SET creator = ${creator} WHERE id = ${newEmp.id}`;
 
   revalidatePath("/nhan-su/nhan-vien");
 }
@@ -69,6 +81,8 @@ export async function updateEmployee(id: string, formData: FormData) {
   const educationLevel = formData.get("educationLevel") as string;
   const maritalStatus = formData.get("maritalStatus") as string;
   const workplace = formData.get("workplace") as string;
+  const branch = formData.get("branch") as string;
+  const salaryLevel = formData.get("salaryLevel") as string;
 
   const oldEmployee = await prisma.employee.findUnique({
     where: { id }
@@ -95,6 +109,8 @@ export async function updateEmployee(id: string, formData: FormData) {
       educationLevel: educationLevel || "",
       maritalStatus: maritalStatus || "Không",
       workplace: workplace || "",
+      branch: branch || "",
+      salaryLevel: salaryLevel || "",
     }
   });
 
@@ -120,4 +136,12 @@ export async function updateEmployee(id: string, formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/nhan-su/nghi-phep");
   revalidatePath("/purchasing/dispatch");
+}
+
+export async function updateEmployeeStatus(id: string, status: string) {
+  await prisma.employee.update({
+    where: { id },
+    data: { status }
+  });
+  revalidatePath("/nhan-su/nhan-vien");
 }

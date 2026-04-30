@@ -35,8 +35,9 @@ export async function createUser(formData: FormData) {
   const employeeName = formData.get("employeeName") as string;
   const branch = formData.get("branch") as string; // Chuỗi chi nhánh cách nhau bằng dấu phẩy
   const role = formData.get("role") as string;
+  const permissionId = formData.get("permissionId") as string;
 
-  if (!username || !password || !role) throw new Error("Vui lòng điền đầy đủ thông tin.");
+  if (!username || !password) throw new Error("Vui lòng điền đầy đủ thông tin.");
 
   const existing = await prisma.user.findUnique({ where: { username } });
   if (existing) throw new Error("Tên đăng nhập đã tồn tại.");
@@ -47,12 +48,13 @@ export async function createUser(formData: FormData) {
       password,
       employeeName: employeeName || null,
       branch: branch || null,
-      role,
+      role: role || "USER",
+      permissionId: permissionId || null,
       status: "ACTIVE"
     },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/tai-khoan");
 }
 
 export async function updateUser(id: string, formData: FormData) {
@@ -60,6 +62,7 @@ export async function updateUser(id: string, formData: FormData) {
   const employeeName = formData.get("employeeName") as string;
   const branch = formData.get("branch") as string;
   const role = formData.get("role") as string;
+  const permissionId = formData.get("permissionId") as string;
   const status = formData.get("status") as string;
 
   const user = await prisma.user.findUnique({ where: { id } });
@@ -70,12 +73,13 @@ export async function updateUser(id: string, formData: FormData) {
     data: {
       employeeName: employeeName || null,
       branch: branch || null,
-      role,
+      role: role || undefined,
+      permissionId: permissionId || null,
       status
     }
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/tai-khoan");
 }
 
 export async function updateUserStatus(id: string, status: string) {
@@ -87,7 +91,7 @@ export async function updateUserStatus(id: string, status: string) {
     data: { status }
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/tai-khoan");
 }
 
 export async function resetPassword(id: string, formData: FormData) {
@@ -102,5 +106,5 @@ export async function resetPassword(id: string, formData: FormData) {
     data: { password }
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/tai-khoan");
 }

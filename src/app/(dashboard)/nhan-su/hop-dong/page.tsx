@@ -4,21 +4,36 @@ import { getSession } from "@/lib/session";
 
 export default async function LaborContractPage() {
   const session = await getSession();
-  const userName = session?.employeeName || session?.username || "Admin";
+  const user = await prisma.user.findUnique({
+    where: { id: session?.userId || "" }
+  });
 
+  const isAdmin = user?.username === "admin" || user?.role === "Admin";
+  const userBranches = user?.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
+  const userName = user?.employeeName || user?.username || "User";
+
+  // Lọc hợp đồng
   const contracts = await prisma.laborContract.findMany({
+    where: isAdmin ? {} : {
+      branch: { in: userBranches }
+    },
     orderBy: { createdAt: "desc" }
   });
 
-  // Lấy danh sách nhân viên đang hoạt động
+  // Lấy danh sách nhân viên đang hoạt động thuộc chi nhánh được phép
   const employees = await prisma.employee.findMany({
-    where: { status: "ACTIVE" },
+    where: { 
+      status: "ACTIVE",
+      ...(isAdmin ? {} : { branch: { in: userBranches } })
+    },
     select: { 
       fullName: true,
       position: true,
-      department: true
+      department: true,
+      branch: true
     }
   });
+
 
   // Lọc người phê duyệt từ danh sách nhân viên phía trên
   // Thực hiện lọc ở phía JS để xử lý tốt tiếng Việt không phân biệt hoa thường

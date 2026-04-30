@@ -15,14 +15,18 @@ type User = {
 
 const ROLES = ["Admin", "Nhân viên kinh doanh", "Trưởng phòng kinh doanh", "Nhân viên thu mua", "Trưởng phòng thu mua", "Trưởng phòng sản xuất", "Trưởng phòng nhân sự", "Nhân viên nhân sự"];
 
-export default function AdminTable({ users, activeEmployees, branches }: { users: any[], activeEmployees: string[], branches: string[] }) {
+export default function UserTable({ users, activeEmployees, branches, availablePermissions }: { 
+  users: any[], 
+  activeEmployees: string[], 
+  branches: string[],
+  availablePermissions: { id: string, name: string }[]
+}) {
   const [showModal, setShowModal] = useState(false);
   const [showPwModal, setShowPwModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
 
   function handleClose() {
     setShowModal(false);
@@ -99,7 +103,7 @@ export default function AdminTable({ users, activeEmployees, branches }: { users
               <th>Nhân viên</th>
               <th>Tài khoản</th>
               <th>Chi nhánh</th>
-              <th>Quyền</th>
+              <th>Mục quyền</th>
               <th>Trạng thái</th>
               <th style={{ width: "180px", textAlign: "center" }}>Thao tác</th>
             </tr>
@@ -111,7 +115,7 @@ export default function AdminTable({ users, activeEmployees, branches }: { users
                 <td style={{ fontWeight: 600 }}>{user.employeeName}</td>
                 <td>{user.username}</td>
                 <td style={{ fontSize: "0.85rem", maxWidth: "200px" }}>{user.branch?.split(",").join(", ")}</td>
-                <td><span className={`badge ${user.role === "Admin" ? "badge-danger" : "badge-info"}`}>{user.role}</span></td>
+                <td><span className="badge badge-warning">{user.permission?.name || "—"}</span></td>
                 <td>
                    <span className={`badge ${user.status === "ACTIVE" ? "badge-success" : "badge-danger"}`}>
                      {user.status === "ACTIVE" ? "Đang sử dụng" : "Ngừng sử dụng"}
@@ -173,13 +177,13 @@ export default function AdminTable({ users, activeEmployees, branches }: { users
                     </div>
                   )}
                 </div>
-                <div>
-                  <label>Quyền *</label>
-                  <select name="role" className="input" required defaultValue={editingUser?.role ?? ""}>
-                    <option value="">-- Chọn quyền --</option>
-                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
+                  <div>
+                    <label>Mục quyền *</label>
+                    <select name="permissionId" className="input" required defaultValue={editingUser?.permissionId ?? ""}>
+                      <option value="">-- Chọn mục quyền --</option>
+                      {availablePermissions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
                 <div>
                   <label style={{ display: "block", marginBottom: "0.5rem" }}>Chi nhánh (Chọn nhiều) *</label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", padding: "0.5rem", border: "1px solid #ddd", borderRadius: "8px" }}>
@@ -212,3 +216,4 @@ export default function AdminTable({ users, activeEmployees, branches }: { users
     </>
   );
 }
+

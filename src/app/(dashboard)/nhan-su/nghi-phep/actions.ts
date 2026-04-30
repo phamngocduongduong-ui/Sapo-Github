@@ -6,16 +6,21 @@ import { revalidatePath } from "next/cache";
 
 async function getCurrentEmployeeName(session: any) {
   const user = await prisma.user.findUnique({
-    where: { username: session.username }
+    where: { id: session.userId }
   });
-  return user?.employeeName || session.username;
+  return user?.employeeName || user?.username || "User";
 }
 
 export async function createLeaveRequest(formData: FormData) {
   const session = await getSession();
   if (!session) throw new Error("Bạn chưa đăng nhập.");
 
-  const employeeName = await getCurrentEmployeeName(session);
+  const sessionName = await getCurrentEmployeeName(session);
+  const employeeName = (formData.get("employeeName") as string) || sessionName;
+  const employee = await prisma.employee.findFirst({
+    where: { fullName: employeeName }
+  });
+
 
   const startDateStr = formData.get("startDate") as string;
   const endDateStr = formData.get("endDate") as string;
@@ -45,6 +50,7 @@ export async function createLeaveRequest(formData: FormData) {
       totalDays,
       reason,
       note: note || null,
+      branch: employee?.branch || null,
       status: "Tạo mới",
     },
   });
@@ -74,6 +80,12 @@ export async function updateLeaveRequest(id: string, formData: FormData) {
   const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
   const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
+  const currentRequest = await prisma.leaveRequest.findUnique({ where: { id } });
+  const employee = await prisma.employee.findFirst({
+    where: { fullName: currentRequest?.employeeName || "" }
+  });
+
+
   await prisma.leaveRequest.update({
     where: { id },
     data: {
@@ -82,6 +94,7 @@ export async function updateLeaveRequest(id: string, formData: FormData) {
       totalDays,
       reason,
       note: note || null,
+      branch: employee?.branch || undefined,
     },
   });
 

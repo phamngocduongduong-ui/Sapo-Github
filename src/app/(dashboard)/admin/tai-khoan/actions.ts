@@ -3,16 +3,54 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
-// Khởi tạo tài khoản admin mặc định
+// Khởi tạo tài khoản admin và dữ liệu mặc định
 export async function ensureDefaultAdmin() {
-  // Cho phép chạy trên Vercel để khởi tạo tài khoản đầu tiên
   try {
+    // 1. Kiểm tra và tạo chi nhánh mặc định nếu chưa có
+    const branchCount = await prisma.branch.count();
+    if (branchCount === 0) {
+      await prisma.branch.createMany({
+        data: [
+          { code: "CN001", name: "Tổng công ty" },
+          { code: "CN002", name: "Chi nhánh Hà Nội" },
+          { code: "CN003", name: "Chi nhánh TP.HCM" }
+        ]
+      });
+    }
+
+    // 2. Kiểm tra và tạo quyền Admin mặc định
+    let adminPermission = await prisma.permission.findUnique({ where: { code: "ADMIN_FULL" } });
+    if (!adminPermission) {
+      adminPermission = await prisma.permission.create({
+        data: {
+          code: "ADMIN_FULL",
+          name: "Quản trị hệ thống (Toàn quyền)",
+          details: {
+            create: [
+              { moduleKey: "NS_EMPLOYEE", canAccess: true },
+              { moduleKey: "NS_CONTRACT", canAccess: true },
+              { moduleKey: "NS_LEAVE", canAccess: true },
+              { moduleKey: "NS_ATTENDANCE", canAccess: true },
+              { moduleKey: "NS_PAYROLL", canAccess: true },
+              { moduleKey: "NS_SALARY_CHANGE", canAccess: true },
+              { moduleKey: "NS_DIEU_DONG", canAccess: true },
+              { moduleKey: "NS_BAC_LUONG", canAccess: true },
+              { moduleKey: "NS_APPROVE", canAccess: true },
+              { moduleKey: "NS_NGHI_VIEC", canAccess: true },
+              { moduleKey: "SALES_ORDER", canAccess: true },
+              { moduleKey: "PROD_MATERIAL_PLAN", canAccess: true },
+            ]
+          }
+        }
+      });
+    }
+
+    // 3. Kiểm tra và tạo tài khoản admin
     const admin = await prisma.user.findUnique({
       where: { username: "admin" }
     });
   
     if (!admin) {
-      // Lấy tất cả chi nhánh để gán cho admin
       const allBranches = await prisma.branch.findMany({ select: { name: true } });
       const branchNames = allBranches.map(b => b.name).join(",");
   
@@ -20,16 +58,16 @@ export async function ensureDefaultAdmin() {
         data: {
           username: "admin",
           password: "Admin123",
-          employeeName: "Admin",
+          employeeName: "Quản trị viên",
           branch: branchNames,
           role: "Admin",
-          status: "ACTIVE"
+          status: "ACTIVE",
+          permissionId: adminPermission.id
         }
       });
     }
   } catch (e) {
-    // Ignore error if already exists (race condition)
-    console.log("Admin already exists or build environment restriction.");
+    console.log("Dữ liệu mặc định đã tồn tại hoặc lỗi khởi tạo:", e);
   }
 }
 

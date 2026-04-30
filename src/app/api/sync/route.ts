@@ -80,6 +80,23 @@ export async function GET(request: Request) {
           where: isEmployee ? { employeeName: userName } : {},
           orderBy: { createdAt: "desc" } 
         }));
+      case "approvals":
+        const [pContracts, pLeaves, pSalaryChanges, pTransfers, pResignations, pPayrolls] = await Promise.all([
+          prisma.laborContract.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+          prisma.leaveRequest.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+          prisma.salaryChange.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+          prisma.transferPromotion.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+          (prisma as any).resignation.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+          prisma.payroll.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+        ]);
+        return NextResponse.json({
+          contracts: pContracts,
+          leaves: pLeaves,
+          salaryChanges: pSalaryChanges,
+          transfers: pTransfers,
+          resignations: pResignations,
+          payrolls: pPayrolls
+        });
       default:
         return NextResponse.json({ error: "Invalid module" }, { status: 400 });
     }

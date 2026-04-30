@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { updateApprovalStatus } from "./actions";
+import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 
 interface ApprovalTabsProps {
   contracts: any[];
@@ -13,13 +14,27 @@ interface ApprovalTabsProps {
 }
 
 export default function ApprovalTabs(props: ApprovalTabsProps) {
+  const [data, setData] = useState({
+    contracts: props.contracts,
+    leaves: props.leaves,
+    salaryChanges: props.salaryChanges,
+    transfers: props.transfers,
+    resignations: props.resignations,
+    payrolls: props.payrolls
+  });
+
+  // Real-time sync for all approval categories
+  useRealTimeSync("approvals", [], (newData: any) => {
+    setData(newData);
+  });
+
   const allTabs = [
-    { key: "contracts", label: "Hợp đồng lao động", data: props.contracts, type: "LaborContract" },
-    { key: "leaves", label: "Nghỉ phép", data: props.leaves, type: "LeaveRequest" },
-    { key: "salaryChanges", label: "Tăng/Giảm lương", data: props.salaryChanges, type: "SalaryChange" },
-    { key: "transfers", label: "Thuyên chuyển/Bổ nhiệm", data: props.transfers, type: "TransferPromotion" },
-    { key: "resignations", label: "Nghỉ việc", data: props.resignations, type: "Resignation" },
-    { key: "payrolls", label: "Bảng lương", data: props.payrolls, type: "Payroll" },
+    { key: "contracts", label: "Hợp đồng lao động", data: data.contracts, type: "LaborContract" },
+    { key: "leaves", label: "Nghỉ phép", data: data.leaves, type: "LeaveRequest" },
+    { key: "salaryChanges", label: "Tăng/Giảm lương", data: data.salaryChanges, type: "SalaryChange" },
+    { key: "transfers", label: "Thuyên chuyển/Bổ nhiệm", data: data.transfers, type: "TransferPromotion" },
+    { key: "resignations", label: "Nghỉ việc", data: data.resignations, type: "Resignation" },
+    { key: "payrolls", label: "Bảng lương", data: data.payrolls, type: "Payroll" },
   ];
 
   const tabs = allTabs.filter(t => t.data.length > 0);

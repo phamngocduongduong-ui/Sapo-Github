@@ -119,17 +119,62 @@ export async function updateEmployee(id: string, formData: FormData) {
 
   // Cập nhật ở các bảng khác
   if (oldName !== fullName) {
+    // 1. User
     await prisma.user.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
+    // 2. Nghỉ phép
     await prisma.leaveRequest.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
+    // 3. Hợp đồng lao động
+    await prisma.laborContract.updateMany({
+      where: { employeeName: oldName },
+      data: { employeeName: fullName }
+    });
+
+    // 4. Tăng/Giảm lương
+    await prisma.salaryChange.updateMany({
+      where: { employeeName: oldName },
+      data: { employeeName: fullName }
+    });
+
+    // 5. Thuyên chuyển / Bổ nhiệm
+    await prisma.transferPromotion.updateMany({
+      where: { employeeName: oldName },
+      data: { employeeName: fullName }
+    });
+
+    // 6. Nghỉ việc
+    await (prisma as any).resignation.updateMany({
+      where: { employeeName: oldName },
+      data: { employeeName: fullName }
+    });
+
+    // 7. Kỷ luật / Vi phạm
+    await prisma.violation.updateMany({
+      where: { employeeName: oldName },
+      data: { employeeName: fullName }
+    });
+
+    // 8. Đơn hàng (Sale)
+    await prisma.order.updateMany({
+      where: { employeeName: oldName },
+      data: { employeeName: fullName }
+    });
+
+    // 9. Lệnh điều động (Purchasing)
     await prisma.dispatchOrder.updateMany({
+      where: { employeeName: oldName },
+      data: { employeeName: fullName }
+    });
+
+    // 10. Chi tiết bảng lương
+    await prisma.payrollDetail.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
@@ -138,7 +183,14 @@ export async function updateEmployee(id: string, formData: FormData) {
   revalidatePath("/nhan-su/nhan-vien");
   revalidatePath("/admin");
   revalidatePath("/nhan-su/nghi-phep");
+  revalidatePath("/nhan-su/hop-dong");
+  revalidatePath("/nhan-su/tang-giam-luong");
+  revalidatePath("/nhan-su/thuyen-chuyen-bo-nhiem");
+  revalidatePath("/nhan-su/nghi-viec");
+  revalidatePath("/nhan-su/ky-luat");
+  revalidatePath("/sales");
   revalidatePath("/purchasing/dispatch");
+  revalidatePath("/nhan-su/bang-luong");
 }
 
 export async function updateEmployeeStatus(id: string, status: string) {

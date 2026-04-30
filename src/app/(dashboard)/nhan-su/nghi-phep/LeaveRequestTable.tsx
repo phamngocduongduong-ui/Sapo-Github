@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
+import { Check } from "lucide-react";
 import { createLeaveRequest, updateLeaveRequest, updateLeaveStatus } from "./actions";
 
 type LeaveRequest = {

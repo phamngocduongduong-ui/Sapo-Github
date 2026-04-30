@@ -257,20 +257,19 @@ export default function LaborContractTable({
                         </span>
                       ) : (
                         <>
-                          <button onClick={() => handleEdit(c)} className="btn btn-sm btn-outline">Sửa</button>
+                          {(c.status === "Tạo mới" || c.status === "Đã hủy") && (
+                            <button onClick={() => handleEdit(c)} className="btn btn-sm btn-outline">Sửa</button>
+                          )}
                           
                           {c.status === "Tạo mới" && (
                             <button onClick={() => handleStatusUpdate(c.id, "Chờ phê duyệt")} className="btn btn-sm btn-primary">Gửi</button>
                           )}
                           
                           {c.status === "Chờ phê duyệt" && (
-                            <>
-                              <button onClick={() => handleStatusUpdate(c.id, "Đã phê duyệt")} className="btn btn-sm btn-success">Duyệt</button>
-                              <button onClick={() => handleStatusUpdate(c.id, "Tạo mới")} className="btn btn-sm btn-warning">Trả lại</button>
-                            </>
+                            <button onClick={() => handleStatusUpdate(c.id, "Tạo mới")} className="btn btn-sm btn-warning">Thu hồi</button>
                           )}
 
-                          {c.status !== "Đã hủy" && (
+                          {c.status === "Tạo mới" && (
                             <button onClick={() => handleStatusUpdate(c.id, "Đã hủy")} className="btn btn-sm btn-danger">Hủy</button>
                           )}
                         </>

@@ -127,14 +127,9 @@ export default function SalaryChangeTable({
                       </>
                     )}
                     {item.status === "Chờ phê duyệt" && (
-                      <div style={{ display: "flex", gap: "0.4rem" }}>
-                        <button className="btn btn-sm btn-success" onClick={() => onStatusChange(item.id, "Đã phê duyệt")} style={{ gap: "4px" }} title="Phê duyệt">
-                          <Check size={14} /> Duyệt
-                        </button>
-                        <button className="btn btn-sm btn-danger" onClick={() => onStatusChange(item.id, "Từ chối")} style={{ gap: "4px" }} title="Từ chối">
-                          <X size={14} /> Từ chối
-                        </button>
-                      </div>
+                      <button className="btn btn-sm btn-warning" onClick={() => onStatusChange(item.id, "Tạo mới")} style={{ gap: "4px" }} title="Thu hồi">
+                        <RotateCcw size={14} /> Thu hồi
+                      </button>
                     )}
                     {item.status === "Đã phê duyệt" && (
                       <span style={{ fontSize: "0.8rem", color: "#10b981", display: "flex", alignItems: "center", gap: "4px", fontWeight: 600 }}>

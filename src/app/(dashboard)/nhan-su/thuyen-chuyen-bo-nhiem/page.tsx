@@ -91,15 +91,14 @@ export default function TransferPromotionPage() {
                         ) : (
                           <>
                             {item.status === "Tạo mới" && (
-                              <button onClick={() => handleStatusUpdate(item.id, "Chờ phê duyệt")} className="btn btn-sm btn-primary">Gửi</button>
-                            )}
-                            {item.status === "Chờ phê duyệt" && (
                               <>
-                                <button onClick={() => handleStatusUpdate(item.id, "Đã phê duyệt")} className="btn btn-sm btn-success">Duyệt</button>
-                                <button onClick={() => handleStatusUpdate(item.id, "Tạo mới")} className="btn btn-sm btn-warning">Trả lại</button>
+                                <button onClick={() => handleStatusUpdate(item.id, "Chờ phê duyệt")} className="btn btn-sm btn-primary">Gửi</button>
+                                <button onClick={() => handleStatusUpdate(item.id, "Đã hủy")} className="btn btn-sm btn-danger">Hủy</button>
                               </>
                             )}
-                            <button onClick={() => handleStatusUpdate(item.id, "Đã hủy")} className="btn btn-sm btn-danger">Hủy</button>
+                            {item.status === "Chờ phê duyệt" && (
+                              <button onClick={() => handleStatusUpdate(item.id, "Tạo mới")} className="btn btn-sm btn-warning">Thu hồi</button>
+                            )}
                           </>
                         )}
                       </div>

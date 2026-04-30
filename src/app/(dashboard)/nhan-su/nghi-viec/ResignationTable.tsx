@@ -69,21 +69,21 @@ export default function ResignationTable({ initialData, employees, canApprove }:
                 <td style={{ textAlign: "center" }}>
                   <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
                     {item.status === "Tạo mới" && (
-                      <button className="btn btn-sm btn-primary" onClick={() => handleStatusChange(item.id, "Chờ phê duyệt")}>Gửi</button>
-                    )}
-                    {item.status === "Chờ phê duyệt" && canApprove && (
                       <>
-                        <button className="btn btn-sm btn-success" onClick={() => handleStatusChange(item.id, "Đã phê duyệt")}>Phê duyệt</button>
+                        <button className="btn btn-sm btn-primary" onClick={() => handleStatusChange(item.id, "Chờ phê duyệt")}>Gửi</button>
                         <button className="btn btn-sm btn-danger" onClick={() => handleStatusChange(item.id, "Đã hủy")}>Hủy</button>
                       </>
                     )}
-                    {item.status === "Chờ phê duyệt" && !canApprove && (
-                       <button className="btn btn-sm btn-warning" onClick={() => handleStatusChange(item.id, "Tạo mới")}>Thu hồi</button>
+                    {item.status === "Chờ phê duyệt" && (
+                      <button className="btn btn-sm btn-warning" onClick={() => handleStatusChange(item.id, "Tạo mới")}>Thu hồi</button>
                     )}
                     {item.status === "Đã phê duyệt" && (
                       <span style={{ fontSize: "0.8rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
                         <Check size={14} /> Hoàn tất
                       </span>
+                    )}
+                    {item.status === "Đã hủy" && (
+                      <span style={{ fontSize: "0.8rem", color: "#ef4444", fontWeight: 600 }}>Đã hủy</span>
                     )}
                   </div>
                 </td>

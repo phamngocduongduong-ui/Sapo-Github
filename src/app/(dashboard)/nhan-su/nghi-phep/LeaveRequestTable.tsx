@@ -136,27 +136,12 @@ export default function LeaveRequestTable({
                         <>
                           <button className="btn btn-sm btn-outline" onClick={() => handleEdit(req)}>Sửa</button>
                           <button className="btn btn-sm btn-primary" onClick={() => handleStatusChange(req.id, "Chờ phê duyệt")}>Gửi</button>
+                          <button className="btn btn-sm btn-danger" onClick={() => handleStatusChange(req.id, "Đã hủy")}>Hủy</button>
                         </>
                       )}
 
                       {req.status === "Chờ phê duyệt" && isCreator && (
                         <button className="btn btn-sm btn-warning" onClick={() => handleStatusChange(req.id, "Tạo mới")}>Thu hồi</button>
-                      )}
-
-                      {req.status === "Chờ phê duyệt" && canApprove && (
-                        <button className="btn btn-sm btn-success" onClick={() => handleStatusChange(req.id, "Đã phê duyệt")}>Phê duyệt</button>
-                      )}
-
-                      {req.status === "Đã phê duyệt" && canApprove && (
-                        <button className="btn btn-sm btn-warning" onClick={() => handleStatusChange(req.id, "Chờ phê duyệt")}>Hủy phê duyệt</button>
-                      )}
-
-                      {(req.status === "Tạo mới" || req.status === "Chờ phê duyệt") && (isCreator || canApprove) && (
-                        <button className="btn btn-sm btn-danger" onClick={() => handleStatusChange(req.id, "Đã hủy")}>Hủy</button>
-                      )}
-
-                      {req.status === "Chờ phê duyệt" && canApprove && (
-                        <button className="btn btn-sm btn-outline" onClick={() => handleEdit(req)}>Sửa</button>
                       )}
 
                       {req.status === "Đã phê duyệt" && (

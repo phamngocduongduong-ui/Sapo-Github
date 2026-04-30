@@ -24,11 +24,10 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       revalidatePath("/nhan-su/thuyen-chuyen-bo-nhiem");
       break;
     case "Resignation":
-      await prisma.$executeRaw`UPDATE Resignation SET status = ${newStatus} WHERE id = ${id}`;
+      await (prisma as any).resignation.update({ where: { id }, data });
       // If approved, maybe update employee status to INACTIVE?
       if (newStatus === "Đã phê duyệt") {
-        const resignations: any[] = await prisma.$queryRaw`SELECT * FROM Resignation WHERE id = ${id}`;
-        const resignation = resignations[0];
+        const resignation = await (prisma as any).resignation.findUnique({ where: { id } });
         if (resignation) {
           await prisma.employee.updateMany({
             where: { fullName: resignation.employeeName },

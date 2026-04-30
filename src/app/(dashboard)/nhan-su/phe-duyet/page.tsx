@@ -32,7 +32,7 @@ export default async function PheDuyetPage() {
     prisma.leaveRequest.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
     prisma.salaryChange.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
     prisma.transferPromotion.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
-    prisma.$queryRaw`SELECT * FROM Resignation WHERE status = 'Chờ phê duyệt' ORDER BY createdAt DESC`,
+    (prisma as any).resignation.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
     prisma.payroll.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } })
   ]);
 

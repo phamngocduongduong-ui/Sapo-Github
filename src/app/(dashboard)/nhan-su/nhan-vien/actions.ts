@@ -59,8 +59,11 @@ export async function createEmployee(formData: FormData) {
     }
   });
 
-  // Use raw SQL for creator field since prisma generate might have failed
-  await prisma.$executeRaw`UPDATE Employee SET creator = ${creator} WHERE id = ${newEmp.id}`;
+  // Update creator field using standard prisma update
+  await prisma.employee.update({
+    where: { id: newEmp.id },
+    data: { creator }
+  });
 
   revalidatePath("/nhan-su/nhan-vien");
 }

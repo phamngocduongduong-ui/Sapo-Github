@@ -346,7 +346,7 @@ model Payroll {
   year      Int
   branch    String?
   creator   String
-  approver  String
+  approver  String?
   note      String?
   status    String          @default("Tạo mới")
   createdAt DateTime        @default(now())

@@ -136,7 +136,7 @@ export async function createPayroll(formData: FormData, selectedEmployeeCodes: s
   const approver = formData.get("approver") as string;
   const note = formData.get("note") as string;
 
-  if (!month || !year || !creator || !approver) {
+  if (!month || !year || !creator) {
     throw new Error("Vui lòng điền đầy đủ thông tin bắt buộc (*).");
   }
 
@@ -184,7 +184,7 @@ export async function updatePayroll(id: string, formData: FormData) {
 
   await prisma.payroll.update({
     where: { id },
-    data: { month, year, approver, note }
+    data: { month, year, note }
   });
   revalidatePath("/nhan-su/bang-luong");
 }

@@ -167,7 +167,6 @@ export default function PayrollTable({
               <th style={{ width: "50px", textAlign: "center" }}>STT</th>
               <th style={{ textAlign: "center" }}>Tháng/Năm</th>
               <th>Người tạo</th>
-              <th>Người phê duyệt</th>
               <th style={{ textAlign: "center" }}>Số NV</th>
               <th>Trạng thái</th>
               <th style={{ textAlign: "center", width: "180px" }}>Thao tác</th>
@@ -179,7 +178,6 @@ export default function PayrollTable({
                 <td style={{ textAlign: "center" }}>{idx + 1}</td>
                 <td style={{ textAlign: "center", fontWeight: 600, color: "var(--primary-color)" }}>{p.month}/{p.year}</td>
                 <td>{p.creator}</td>
-                <td>{p.approver}</td>
                 <td style={{ textAlign: "center" }}>{p._count.details}</td>
                 <td>
                   <span className={`badge ${p.status === "Đã duyệt" ? "badge-success" : p.status === "Chờ phê duyệt" ? "badge-primary" : "badge-warning"}`}>
@@ -203,7 +201,7 @@ export default function PayrollTable({
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={7} style={{ textAlign: "center", padding: "2rem", color: "#888" }}>Chưa có bảng lương nào được tạo.</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: "center", padding: "2rem", color: "#888" }}>Chưa có bảng lương nào được tạo.</td></tr>
             )}
           </tbody>
         </table>
@@ -243,16 +241,6 @@ export default function PayrollTable({
                 <div className="form-group">
                   <label>Người tạo</label>
                   <input name="creator" className="form-control" readOnly defaultValue={editingPayroll?.creator || currentUserName} />
-                </div>
-
-                <div className="form-group">
-                  <label>Người phê duyệt *</label>
-                  <select name="approver" className="form-control" required defaultValue={editingPayroll?.approver || ""}>
-                    <option value="" disabled>-- Chọn người duyệt --</option>
-                    {approvers.map(a => (
-                      <option key={a.fullName} value={a.fullName}>{a.fullName} ({a.position})</option>
-                    ))}
-                  </select>
                 </div>
 
                 <div className="form-group">

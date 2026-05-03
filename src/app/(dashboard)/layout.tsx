@@ -10,29 +10,33 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
 
-  // Close mobile sidebar on route change
+  // Close sidebar on route change
   useEffect(() => {
-    setIsMobileOpen(false);
+    setIsSidebarOpen(false);
   }, [pathname]);
 
   return (
     <div className="app-container">
-      {/* Overlay for mobile */}
+      {/* Overlay for sidebar */}
       <div 
-        className={`sidebar-overlay ${isMobileOpen ? "show" : ""}`} 
-        onClick={() => setIsMobileOpen(false)}
+        className={`sidebar-overlay ${isSidebarOpen ? "show" : ""}`} 
+        onClick={() => setIsSidebarOpen(false)}
       />
       
       <Sidebar 
-        isMobileOpen={isMobileOpen} 
-        onClose={() => setIsMobileOpen(false)} 
+        isCollapsed={!isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)} 
       />
       
       <div className="main-wrapper">
-        <Header onMenuClick={() => setIsMobileOpen(true)} />
+        <Header 
+          onMenuClick={() => setIsSidebarOpen(true)} 
+          isSidebarCollapsed={!isSidebarOpen}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        />
         <main className="main-content">
           {children}
         </main>

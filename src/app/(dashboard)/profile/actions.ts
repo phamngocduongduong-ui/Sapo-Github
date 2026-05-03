@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 
 async function getCurrentUser(session: any) {
   return await prisma.user.findUnique({
-    where: { username: session.username }
+    where: { id: session.userId }
   });
 }
 
@@ -54,7 +54,7 @@ export async function updateAccountInfo(formData: FormData) {
     });
   } else {
     let employee = await prisma.employee.findFirst({
-      where: { fullName: user.employeeName || session.username }
+      where: { fullName: user.employeeName || user.username }
     });
 
     if (employee) {
@@ -95,7 +95,7 @@ export async function updateAccountInfo(formData: FormData) {
 
   // Luôn cập nhật User để đồng bộ tên và employeeId
   await prisma.user.update({
-    where: { username: session.username },
+    where: { id: session.userId },
     data: { 
       employeeName: fullName, 
       employeeId: employeeId,

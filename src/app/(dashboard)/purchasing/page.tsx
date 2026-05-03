@@ -8,7 +8,7 @@ export default async function PurchasingPage() {
 
   return (
       <main className="main-content" style={{ padding: '2rem', width: '100%' }}>
-        <h1 className="page-title">Phân hệ Thu mua (Purchasing)</h1>
+        <h1 className="page-title">Phân hệ Mua hàng (Purchasing)</h1>
         
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
           {/* Form tạo kế hoạch thu mua */}

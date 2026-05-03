@@ -6,7 +6,7 @@ export default async function TaiKhoanPage() {
   // Đảm bảo có tài khoản admin mặc định
   await ensureDefaultAdmin();
 
-  const users = await prisma.user.findMany({
+  const users = await (prisma as any).user.findMany({
     orderBy: { createdAt: 'desc' },
     include: { permission: true }
   });

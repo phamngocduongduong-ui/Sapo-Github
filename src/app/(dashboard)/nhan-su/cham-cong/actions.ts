@@ -144,8 +144,6 @@ export async function checkExistingAttendances(data: any[]) {
 }
 
 export async function importAttendances(data: any[]) {
-  const formattedData: any[] = [];
-  
   for (const item of data) {
     const employeeCode = String(item["Mã nhân viên"] || "");
     const month = parseInt(item["Tháng"] || "0");
@@ -158,7 +156,7 @@ export async function importAttendances(data: any[]) {
       where: { employeeCode }
     });
 
-    formattedData.push({
+    const attendanceData = {
       employeeCode,
       employeeName: employee?.fullName || "Không xác định",
       gender: employee?.gender || "",
@@ -172,19 +170,20 @@ export async function importAttendances(data: any[]) {
       month,
       year,
       branch: employee?.branch || ""
+    };
+
+    await prisma.attendance.upsert({
+      where: {
+        employeeCode_month_year: { employeeCode, month, year }
+      },
+      update: attendanceData,
+      create: attendanceData
     });
+
+    // Tự động tính toán lại bảng lương cho nhân viên này nếu có
+    await syncPayrollWithAttendance(employeeCode, month, year);
   }
 
-  // Use transaction to delete all and create new
-  await prisma.$transaction(async (tx) => {
-    await tx.attendance.deleteMany({});
-    if (formattedData.length > 0) {
-      await tx.attendance.createMany({
-        data: formattedData
-      });
-    }
-  });
-
-  // Revalidate to update UI
   revalidatePath("/nhan-su/cham-cong");
+  revalidatePath("/nhan-su/bang-luong");
 }

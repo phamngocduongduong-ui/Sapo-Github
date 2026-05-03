@@ -20,11 +20,20 @@ export async function login(prevState: any, formData: FormData) {
   });
 
   if (!user || user.password !== password) {
-          return { error: "Invalid username or password" };
+    return { error: "Tên đăng nhập hoặc mật khẩu không chính xác" };
+  }
+
+  if (user.status === "INACTIVE") {
+    return { error: "Tài khoản của bạn đã bị ngưng hoạt động. Vui lòng liên hệ quản trị viên." };
   }
 
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const session = await encrypt({ userId: user.id, expires });
+  const session = await encrypt({ 
+    userId: user.id, 
+    username: user.username,
+    employeeName: user.employeeName || user.username,
+    expires 
+  });
 
   cookies().set("session", session, { expires, httpOnly: true });
 

@@ -1,7 +1,8 @@
 "use client";
-
 import { useState, useTransition } from "react";
 import { createDepartment, updateDepartment, updateDepartmentStatus } from "./actions";
+import HistoryModal from "../../HistoryModal";
+import { Clock } from "lucide-react";
 
 type Department = {
   id: string;
@@ -22,6 +23,7 @@ export default function DepartmentTable({ initialDepartments }: { initialDepartm
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
 
   function handleClose() {
     setShowModal(false);
@@ -101,6 +103,13 @@ export default function DepartmentTable({ initialDepartments }: { initialDepartm
                       ) : (
                         <button className="btn btn-sm" onClick={() => handleStatusUpdate(dept.id, "ACTIVE")} style={{ background: "#27ae60", color: "#fff", padding: "0.25rem 0.5rem", fontSize: "0.8rem" }}>Kích hoạt</button>
                       )}
+                        <button 
+                          className="btn btn-sm btn-outline" 
+                          onClick={() => setHistoryRecordId(dept.id)}
+                          title="Lịch sử thay đổi"
+                        >
+                          Lịch sử
+                        </button>
                     </div>
                   </td>
                 </tr>
@@ -109,6 +118,14 @@ export default function DepartmentTable({ initialDepartments }: { initialDepartm
           </tbody>
         </table>
       </div>
+
+      {historyRecordId && (
+        <HistoryModal 
+          tableName="Department" 
+          recordId={historyRecordId} 
+          onClose={() => setHistoryRecordId(null)} 
+        />
+      )}
 
       {showModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>

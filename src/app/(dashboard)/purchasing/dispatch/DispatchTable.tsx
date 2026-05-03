@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 import { createDispatchOrder, updateDispatchOrder } from "./actions";
+import HistoryModal from "../../HistoryModal";
 
 type DispatchOrder = {
   id: string;
@@ -34,6 +35,7 @@ export default function DispatchTable({
   const [editingOrder, setEditingOrder] = useState<DispatchOrder | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   useRealTimeSync("dispatch-orders", orders, setOrders);
@@ -94,7 +96,7 @@ export default function DispatchTable({
               <th>Trạng thái</th>
               <th>Người điều động</th>
               <th>Ghi chú</th>
-              <th style={{ width: "80px", textAlign: "center" }}>Thao tác</th>
+              <th style={{ width: "150px", textAlign: "center" }}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -114,13 +116,22 @@ export default function DispatchTable({
                     {order.note ?? "—"}
                   </td>
                   <td style={{ textAlign: "center" }}>
-                    <button
-                      onClick={() => handleEdit(order)}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", padding: "4px", borderRadius: "4px", color: "#3498db" }}
-                      title="Sửa lệnh"
-                    >
-                      ✏️
-                    </button>
+                    <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center" }}>
+                      <button
+                        onClick={() => handleEdit(order)}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", padding: "4px", borderRadius: "4px", color: "#3498db" }}
+                        title="Sửa lệnh"
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        className="btn btn-sm btn-outline" 
+                        onClick={() => setHistoryRecordId(order.id)}
+                        title="Lịch sử thay đổi"
+                      >
+                        Lịch sử
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -135,6 +146,14 @@ export default function DispatchTable({
           </tbody>
         </table>
       </div>
+
+      {historyRecordId && (
+        <HistoryModal 
+          tableName="DispatchOrder" 
+          recordId={historyRecordId} 
+          onClose={() => setHistoryRecordId(null)} 
+        />
+      )}
 
       {showModal && (
         <div

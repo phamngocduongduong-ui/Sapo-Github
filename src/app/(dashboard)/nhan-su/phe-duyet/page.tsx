@@ -7,49 +7,77 @@ export default async function PheDuyetPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const user = await prisma.user.findUnique({
+  const user = await (prisma as any).user.findUnique({
     where: { id: session.userId },
-    include: { permission: { include: { details: true } } }
+    include: { permission: { include: { permissiondetail: true } } }
   });
 
   const isAdmin = user?.username === "admin" || user?.role === "Admin";
-  const hasApprovePerm = isAdmin || (user?.permission?.details.some(d => d.moduleKey === "NS_APPROVE" && d.canAccess) ?? false);
+  const hasApprovePerm = isAdmin || ((user as any)?.permission?.some((p: any) => p.permissiondetail?.some((d: any) => d.moduleKey === "NS_APPROVE" && d.canAccess)) ?? false);
+
 
   if (!hasApprovePerm) {
     return <div className="main-content"><h1>Bạn không có quyền truy cập trang này.</h1></div>;
   }
 
-  // Fetch all pending records
+  // Fetch all pending and approved records
   const [
-    pendingContracts,
-    pendingLeaves,
-    pendingSalaryChanges,
-    pendingTransfers,
-    pendingResignations,
-    pendingPayrolls
+    pendingContracts, approvedContracts,
+    pendingLeaves, approvedLeaves,
+    pendingSalaryChanges, approvedSalaryChanges,
+    pendingTransfers, approvedTransfers,
+    pendingResignations, approvedResignations,
+    pendingPayrolls, approvedPayrolls,
+    pendingPurchaseOrders, approvedPurchaseOrders
   ] = await Promise.all([
-    prisma.laborContract.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
-    prisma.leaveRequest.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
-    prisma.salaryChange.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
-    prisma.transferPromotion.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+    (prisma as any).laborcontract.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+    (prisma as any).laborcontract.findMany({ where: { status: "Đã phê duyệt" }, orderBy: { createdAt: "desc" }, take: 100 }),
+    
+    (prisma as any).leaverequest.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+    (prisma as any).leaverequest.findMany({ where: { status: "Đã phê duyệt" }, orderBy: { createdAt: "desc" }, take: 100 }),
+    
+    (prisma as any).salarychange.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+    (prisma as any).salarychange.findMany({ where: { status: "Đã phê duyệt" }, orderBy: { createdAt: "desc" }, take: 100 }),
+    
+    (prisma as any).transferpromotion.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+    (prisma as any).transferpromotion.findMany({ where: { status: "Đã phê duyệt" }, orderBy: { createdAt: "desc" }, take: 100 }),
+    
     (prisma as any).resignation.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
-    prisma.payroll.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } })
+    (prisma as any).resignation.findMany({ where: { status: "Đã phê duyệt" }, orderBy: { createdAt: "desc" }, take: 100 }),
+    
+    prisma.payroll.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+    prisma.payroll.findMany({ where: { status: "Đã phê duyệt" }, orderBy: { createdAt: "desc" }, take: 100 }),
+
+    (prisma as any).purchaseorder.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+    (prisma as any).purchaseorder.findMany({ where: { status: "Đã phê duyệt" }, orderBy: { createdAt: "desc" }, take: 100 })
   ]);
 
   return (
     <main className="main-content">
       <div className="page-header" style={{ marginBottom: "1.5rem" }}>
-        <h1 className="page-title">✅ Phê duyệt hồ sơ Nhân sự</h1>
-        <p style={{ color: "#64748b" }}>Quản lý và xét duyệt các yêu cầu chờ phê duyệt trong hệ thống</p>
+        <h1 className="page-title">✅ Phê duyệt hồ sơ & Lệnh mua</h1>
+        <p style={{ color: "#64748b" }}>Quản lý và xét duyệt các yêu cầu trong hệ thống</p>
       </div>
 
       <ApprovalTabs 
-        contracts={pendingContracts as any}
-        leaves={pendingLeaves as any}
-        salaryChanges={pendingSalaryChanges as any}
-        transfers={pendingTransfers as any}
-        resignations={pendingResignations as any}
-        payrolls={pendingPayrolls as any}
+        pending={{
+          contracts: pendingContracts,
+          leaves: pendingLeaves,
+          salaryChanges: pendingSalaryChanges,
+          transfers: pendingTransfers,
+          resignations: pendingResignations,
+          payrolls: pendingPayrolls,
+          purchaseOrders: pendingPurchaseOrders
+        }}
+        approved={{
+          contracts: approvedContracts,
+          leaves: approvedLeaves,
+          salaryChanges: approvedSalaryChanges,
+          transfers: approvedTransfers,
+          resignations: approvedResignations,
+          payrolls: approvedPayrolls,
+          purchaseOrders: approvedPurchaseOrders
+        }}
       />
     </main>
   );

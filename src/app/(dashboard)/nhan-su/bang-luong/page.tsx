@@ -23,7 +23,7 @@ export default async function PayrollPage() {
     ],
     include: {
       _count: {
-        select: { details: true }
+        select: { payrolldetail: true }
       }
     }
   });
@@ -70,6 +70,7 @@ export default async function PayrollPage() {
           employees={employees}
           approvers={approverList}
           currentUserName={userName}
+          isAdmin={isAdmin}
         />
       </div>
     </main>

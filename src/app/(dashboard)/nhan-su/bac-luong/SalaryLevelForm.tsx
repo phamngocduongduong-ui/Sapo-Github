@@ -16,6 +16,8 @@ export default function SalaryLevelForm({ onClose, onSubmit, initialData }: Sala
     attendanceBonus: initialData?.attendanceBonus || "",
     performanceBonus: initialData?.performanceBonus || "",
     responsibilityBonus: initialData?.responsibilityBonus || "",
+    attractionBonus: initialData?.attractionBonus || "",
+    otherBonus: initialData?.otherBonus || "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -87,13 +89,35 @@ export default function SalaryLevelForm({ onClose, onSubmit, initialData }: Sala
                 />
               </div>
             </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1rem" }}>
+              <div className="form-group">
+                <label>Trách nhiệm</label>
+                <input 
+                  type="number" 
+                  className="form-control" 
+                  value={formData.responsibilityBonus}
+                  onChange={(e) => setFormData({ ...formData, responsibilityBonus: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div className="form-group">
+                <label>Thu hút</label>
+                <input 
+                  type="number" 
+                  className="form-control" 
+                  value={formData.attractionBonus}
+                  onChange={(e) => setFormData({ ...formData, attractionBonus: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+            </div>
             <div className="form-group" style={{ marginTop: "1rem" }}>
-              <label>Trách nhiệm</label>
+              <label>Hỗ trợ khác</label>
               <input 
                 type="number" 
                 className="form-control" 
-                value={formData.responsibilityBonus}
-                onChange={(e) => setFormData({ ...formData, responsibilityBonus: e.target.value })}
+                value={formData.otherBonus}
+                onChange={(e) => setFormData({ ...formData, otherBonus: e.target.value })}
                 placeholder="0"
               />
             </div>

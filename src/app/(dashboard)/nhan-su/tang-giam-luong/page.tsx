@@ -12,6 +12,7 @@ export default function SalaryChangePage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -29,8 +30,25 @@ export default function SalaryChangePage() {
 
   async function fetchData() {
     setIsLoading(true);
-    const data = await getSalaryChanges();
+    const [data, session] = await Promise.all([
+      getSalaryChanges(),
+      (async () => {
+        const s = await (async () => {
+          // Since we can't easily import getCurrentUser here if it's not exported or if I want to be sure
+          // I'll just check the session in the page
+          const res = await fetch('/api/auth/session').then(r => r.json()).catch(() => null);
+          return res;
+        })();
+        return s;
+      })()
+    ]);
     setItems(data);
+    
+    // Check if user is admin
+    // In this system, admin check is often user.role === 'Admin'
+    const res = await fetch('/api/user-permissions').then(r => r.json()).catch(() => ({}));
+    setIsAdmin(res.isAdmin || false);
+    
     setIsLoading(false);
   }
 
@@ -102,6 +120,7 @@ export default function SalaryChangePage() {
             statuses={statuses}
             availableYears={availableYears}
             currentYear={currentYear}
+            isAdmin={isAdmin}
           />
         )}
       </div>

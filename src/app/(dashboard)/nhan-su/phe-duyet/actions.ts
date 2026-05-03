@@ -8,17 +8,17 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
 
   switch (type) {
     case "LaborContract":
-      await prisma.laborContract.update({ where: { id }, data });
+      await (prisma as any).laborcontract.update({ where: { id }, data });
       revalidatePath("/nhan-su/hop-dong");
       break;
     case "LeaveRequest":
-      await prisma.leaveRequest.update({ where: { id }, data });
+      await (prisma as any).leaverequest.update({ where: { id }, data });
       revalidatePath("/nhan-su/nghi-phep");
       break;
     case "SalaryChange":
-      const sc = await prisma.salaryChange.update({ where: { id }, data });
+      const sc = await (prisma as any).salarychange.update({ where: { id }, data });
       if (newStatus === "Đã phê duyệt") {
-        await prisma.employee.updateMany({
+        await (prisma as any).employee.updateMany({
           where: { fullName: sc.employeeName },
           data: { salaryLevel: sc.proposedSalaryLevel }
         });
@@ -26,9 +26,9 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       revalidatePath("/nhan-su/tang-giam-luong");
       break;
     case "TransferPromotion":
-      const tp = await prisma.transferPromotion.update({ where: { id }, data });
+      const tp = await (prisma as any).transferpromotion.update({ where: { id }, data });
       if (newStatus === "Đã phê duyệt") {
-        await prisma.employee.updateMany({
+        await (prisma as any).employee.updateMany({
           where: { fullName: tp.employeeName },
           data: { 
             position: tp.newPosition,
@@ -46,7 +46,7 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       if (newStatus === "Đã phê duyệt") {
         const resignation = await (prisma as any).resignation.findUnique({ where: { id } });
         if (resignation) {
-          await prisma.employee.updateMany({
+          await (prisma as any).employee.updateMany({
             where: { fullName: resignation.employeeName },
             data: { status: "INACTIVE", endDate: resignation.resignationDate }
           });
@@ -55,8 +55,12 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       revalidatePath("/nhan-su/nghi-viec");
       break;
     case "Payroll":
-      await prisma.payroll.update({ where: { id }, data });
+      await (prisma as any).payroll.update({ where: { id }, data });
       revalidatePath("/nhan-su/bang-luong");
+      break;
+    case "PurchaseOrder":
+      await (prisma as any).purchaseorder.update({ where: { id }, data });
+      revalidatePath("/purchasing/lenh-mua");
       break;
   }
 

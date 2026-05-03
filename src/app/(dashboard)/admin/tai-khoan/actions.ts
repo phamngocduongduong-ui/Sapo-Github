@@ -62,7 +62,9 @@ export async function ensureDefaultAdmin() {
           branch: branchNames,
           role: "Admin",
           status: "ACTIVE",
-          permissionId: adminPermission.id
+          permission: {
+            connect: { id: adminPermission.id }
+          }
         }
       });
     }
@@ -77,7 +79,7 @@ export async function createUser(formData: FormData) {
   const employeeName = formData.get("employeeName") as string;
   const branch = formData.get("branch") as string; // Chuỗi chi nhánh cách nhau bằng dấu phẩy
   const role = formData.get("role") as string;
-  const permissionId = formData.get("permissionId") as string;
+  const permissionIds = formData.get("permissionIds") as string; // Comma separated IDs
 
   if (!username || !password) throw new Error("Vui lòng điền đầy đủ thông tin.");
 
@@ -91,7 +93,9 @@ export async function createUser(formData: FormData) {
       employeeName: employeeName || null,
       branch: branch || null,
       role: role || "USER",
-      permissionId: permissionId || null,
+      permission: {
+        connect: permissionIds ? permissionIds.split(",").map(id => ({ id })) : []
+      },
       status: "ACTIVE"
     },
   });
@@ -100,24 +104,20 @@ export async function createUser(formData: FormData) {
 }
 
 export async function updateUser(id: string, formData: FormData) {
-  const username = formData.get("username") as string;
-  const employeeName = formData.get("employeeName") as string;
   const branch = formData.get("branch") as string;
-  const role = formData.get("role") as string;
-  const permissionId = formData.get("permissionId") as string;
-  const status = formData.get("status") as string;
+  const permissionIds = formData.get("permissionIds") as string;
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (user?.username === "admin") throw new Error("Không thể sửa tài khoản admin hệ thống.");
+  if (user?.status === "INACTIVE") throw new Error("Không thể sửa tài khoản đang bị ngưng hoạt động.");
 
   await prisma.user.update({
     where: { id },
     data: {
-      employeeName: employeeName || null,
       branch: branch || null,
-      role: role || undefined,
-      permissionId: permissionId || null,
-      status
+      permission: {
+        set: permissionIds ? permissionIds.split(",").map(id => ({ id })) : []
+      },
     }
   });
 
@@ -136,17 +136,23 @@ export async function updateUserStatus(id: string, status: string) {
   revalidatePath("/admin/tai-khoan");
 }
 
-export async function resetPassword(id: string, formData: FormData) {
-  const password = formData.get("password") as string;
-  if (!password) throw new Error("Mật khẩu không được để trống.");
-
+export async function resetPassword(id: string) {
   const user = await prisma.user.findUnique({ where: { id } });
-  if (user?.username === "admin") throw new Error("Không thể đổi mật khẩu tài khoản admin hệ thống theo cách này.");
+  if (user?.username === "admin") throw new Error("Không thể đổi mật khẩu tài khoản admin hệ thống.");
+  if (user?.status === "INACTIVE") throw new Error("Không thể cấp lại mật khẩu cho tài khoản đang bị ngưng hoạt động.");
 
   await prisma.user.update({
     where: { id },
-    data: { password }
+    data: { password: "123" }
   });
 
+  revalidatePath("/admin/tai-khoan");
+}
+
+export async function deleteUser(id: string) {
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (user?.username === "admin") throw new Error("Không thể xóa tài khoản admin hệ thống.");
+  
+  await prisma.user.delete({ where: { id } });
   revalidatePath("/admin/tai-khoan");
 }

@@ -13,7 +13,7 @@ export default async function LaborContractPage() {
   const userName = user?.employeeName || user?.username || "User";
 
   // Lọc hợp đồng
-  const contracts = await prisma.laborContract.findMany({
+  const contracts = await (prisma as any).laborcontract.findMany({
     where: isAdmin ? {} : {
       branch: { in: userBranches }
     },
@@ -57,7 +57,7 @@ export default async function LaborContractPage() {
     select: { name: true }
   });
 
-  const salaryLevels = await prisma.salaryLevel.findMany({
+  const salaryLevels = await (prisma as any).salarylevel.findMany({
     orderBy: { stt: "asc" }
   });
 
@@ -81,6 +81,7 @@ export default async function LaborContractPage() {
           approvers={approverList}
           currentUserName={userName}
           salaryLevels={salaryLevels}
+          isAdmin={isAdmin}
         />
       </div>
     </main>

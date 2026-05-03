@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 import { 
   Plus, 
@@ -9,9 +10,14 @@ import {
   Download, 
   Upload, 
   Search,
-  X
+  X,
+  RotateCcw,
+  Filter,
+  Clock
 } from "lucide-react";
+import HistoryModal from "../../HistoryModal";
 import * as XLSX from "xlsx";
+import { formatNumber } from "@/lib/format";
 import { 
   createAttendance, 
   updateAttendance, 
@@ -36,12 +42,25 @@ interface Attendance {
   year: number;
 }
 
-export default function AttendanceTable({ initialData }: { initialData: Attendance[] }) {
+export default function AttendanceTable({ 
+  initialData, 
+  eligibleEmployees 
+}: { 
+  initialData: Attendance[],
+  eligibleEmployees: { employeeCode: string, fullName: string, department: string | null }[]
+}) {
+  const router = useRouter();
   const [data, setData] = useState<Attendance[]>(initialData);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Attendance | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useRealTimeSync("attendance", data, setData);
 
@@ -50,6 +69,17 @@ export default function AttendanceTable({ initialData }: { initialData: Attendan
     item.employeeCode.toLowerCase().includes(search.toLowerCase()) ||
     `${item.month}/${item.year}`.includes(search)
   );
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const handleDelete = async (id: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa bản ghi này?")) {
@@ -105,7 +135,7 @@ export default function AttendanceTable({ initialData }: { initialData: Attendan
         }
 
         await importAttendances(jsonData);
-        window.location.reload();
+        router.refresh();
       } catch (error) {
         alert("Lỗi khi import: " + (error as any).message);
       } finally {
@@ -118,28 +148,30 @@ export default function AttendanceTable({ initialData }: { initialData: Attendan
   return (
     <div className="card" style={{ padding: "1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
-        <div style={{ position: "relative", width: "300px" }}>
-          <Search size={18} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#888" }} />
-          <input 
-            type="text" 
-            placeholder="Tìm theo tên, mã NV hoặc tháng/năm..." 
-            className="form-control" 
-            style={{ paddingLeft: "2.5rem" }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+        <h3 style={{ margin: 0 }}>📋 Bảng chấm công</h3>
         
-        <div style={{ display: "flex", gap: "0.75rem" }}>
-          <button onClick={handleDownloadTemplate} className="btn btn-outline" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Download size={16} /> Tải file mẫu
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+          <button onClick={handleDownloadTemplate} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Download size={14} /> Mẫu
           </button>
           
-          <label className="btn btn-outline" style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", margin: 0 }}>
-            <Upload size={16} /> Import Excel
+          <label className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", margin: 0 }}>
+            <Upload size={14} /> Import
             <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
           </label>
           
+          <button 
+            onClick={() => router.refresh()}
+            className="btn btn-outline" 
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <RotateCcw size={18} /> Làm mới
+          </button>
+
+          <button className={`btn ${showFilters ? 'btn-primary' : 'btn-outline'}`} onClick={() => setShowFilters(!showFilters)}>
+            <Filter size={18} style={{ marginRight: "6px" }} /> {showFilters ? "Ẩn lọc" : "Lọc"}
+          </button>
+
           <button 
             onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
             className="btn btn-primary" 
@@ -150,11 +182,26 @@ export default function AttendanceTable({ initialData }: { initialData: Attendan
         </div>
       </div>
 
+      {showFilters && (
+        <div style={{ marginBottom: "1.5rem", background: "#f8fafc", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: "400px" }}>
+            <Search size={18} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#888" }} />
+            <input 
+              type="text" 
+              placeholder="Tìm theo tên, mã NV hoặc tháng/năm..." 
+              className="form-control" 
+              style={{ paddingLeft: "2.5rem" }}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="table-container">
         <table className="table">
           <thead>
             <tr>
-              <th style={{ width: "50px", textAlign: "center" }}>STT</th>
               <th style={{ textAlign: "center" }}>Tháng/Năm</th>
               <th>Mã NV</th>
               <th>Tên nhân viên</th>
@@ -166,25 +213,24 @@ export default function AttendanceTable({ initialData }: { initialData: Attendan
               <th style={{ textAlign: "center" }}>OT Thường</th>
               <th style={{ textAlign: "center" }}>OT CN</th>
               <th style={{ textAlign: "center" }}>OT Lễ</th>
-              <th style={{ width: "100px", textAlign: "center" }}>Thao tác</th>
+              <th style={{ width: "200px", textAlign: "center" }}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            {filteredData.length > 0 ? (
-              filteredData.map((item, index) => (
+            {paginatedData.length > 0 ? (
+              paginatedData.map((item) => (
                 <tr key={item.id}>
-                  <td style={{ textAlign: "center" }}>{index + 1}</td>
                   <td style={{ textAlign: "center", fontWeight: 500, color: "var(--primary-color)" }}>{item.month}/{item.year}</td>
                   <td style={{ fontWeight: 600 }}>{item.employeeCode}</td>
                   <td>{item.employeeName}</td>
                   <td>{item.gender}</td>
                   <td>{item.department}</td>
-                  <td style={{ textAlign: "center" }}>{item.annualLeaveDays}</td>
-                  <td style={{ textAlign: "center" }}>{item.paidLeaveDays}</td>
-                  <td style={{ textAlign: "center" }}>{item.unpaidLeaveDays}</td>
-                  <td style={{ textAlign: "center" }}>{item.weekdayOvertimeHours}</td>
-                  <td style={{ textAlign: "center" }}>{item.sundayOvertimeHours}</td>
-                  <td style={{ textAlign: "center" }}>{item.holidayOvertimeHours}</td>
+                  <td style={{ textAlign: "center" }}>{formatNumber(item.annualLeaveDays)}</td>
+                  <td style={{ textAlign: "center" }}>{formatNumber(item.paidLeaveDays)}</td>
+                  <td style={{ textAlign: "center" }}>{formatNumber(item.unpaidLeaveDays)}</td>
+                  <td style={{ textAlign: "center" }}>{formatNumber(item.weekdayOvertimeHours)}</td>
+                  <td style={{ textAlign: "center" }}>{formatNumber(item.sundayOvertimeHours)}</td>
+                  <td style={{ textAlign: "center" }}>{formatNumber(item.holidayOvertimeHours)}</td>
                   <td>
                     <div style={{ display: "flex", justifyContent: "center", gap: "0.4rem", whiteSpace: "nowrap" }}>
                       <button 
@@ -194,12 +240,19 @@ export default function AttendanceTable({ initialData }: { initialData: Attendan
                       >
                         <Pencil size={14} /> Sửa
                       </button>
+                        <button 
+                          onClick={() => handleDelete(item.id)}
+                          className="btn btn-sm btn-outline btn-danger" 
+                          style={{ gap: "4px", color: "#e74c3c" }}
+                        >
+                          <Trash2 size={14} /> Xóa
+                        </button>
                       <button 
-                        onClick={() => handleDelete(item.id)}
-                        className="btn btn-sm btn-danger" 
-                        style={{ gap: "4px" }}
+                        className="btn btn-sm btn-outline" 
+                        onClick={() => setHistoryRecordId(item.id)}
+                        title="Lịch sử thay đổi"
                       >
-                        <Trash2 size={14} /> Xóa
+                        Lịch sử
                       </button>
                     </div>
                   </td>
@@ -216,6 +269,43 @@ export default function AttendanceTable({ initialData }: { initialData: Attendan
         </table>
       </div>
 
+      {historyRecordId && (
+        <HistoryModal 
+          tableName="Attendance" 
+          recordId={historyRecordId} 
+          onClose={() => setHistoryRecordId(null)} 
+        />
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", marginTop: "1.5rem" }}>
+          <button 
+            className="btn btn-sm btn-outline" 
+            disabled={currentPage === 1} 
+            onClick={() => setCurrentPage(prev => prev - 1)}
+          >
+            Trước
+          </button>
+          {[...Array(totalPages)].map((_, i) => (
+            <button 
+              key={i} 
+              className={`btn btn-sm ${currentPage === i + 1 ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setCurrentPage(i + 1)}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <button 
+            className="btn btn-sm btn-outline" 
+            disabled={currentPage === totalPages} 
+            onClick={() => setCurrentPage(prev => prev + 1)}
+          >
+            Sau
+          </button>
+        </div>
+      )}
+
       {isModalOpen && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}>
           <div className="modal-content" style={{ maxWidth: "700px" }}>
@@ -231,7 +321,7 @@ export default function AttendanceTable({ initialData }: { initialData: Attendan
                   await createAttendance(formData);
                 }
                 setIsModalOpen(false);
-                window.location.reload();
+                router.refresh();
               } catch (error) {
                 alert((error as any).message);
               }
@@ -247,8 +337,19 @@ export default function AttendanceTable({ initialData }: { initialData: Attendan
                     <input name="year" type="number" defaultValue={editingItem?.year || new Date().getFullYear()} required className="form-control" />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Mã nhân viên *</label>
-                    <input name="employeeCode" defaultValue={editingItem?.employeeCode} required className="form-control" placeholder="Nhập mã để tự lấy thông tin" />
+                    <label>Nhân viên *</label>
+                    {editingItem ? (
+                      <input name="employeeCode" value={editingItem.employeeCode} readOnly className="form-control" style={{ background: "#f1f5f9" }} />
+                    ) : (
+                      <select name="employeeCode" required className="form-control">
+                        <option value="">-- Chọn nhân viên --</option>
+                        {eligibleEmployees.map(emp => (
+                          <option key={emp.employeeCode} value={emp.employeeCode}>
+                            {emp.employeeCode} - {emp.fullName} ({emp.department})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 

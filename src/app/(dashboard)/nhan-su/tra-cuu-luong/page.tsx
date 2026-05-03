@@ -7,7 +7,10 @@ export default async function PayrollLookupPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const employeeName = session.employeeName;
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId }
+  });
+  const employeeName = user?.employeeName || user?.username || "";
 
   // Tìm thông tin nhân viên
   const employee = await prisma.employee.findFirst({
@@ -24,7 +27,7 @@ export default async function PayrollLookupPage() {
   }
 
   // Lấy lịch sử lương của nhân viên này
-  const history = await prisma.payrollDetail.findMany({
+  const history = await (prisma as any).payrolldetail.findMany({
     where: { employeeCode: employee.employeeCode },
     include: {
       payroll: {

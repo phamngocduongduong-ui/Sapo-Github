@@ -58,7 +58,9 @@ export default function SalaryLevelPage() {
       "Lương cơ bản": item.baseSalary,
       "Chuyên cần": item.attendanceBonus,
       "Hiệu quả": item.performanceBonus,
-      "Trách nhiệm": item.responsibilityBonus
+      "Trách nhiệm": item.responsibilityBonus,
+      "Thu hút": item.attractionBonus,
+      "Hỗ trợ khác": item.otherBonus
     })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "BacLuong");
@@ -67,7 +69,7 @@ export default function SalaryLevelPage() {
 
   const handleDownloadTemplate = () => {
     const template = [
-      { "STT": 1, "Mã bậc": "L01.01", "Lương cơ bản": 5000000, "Chuyên cần": 300000, "Hiệu quả": 500000, "Trách nhiệm": 200000 }
+      { "STT": 1, "Mã bậc": "L01.01", "Lương cơ bản": 5000000, "Chuyên cần": 300000, "Hiệu quả": 500000, "Trách nhiệm": 200000, "Thu hút": 100000, "Hỗ trợ khác": 100000 }
     ];
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
@@ -93,7 +95,9 @@ export default function SalaryLevelPage() {
         baseSalary: parseFloat(row["Lương cơ bản"] || "0"),
         attendanceBonus: parseFloat(row["Chuyên cần"] || "0"),
         performanceBonus: parseFloat(row["Hiệu quả"] || "0"),
-        responsibilityBonus: parseFloat(row["Trách nhiệm"] || "0")
+        responsibilityBonus: parseFloat(row["Trách nhiệm"] || "0"),
+        attractionBonus: parseFloat(row["Thu hút"] || "0"),
+        otherBonus: parseFloat(row["Hỗ trợ khác"] || "0")
       })).filter(item => item.levelCode); // Chỉ lấy bản ghi có mã bậc
 
       if (formattedData.length === 0) {

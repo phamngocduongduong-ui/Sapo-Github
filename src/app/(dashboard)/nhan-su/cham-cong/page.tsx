@@ -18,6 +18,18 @@ export default async function ChamCongPage() {
     orderBy: { createdAt: "desc" }
   });
 
+  const eligibleEmployees = await (prisma as any).employee.findMany({
+    where: {
+      status: "ACTIVE",
+      branch: isAdmin ? undefined : { in: userBranches }
+    },
+    select: {
+      employeeCode: true,
+      fullName: true,
+      department: true
+    }
+  });
+
 
   return (
     <main className="main-content">
@@ -30,7 +42,7 @@ export default async function ChamCongPage() {
         </p>
       </div>
 
-      <AttendanceTable initialData={attendances} />
+      <AttendanceTable initialData={attendances} eligibleEmployees={eligibleEmployees} />
     </main>
   );
 }

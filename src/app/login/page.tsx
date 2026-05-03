@@ -3,6 +3,7 @@
 import { useFormState, useFormStatus } from "react-dom";
 import { login } from "./actions";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -16,12 +17,20 @@ function SubmitButton() {
 export default function LoginPage() {
   const [state, formAction] = useFormState(login, undefined);
   const [showPassword, setShowPassword] = useState(false);
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get("error");
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f6fa" }}>
       <div className="card" style={{ width: "100%", maxWidth: "400px", padding: "2.5rem" }}>
         <h1 style={{ textAlign: "center", marginBottom: "0.5rem", fontSize: "1.75rem", color: "#2c3e50" }}>Chào mừng trở lại</h1>
         <p style={{ textAlign: "center", color: "#888", marginBottom: "2rem" }}>Đăng nhập để vào hệ thống EMS</p>
+
+        {errorParam === "inactive" && (
+          <div style={{ background: "rgba(231,76,60,0.1)", color: "#e74c3c", padding: "0.75rem", borderRadius: "8px", marginBottom: "1.5rem", fontSize: "0.9rem", textAlign: "center", border: "1px solid rgba(231,76,60,0.2)" }}>
+            ⚠️ Tài khoản của bạn vừa bị ngưng hoạt động bởi quản trị viên.
+          </div>
+        )}
 
         {state?.error && (
           <div style={{ background: "rgba(231,76,60,0.1)", color: "#e74c3c", padding: "0.75rem", borderRadius: "8px", marginBottom: "1.5rem", fontSize: "0.9rem", textAlign: "center", border: "1px solid rgba(231,76,60,0.2)" }}>

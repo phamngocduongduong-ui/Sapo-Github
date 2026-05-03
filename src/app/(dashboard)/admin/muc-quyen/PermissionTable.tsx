@@ -1,7 +1,8 @@
 "use client";
-
 import { useState, useTransition } from "react";
 import { createPermission, updatePermission, updatePermissionStatus } from "./actions";
+import HistoryModal from "../../HistoryModal";
+import { Clock } from "lucide-react";
 
 type Permission = {
   id: string;
@@ -21,6 +22,7 @@ export default function PermissionTable({ initialPermissions }: { initialPermiss
   const [editingItem, setEditingItem] = useState<Permission | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
 
   function handleClose() {
     setShowModal(false);
@@ -99,6 +101,13 @@ export default function PermissionTable({ initialPermissions }: { initialPermiss
                       ) : (
                         <button className="btn btn-sm" onClick={() => handleStatusUpdate(item.id, "ACTIVE")} style={{ background: "#27ae60", color: "#fff", padding: "0.25rem 0.5rem", fontSize: "0.8rem" }}>Kích hoạt</button>
                       )}
+                      <button 
+                        className="btn btn-sm btn-outline" 
+                        onClick={() => setHistoryRecordId(item.id)}
+                        title="Lịch sử thay đổi"
+                      >
+                        Lịch sử
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -107,6 +116,14 @@ export default function PermissionTable({ initialPermissions }: { initialPermiss
           </tbody>
         </table>
       </div>
+
+      {historyRecordId && (
+        <HistoryModal 
+          tableName="Permission" 
+          recordId={historyRecordId} 
+          onClose={() => setHistoryRecordId(null)} 
+        />
+      )}
 
       {showModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>

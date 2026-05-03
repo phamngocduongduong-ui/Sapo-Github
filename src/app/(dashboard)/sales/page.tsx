@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 
 export default async function SalesPage() {
   const orders = await prisma.order.findMany({
-    include: { items: true },
+    include: { orderitem: true },
     orderBy: { createdAt: 'desc' }
   });
 

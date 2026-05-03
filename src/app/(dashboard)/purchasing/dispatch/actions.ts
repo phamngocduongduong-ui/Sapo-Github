@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getSession } from "@/lib/session";
+import { logAudit } from "@/lib/audit";
 
 export async function createDispatchOrder(formData: FormData) {
   const dispatchDate = formData.get("dispatchDate") as string;
@@ -15,7 +17,7 @@ export async function createDispatchOrder(formData: FormData) {
     throw new Error("Vui lòng điền đầy đủ thông tin bắt buộc.");
   }
 
-  await prisma.dispatchOrder.create({
+  const dispatch = await prisma.dispatchOrder.create({
     data: {
       dispatchDate: new Date(dispatchDate),
       expectedDate: new Date(expectedDate),
@@ -26,6 +28,19 @@ export async function createDispatchOrder(formData: FormData) {
       destination: "",
       note: note || null,
     },
+  });
+
+  const session = await getSession();
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "DispatchOrder",
+    recordId: dispatch.id,
+    action: "CREATE",
+    newData: dispatch,
+    changedBy,
+    changeDetail: `Tạo lệnh điều động cho nhân viên: ${employeeName}`
   });
 
   revalidatePath("/purchasing/dispatch");
@@ -43,7 +58,10 @@ export async function updateDispatchOrder(id: string, formData: FormData) {
     throw new Error("Vui lòng điền đầy đủ thông tin bắt buộc.");
   }
 
-  await prisma.dispatchOrder.update({
+  const session = await getSession();
+  const oldDispatch = await prisma.dispatchOrder.findUnique({ where: { id } });
+
+  const updatedDispatch = await prisma.dispatchOrder.update({
     where: { id },
     data: {
       dispatchDate: new Date(dispatchDate),
@@ -55,13 +73,42 @@ export async function updateDispatchOrder(id: string, formData: FormData) {
     },
   });
 
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "DispatchOrder",
+    recordId: id,
+    action: "UPDATE",
+    oldData: oldDispatch,
+    newData: updatedDispatch,
+    changedBy,
+    changeDetail: "Cập nhật thông tin lệnh điều động"
+  });
+
   revalidatePath("/purchasing/dispatch");
 }
 
 export async function updateDispatchStatus(id: string, status: string) {
+  const session = await getSession();
+  const oldDispatch = await prisma.dispatchOrder.findUnique({ where: { id } });
+
   await prisma.dispatchOrder.update({
     where: { id },
     data: { status },
+  });
+
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "DispatchOrder",
+    recordId: id,
+    action: "STATUS_CHANGE",
+    oldData: { status: oldDispatch?.status },
+    newData: { status },
+    changedBy,
+    changeDetail: `Chuyển trạng thái lệnh điều động sang: ${status}`
   });
   revalidatePath("/purchasing/dispatch");
 }

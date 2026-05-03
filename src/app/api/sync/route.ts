@@ -15,6 +15,10 @@ export async function GET(request: Request) {
 
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+  if (user.status === "INACTIVE") {
+    return NextResponse.json({ error: "ACCOUNT_INACTIVE" }, { status: 403 });
+  }
+
   const isAdmin = user.username === "admin" || user.role === "Admin";
   const userBranches = user.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
   const userName = user.employeeName || user.username || "";

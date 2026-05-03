@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 import { createOrder, updateOrder, deleteOrder, approveOrder } from "./actions";
-import { Check } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
+import HistoryModal from "../../HistoryModal";
+import { formatNumber } from "@/lib/format";
 
 export default function OrderTable({ initialOrders, customers, branches, salesEmployees, currentUser }: { initialOrders: any[], customers: string[], branches: string[], salesEmployees: string[], currentUser: string }) {
+  const router = useRouter();
   const [orders, setOrders] = useState<any[]>(initialOrders);
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState(1);
@@ -22,6 +26,7 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
 
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Auto-Sync
@@ -58,7 +63,7 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
   function handleEdit(order: any) {
     setEditingOrder(order);
     setIsViewMode(false);
-    setItems(order.items.length > 0 ? [...order.items] : [{ productName: "", packaging: "", quantity: 1, hasPallet: false, hasCornerGuard: false, note: "" }]);
+    setItems(order.orderitem.length > 0 ? [...order.orderitem] : [{ productName: "", packaging: "", quantity: 1, hasPallet: false, hasCornerGuard: false, note: "" }]);
     setActiveTab(1);
     setShowModal(true);
   }
@@ -66,7 +71,7 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
   function handleView(order: any) {
     setEditingOrder(order);
     setIsViewMode(true);
-    setItems(order.items.length > 0 ? [...order.items] : []);
+    setItems(order.orderitem.length > 0 ? [...order.orderitem] : []);
     setActiveTab(2); // Mặc định mở Tab 2 khi xem
     setShowModal(true);
   }
@@ -144,7 +149,12 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
         <h3 style={{ margin: 0 }}>📋 Danh sách Đơn hàng</h3>
-        <button className="btn btn-primary" onClick={() => { setIsViewMode(false); setShowModal(true); }}>+ Thêm mới đơn hàng</button>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button className="btn btn-outline" onClick={() => router.refresh()}>
+            <RotateCcw size={18} style={{ marginRight: "6px" }} /> Làm mới
+          </button>
+          <button className="btn btn-primary" onClick={() => { setIsViewMode(false); setShowModal(true); }}>+ Thêm mới đơn hàng</button>
+        </div>
       </div>
 
       <div className="table-container">
@@ -161,7 +171,7 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
               <th>Trạng thái</th>
               <th>Ngày xuất</th>
               <th>Nhiệt kế</th>
-              <th style={{ width: "100px", textAlign: "center" }}>Thao tác</th>
+              <th style={{ width: "160px", textAlign: "center" }}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -203,6 +213,13 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
                       {order.status === "Tạo mới" && (
                         <button onClick={(e) => { e.stopPropagation(); handleApprove(order.id); }} className="btn-icon" title="Phê duyệt" style={{ color: "#27ae60" }}>✔️</button>
                       )}
+                      <button 
+                        className="btn btn-sm btn-outline" 
+                        onClick={(e) => { e.stopPropagation(); setHistoryRecordId(order.id); }}
+                        title="Lịch sử thay đổi"
+                      >
+                        Lịch sử
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -225,17 +242,17 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
                             </tr>
                           </thead>
                           <tbody>
-                            {order.items.map((item: any, i: number) => (
+                            {order.orderitem.map((item: any, i: number) => (
                               <tr key={i}>
                                 <td style={{ fontWeight: 500 }}>{item.productName}</td>
                                 <td>{item.packaging}</td>
-                                <td style={{ fontWeight: 600, color: "#2563eb" }}>{item.quantity}</td>
+                                <td style={{ fontWeight: 600, color: "#2563eb" }}>{formatNumber(item.quantity)}</td>
                                 <td style={{ textAlign: "center" }}>{item.hasPallet ? "✅" : "—"}</td>
                                 <td style={{ textAlign: "center" }}>{item.hasCornerGuard ? "✅" : "—"}</td>
                                 <td style={{ color: "#64748b", fontStyle: "italic" }}>{item.note || "—"}</td>
                               </tr>
                             ))}
-                            {order.items.length === 0 && (
+                            {order.orderitem.length === 0 && (
                               <tr><td colSpan={6} style={{ textAlign: "center", color: "#94a3b8" }}>Không có chi tiết hàng hóa.</td></tr>
                             )}
                           </tbody>
@@ -249,6 +266,14 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
           </tbody>
         </table>
       </div>
+
+      {historyRecordId && (
+        <HistoryModal 
+          tableName="Order" 
+          recordId={historyRecordId} 
+          onClose={() => setHistoryRecordId(null)} 
+        />
+      )}
 
       {showModal && (
         <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>

@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getSession } from "@/lib/session";
+import { logAudit } from "@/lib/audit";
 
 export async function createOrder(formData: FormData, items: any[]) {
   const orderCode = formData.get("orderCode") as string;
@@ -19,7 +21,7 @@ export async function createOrder(formData: FormData, items: any[]) {
   const existing = await prisma.order.findUnique({ where: { orderCode } });
   if (existing) throw new Error("Mã đơn hàng đã tồn tại.");
 
-  await prisma.order.create({
+  const order = await prisma.order.create({
     data: {
       orderCode,
       customerCode,
@@ -31,17 +33,32 @@ export async function createOrder(formData: FormData, items: any[]) {
       thermometer,
       status: "Tạo mới",
       note: note || null,
-      items: {
+      orderitem: {
         create: items.map(item => ({
+          id: require('crypto').randomUUID(),
           productName: item.productName,
           packaging: item.packaging,
           quantity: parseInt(item.quantity) || 0,
           hasPallet: item.hasPallet,
           hasCornerGuard: item.hasCornerGuard,
-          note: item.note
+          note: item.note,
+          updatedAt: new Date()
         }))
       }
     },
+  });
+
+  const session = await getSession();
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "Order",
+    recordId: order.id,
+    action: "CREATE",
+    newData: order,
+    changedBy,
+    changeDetail: `Tạo đơn hàng mới: ${orderCode}`
   });
 
   revalidatePath("/sales/don-hang");
@@ -57,10 +74,13 @@ export async function updateOrder(id: string, formData: FormData, items: any[]) 
   const note = formData.get("note") as string;
   const status = formData.get("status") as string;
 
-  // Xóa items cũ và tạo mới (đơn giản nhất cho logic update nested)
-  await prisma.orderItem.deleteMany({ where: { orderId: id } });
+  // Xóa orderitem cũ và tạo mới
+  await (prisma as any).orderitem.deleteMany({ where: { orderId: id } });
 
-  await prisma.order.update({
+  const session = await getSession();
+  const oldOrder = await (prisma as any).order.findUnique({ where: { id }, include: { orderitem: true } });
+
+  const updatedOrder = await (prisma as any).order.update({
     where: { id },
     data: {
       customerCode,
@@ -71,26 +91,58 @@ export async function updateOrder(id: string, formData: FormData, items: any[]) 
       thermometer,
       status,
       note: note || null,
-      items: {
+      orderitem: {
         create: items.map(item => ({
+          id: require('crypto').randomUUID(),
           productName: item.productName,
           packaging: item.packaging,
           quantity: parseInt(item.quantity) || 0,
           hasPallet: item.hasPallet,
           hasCornerGuard: item.hasCornerGuard,
-          note: item.note
+          note: item.note,
+          updatedAt: new Date()
         }))
       }
-    }
+    },
+    include: { orderitem: true }
+  });
+
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "Order",
+    recordId: id,
+    action: "UPDATE",
+    oldData: oldOrder,
+    newData: updatedOrder,
+    changedBy,
+    changeDetail: oldOrder?.status !== status ? `Cập nhật đơn hàng (Chuyển trạng thái sang: ${status})` : "Cập nhật thông tin đơn hàng"
   });
 
   revalidatePath("/sales/don-hang");
 }
 
 export async function approveOrder(id: string) {
+  const session = await getSession();
+  const oldOrder = await prisma.order.findUnique({ where: { id } });
+
   await prisma.order.update({
     where: { id },
     data: { status: "Chờ kế hoạch sản xuất" }
+  });
+
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "Order",
+    recordId: id,
+    action: "STATUS_CHANGE",
+    oldData: { status: oldOrder?.status },
+    newData: { status: "Chờ kế hoạch sản xuất" },
+    changedBy,
+    changeDetail: "Phê duyệt đơn hàng, chuyển sang Chờ kế hoạch sản xuất"
   });
   revalidatePath("/sales/don-hang");
 }

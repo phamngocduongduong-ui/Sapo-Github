@@ -15,6 +15,8 @@ export async function createBranch(formData: FormData) {
     data: { code, name, address: address || null, status: status || "ACTIVE" },
   });
 
+  await syncAdminBranches();
+
   revalidatePath("/danh-muc/chi-nhanh");
 }
 
@@ -30,5 +32,20 @@ export async function updateBranch(id: string, formData: FormData) {
     data: { name, address: address || null, status },
   });
 
+  await syncAdminBranches();
+
   revalidatePath("/danh-muc/chi-nhanh");
+}
+
+async function syncAdminBranches() {
+  const allBranches = await prisma.branch.findMany({
+    where: { status: "ACTIVE" },
+    select: { name: true }
+  });
+  const branchNames = allBranches.map(b => b.name).join(",");
+  
+  await prisma.user.updateMany({
+    where: { username: "admin" },
+    data: { branch: branchNames }
+  });
 }

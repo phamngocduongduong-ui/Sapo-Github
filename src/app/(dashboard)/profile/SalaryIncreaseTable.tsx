@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { prisma } from "@/lib/db";
+import HistoryModal from "../HistoryModal";
 
 type SalaryRequest = {
   id: string;
@@ -23,6 +24,7 @@ export default function SalaryIncreaseTable({
 }) {
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -60,6 +62,7 @@ export default function SalaryIncreaseTable({
               <th>Lý do</th>
               <th>Trạng thái</th>
               <th>Ghi chú</th>
+              <th style={{ width: "100px", textAlign: "center" }}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -87,6 +90,15 @@ export default function SalaryIncreaseTable({
                     </span>
                   </td>
                   <td>{req.note || "—"}</td>
+                  <td style={{ textAlign: "center" }}>
+                    <button 
+                      className="btn btn-sm btn-outline" 
+                      onClick={() => setHistoryRecordId(req.id)}
+                      title="Lịch sử thay đổi"
+                    >
+                      Lịch sử
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -123,6 +135,16 @@ export default function SalaryIncreaseTable({
             </form>
           </div>
         </div>
+      )}
+        </div>
+      )}
+
+      {historyRecordId && (
+        <HistoryModal 
+          tableName="SalaryIncreaseRequest" 
+          recordId={historyRecordId} 
+          onClose={() => setHistoryRecordId(null)} 
+        />
       )}
     </>
   );

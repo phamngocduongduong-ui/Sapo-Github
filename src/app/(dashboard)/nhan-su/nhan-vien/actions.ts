@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
+import { logAudit } from "@/lib/audit";
 
 export async function createEmployee(formData: FormData) {
   const employeeCode = formData.get("employeeCode") as string;
@@ -56,14 +57,19 @@ export async function createEmployee(formData: FormData) {
       workplace: workplace || "",
       branch: branch || "",
       salaryLevel: salaryLevel || "",
+      creator
     }
   });
 
-  // Update creator field using standard prisma update
-  await prisma.employee.update({
-    where: { id: newEmp.id },
-    data: { creator }
+  await logAudit({
+    tableName: "Employee",
+    recordId: newEmp.id,
+    action: "CREATE",
+    newData: newEmp,
+    changedBy: creator,
+    changeDetail: `Thêm nhân viên mới: ${fullName} (${employeeCode})`
   });
+
 
   revalidatePath("/nhan-su/nhan-vien");
 }
@@ -94,7 +100,7 @@ export async function updateEmployee(id: string, formData: FormData) {
 
   const oldName = oldEmployee.fullName;
 
-  await prisma.employee.update({
+  const updatedEmployee = await prisma.employee.update({
     where: { id },
     data: {
       fullName,
@@ -117,34 +123,48 @@ export async function updateEmployee(id: string, formData: FormData) {
     }
   });
 
+  const session = await getSession();
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Admin";
+
+  await logAudit({
+    tableName: "Employee",
+    recordId: id,
+    action: "UPDATE",
+    oldData: oldEmployee,
+    newData: updatedEmployee,
+    changedBy,
+    changeDetail: `Cập nhật nhân viên: ${fullName}`
+  });
+
   // Cập nhật ở các bảng khác
   if (oldName !== fullName) {
     // 1. User
-    await prisma.user.updateMany({
+    await (prisma as any).user.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
     // 2. Nghỉ phép
-    await prisma.leaveRequest.updateMany({
+    await (prisma as any).leaverequest.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
     // 3. Hợp đồng lao động
-    await prisma.laborContract.updateMany({
+    await (prisma as any).laborcontract.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
     // 4. Tăng/Giảm lương
-    await prisma.salaryChange.updateMany({
+    await (prisma as any).salarychange.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
     // 5. Thuyên chuyển / Bổ nhiệm
-    await prisma.transferPromotion.updateMany({
+    await (prisma as any).transferpromotion.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
@@ -156,25 +176,25 @@ export async function updateEmployee(id: string, formData: FormData) {
     });
 
     // 7. Kỷ luật / Vi phạm
-    await prisma.violation.updateMany({
+    await (prisma as any).violation.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
     // 8. Đơn hàng (Sale)
-    await prisma.order.updateMany({
+    await (prisma as any).order.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
     // 9. Lệnh điều động (Purchasing)
-    await prisma.dispatchOrder.updateMany({
+    await (prisma as any).dispatchorder.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
 
     // 10. Chi tiết bảng lương
-    await prisma.payrollDetail.updateMany({
+    await (prisma as any).payrolldetail.updateMany({
       where: { employeeName: oldName },
       data: { employeeName: fullName }
     });
@@ -193,10 +213,119 @@ export async function updateEmployee(id: string, formData: FormData) {
   revalidatePath("/nhan-su/bang-luong");
 }
 
+export async function generateNextContractNumber(employeeName: string) {
+  if (!employeeName) return "";
+  const employee = await prisma.employee.findFirst({
+    where: { fullName: employeeName }
+  });
+  
+  if (!employee || !employee.branch) return "";
+  
+  const branch = await (prisma as any).branch.findFirst({ where: { name: employee.branch } });
+  if (!branch) return "";
+  
+  const contracts = await (prisma as any).laborcontract.findMany({
+    where: { branch: employee.branch },
+    select: { contractNumber: true }
+  });
+  
+  const nums = contracts
+    .map(c => parseInt(c.contractNumber.split("/")[0]))
+    .filter(n => !isNaN(n));
+    
+  const max = nums.length > 0 ? Math.max(...nums) : 0;
+  const seq = (max + 1).toString().padStart(3, '0');
+  
+  return `${seq}/${branch.code}`;
+}
+
+
 export async function updateEmployeeStatus(id: string, status: string) {
-  await prisma.employee.update({
+  const session = await getSession();
+  const oldEmployee = await prisma.employee.findUnique({ where: { id } });
+
+  const updatedEmployee = await prisma.employee.update({
     where: { id },
     data: { status }
   });
+
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Admin";
+
+  await logAudit({
+    tableName: "Employee",
+    recordId: id,
+    action: "STATUS_CHANGE",
+    oldData: { status: oldEmployee?.status },
+    newData: { status },
+    changedBy,
+    changeDetail: `Thay đổi trạng thái nhân viên sang: ${status === "ACTIVE" ? "Hoạt động" : "Ngưng hoạt động"}`
+  });
+
   revalidatePath("/nhan-su/nhan-vien");
+}
+
+export async function bulkUpsertEmployees(dataList: any[]) {
+  const session = await getSession();
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const creator = user?.employeeName || user?.username || "Hệ thống";
+
+  for (const item of dataList) {
+    const { employeeCode, fullName, branch, ...rest } = item;
+    
+    // Convert dates if any
+    const updateData: any = { fullName, branch, ...rest };
+    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+    if (updateData.idCardDate) updateData.idCardDate = new Date(updateData.idCardDate);
+
+    // Try to find existing employee by code or by (name + branch)
+    let existing;
+    if (employeeCode) {
+      existing = await prisma.employee.findUnique({ where: { employeeCode } });
+    } else {
+      existing = await prisma.employee.findFirst({
+        where: { fullName, branch: branch || "" }
+      });
+    }
+
+    if (existing) {
+      await prisma.employee.update({
+        where: { id: existing.id },
+        data: updateData
+      });
+    } else {
+      // Generate new code if missing
+      const finalCode = employeeCode || (await generateNextEmployeeCode(branch));
+      await prisma.employee.create({
+        data: {
+          employeeCode: finalCode,
+          ...updateData,
+          status: "ACTIVE",
+          creator
+        }
+      });
+    }
+  }
+  revalidatePath("/nhan-su/nhan-vien");
+}
+
+export async function generateNextEmployeeCode(branchName: string) {
+  if (!branchName) return "";
+  const branch = await prisma.branch.findFirst({ where: { name: branchName } });
+  if (!branch) return "";
+  
+  const employees = await prisma.employee.findMany({
+    where: { branch: branchName },
+    select: { employeeCode: true }
+  });
+  
+  const nums = employees
+    .map(e => parseInt(e.employeeCode.split(".")[0]))
+    .filter(n => !isNaN(n));
+    
+  const max = nums.length > 0 ? Math.max(...nums) : 0;
+  const seq = (max + 1).toString().padStart(3, '0');
+  
+  return `${seq}.${branch.code}`;
 }

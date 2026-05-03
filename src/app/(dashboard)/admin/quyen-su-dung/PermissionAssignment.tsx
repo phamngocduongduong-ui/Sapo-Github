@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import React, { useState, useTransition, useEffect } from "react";
+
+import { useRouter } from "next/navigation";
+import { RotateCcw } from "lucide-react";
 import { saveCategoryPermissions, getCategoryPermissions } from "./actions";
 
 const MODULES = [
@@ -16,6 +19,8 @@ const MODULES = [
       { key: "DM_NHOM_SP", label: "Nhóm sản phẩm" },
       { key: "DM_QUOC_GIA", label: "Quốc gia" },
       { key: "DM_SAN_PHAM", label: "Sản phẩm" },
+      { key: "DM_DON_VI_TINH", label: "Đơn vị tính" },
+      { key: "DM_KHO_HANG", label: "Kho hàng" },
     ]
   },
   {
@@ -31,7 +36,8 @@ const MODULES = [
       { key: "NS_TANG_GIAM_LUONG", label: "Tăng/Giảm lương" },
       { key: "NS_DIEU_DONG", label: "Thuyên chuyển, Bổ nhiệm" },
       { key: "NS_BAC_LUONG", label: "Bậc lương" },
-      { key: "NS_APPROVE", label: "Phê duyệt hồ sơ" },
+      { key: "NS_NGHI_VIEC", label: "Nghỉ việc" },
+      { key: "NS_APPROVE", label: "Phê duyệt" },
     ]
   },
   {
@@ -43,10 +49,13 @@ const MODULES = [
   },
   {
     key: "THU_MUA",
-    label: "🛒 Thu mua",
+    label: "🛒 Mua hàng",
     children: [
       { key: "TM_KE_HOACH", label: "Kế hoạch Thu mua" },
+      { key: "TM_LENH_MUA", label: "Lệnh mua" },
+      { key: "TM_DON_MUA", label: "Đơn mua" },
       { key: "TM_DIEU_DONG", label: "Lệnh điều động" },
+      { key: "TM_BAO_CAO", label: "Báo cáo" },
     ]
   },
   {
@@ -67,7 +76,9 @@ const MODULES = [
   }
 ];
 
+
 export default function PermissionAssignment({ categories }: { categories: any[] }) {
+  const router = useRouter();
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
   const [isPending, startTransition] = useTransition();
@@ -90,19 +101,26 @@ export default function PermissionAssignment({ categories }: { categories: any[]
   }
 
   function handleParentToggle(parentKey: string, checked: boolean) {
-    const newPerms = { ...permissions, [parentKey]: checked };
-    const parent = MODULES.find(m => m.key === parentKey);
-    if (parent) {
-      parent.children.forEach(child => {
-        newPerms[child.key] = checked;
-      });
-    }
-    setPermissions(newPerms);
+    setPermissions(prev => {
+      const newPerms = { ...prev, [parentKey]: checked };
+      
+      // If unchecking parent, automatically uncheck all children
+      if (!checked) {
+        const parent = MODULES.find(m => m.key === parentKey);
+        if (parent) {
+          parent.children.forEach(child => {
+            newPerms[child.key] = false;
+          });
+        }
+      }
+      return newPerms;
+    });
   }
 
   function handleChildToggle(childKey: string, checked: boolean) {
     setPermissions(prev => ({ ...prev, [childKey]: checked }));
   }
+
 
   function handleSave() {
     if (!selectedCategoryId) return;
@@ -142,9 +160,26 @@ export default function PermissionAssignment({ categories }: { categories: any[]
         <div className="card" style={{ padding: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
             <h3 style={{ margin: 0 }}>📋 Chi tiết phân quyền cho mục quyền</h3>
-            <button className="btn btn-primary" onClick={handleSave} disabled={isPending}>
-              {isPending ? "Đang lưu..." : "💾 Lưu phân quyền"}
-            </button>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button className="btn btn-outline" onClick={() => {
+                const allPerms: Record<string, boolean> = {};
+                MODULES.forEach(m => {
+                  allPerms[m.key] = true;
+                  m.children.forEach(c => {
+                    allPerms[c.key] = true;
+                  });
+                });
+                setPermissions(allPerms);
+              }}>
+                ✅ Chọn tất cả
+              </button>
+              <button className="btn btn-outline" onClick={() => router.refresh()}>
+                <RotateCcw size={18} style={{ marginRight: "6px" }} /> Làm mới
+              </button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={isPending}>
+                {isPending ? "Đang lưu..." : "💾 Lưu phân quyền"}
+              </button>
+            </div>
           </div>
 
           <div className="table-container">
@@ -156,44 +191,59 @@ export default function PermissionAssignment({ categories }: { categories: any[]
                   <th>Ghi chú</th>
                 </tr>
               </thead>
-              <tbody>
-                {MODULES.map(parent => (
-                  <>
-                    <tr key={parent.key} style={{ background: "#f8fafc" }}>
-                      <td style={{ fontWeight: "700", color: "var(--primary-color)" }}>{parent.label}</td>
-                      <td style={{ textAlign: "center" }}>
-                        <input 
-                          type="checkbox" 
-                          checked={permissions[parent.key] || false}
-                          onChange={(e) => handleParentToggle(parent.key, e.target.checked)}
-                          style={{ width: "20px", height: "20px", cursor: "pointer" }}
-                        />
-                      </td>
-                      <td style={{ fontSize: "0.85rem", color: "#64748b" }}>Phân hệ mẹ</td>
-                    </tr>
-                    {parent.children.map(child => {
+                  <tbody>
+                    {MODULES.map(parent => {
                       const isParentChecked = permissions[parent.key] || false;
-                      return (
-                        <tr key={child.key}>
-                          <td style={{ paddingLeft: "2.5rem" }}>{child.label}</td>
+                      const rows = [
+                        <tr key={`parent-${parent.key}`} style={{ background: "#f8fafc" }}>
+                          <td style={{ fontWeight: "700", color: "var(--primary-color)" }}>
+                            <label htmlFor={`parent-${parent.key}`} style={{ cursor: "pointer", display: "block", width: "100%" }}>
+                              {parent.label}
+                            </label>
+                          </td>
                           <td style={{ textAlign: "center" }}>
                             <input 
+                              id={`parent-${parent.key}`}
                               type="checkbox" 
-                              checked={permissions[child.key] || false}
-                              disabled={!isParentChecked}
-                              onChange={(e) => handleChildToggle(child.key, e.target.checked)}
-                              style={{ width: "18px", height: "18px", cursor: isParentChecked ? "pointer" : "not-allowed" }}
+                              checked={isParentChecked}
+                              onChange={(e) => handleParentToggle(parent.key, e.target.checked)}
+                              style={{ width: "20px", height: "20px", cursor: "pointer" }}
                             />
                           </td>
-                          <td style={{ fontSize: "0.85rem", color: "#94a3b8" }}>
-                            {!isParentChecked && "Bị khóa bởi phân hệ mẹ"}
-                          </td>
+                          <td style={{ fontSize: "0.85rem", color: "#64748b" }}>Phân hệ mẹ</td>
                         </tr>
-                      );
+                      ];
+
+                      parent.children.forEach(child => {
+                        rows.push(
+                          <tr key={`child-${child.key}`} style={{ opacity: isParentChecked ? 1 : 0.6 }}>
+                            <td style={{ paddingLeft: "2.5rem" }}>
+                              <label htmlFor={`child-${child.key}`} style={{ cursor: isParentChecked ? "pointer" : "not-allowed", display: "block", width: "100%" }}>
+                                {child.label}
+                              </label>
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <input 
+                                id={`child-${child.key}`}
+                                type="checkbox" 
+                                checked={permissions[child.key] || false}
+                                disabled={!isParentChecked}
+                                onChange={(e) => handleChildToggle(child.key, e.target.checked)}
+                                style={{ width: "18px", height: "18px", cursor: isParentChecked ? "pointer" : "not-allowed" }}
+                              />
+                            </td>
+                            <td style={{ fontSize: "0.85rem", color: "#94a3b8" }}>
+                              {!isParentChecked && "Bị khóa bởi phân hệ mẹ"}
+                            </td>
+                          </tr>
+                        );
+                      });
+                      return rows;
                     })}
-                  </>
-                ))}
-              </tbody>
+                  </tbody>
+
+
+
             </table>
           </div>
         </div>

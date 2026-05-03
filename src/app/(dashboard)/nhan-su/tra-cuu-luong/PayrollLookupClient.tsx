@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Search, Printer, Download } from "lucide-react";
+import { formatNumber, formatCurrency } from "@/lib/format";
 
 type PayrollDetail = {
   id: string;
@@ -93,37 +94,37 @@ export default function PayrollLookupClient({
               {/* Thu nhập */}
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#334155" }}>Thu nhập ngày công</span>
-                <span style={{ fontWeight: 600 }}>{new Intl.NumberFormat('vi-VN').format(currentPayroll.incomePerWorkday)}</span>
+                <span style={{ fontWeight: 600 }}>{formatNumber(currentPayroll.incomePerWorkday)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#334155" }}>Tiền chuyên cần</span>
-                <span style={{ fontWeight: 600 }}>{new Intl.NumberFormat('vi-VN').format(currentPayroll.attendanceBonus)}</span>
+                <span style={{ fontWeight: 600 }}>{formatNumber(currentPayroll.attendanceBonus)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#334155" }}>Tiền hiệu quả</span>
-                <span style={{ fontWeight: 600 }}>{new Intl.NumberFormat('vi-VN').format(currentPayroll.performanceBonus)}</span>
+                <span style={{ fontWeight: 600 }}>{formatNumber(currentPayroll.performanceBonus)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#334155" }}>Tiền trách nhiệm</span>
-                <span style={{ fontWeight: 600 }}>{new Intl.NumberFormat('vi-VN').format(currentPayroll.responsibilityBonus)}</span>
+                <span style={{ fontWeight: 600 }}>{formatNumber(currentPayroll.responsibilityBonus)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#334155" }}>Tiền làm thêm giờ</span>
-                <span style={{ fontWeight: 600 }}>{new Intl.NumberFormat('vi-VN').format(currentPayroll.overtimePay)}</span>
+                <span style={{ fontWeight: 600 }}>{formatNumber(currentPayroll.overtimePay)}</span>
               </div>
 
               <hr style={{ margin: "0.5rem 0", border: "none", borderTop: "1px solid #f1f5f9" }} />
 
               <div style={{ display: "flex", justifyContent: "space-between", color: "var(--danger-color)" }}>
                 <span style={{ fontWeight: 600 }}>Khấu trừ BHXH (10.5%)</span>
-                <span style={{ fontWeight: 600 }}>- {new Intl.NumberFormat('vi-VN').format(currentPayroll.socialInsuranceDeduction)}</span>
+                <span style={{ fontWeight: 600 }}>- {formatNumber(currentPayroll.socialInsuranceDeduction)}</span>
               </div>
             </div>
 
             <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "2px dashed #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: "1.2rem", fontWeight: 800, color: "#1e293b" }}>THỰC LĨNH</span>
               <span style={{ fontSize: "1.5rem", fontWeight: 900, color: "var(--primary-color)" }}>
-                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(netIncome)}
+                {formatCurrency(netIncome)}
               </span>
             </div>
           </div>

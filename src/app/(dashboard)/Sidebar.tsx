@@ -7,11 +7,11 @@ import { logout } from "@/app/login/actions";
 import { X, ChevronRight, LogOut } from "lucide-react";
 
 interface SidebarProps {
-  isMobileOpen?: boolean;
+  isCollapsed?: boolean;
   onClose?: () => void;
 }
 
-export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
+export default function Sidebar({ isCollapsed, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
@@ -21,14 +21,20 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
 
   useEffect(() => {
     async function fetchPerms() {
+      const timeout = setTimeout(() => {
+        setLoading(false);
+      }, 3000); // 3s fallback
+
       try {
         const res = await fetch("/api/user-permissions");
+        if (!res.ok) throw new Error("API failed");
         const data = await res.json();
         setUserPerms(data.permissions || []);
         setIsAdmin(data.isAdmin || false);
       } catch (e) {
         console.error(e);
       } finally {
+        clearTimeout(timeout);
         setLoading(false);
       }
     }
@@ -41,6 +47,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
     else if (pathname.startsWith("/purchasing")) setOpenMenu("purchasing");
     else if (pathname.startsWith("/nhan-su")) setOpenMenu("hr");
     else if (pathname.startsWith("/danh-muc")) setOpenMenu("catalog");
+    else if (pathname.startsWith("/thu-kho")) setOpenMenu("warehouse");
   }, [pathname]);
 
   const toggleMenu = (menu: string) => {
@@ -61,6 +68,9 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
         { href: "/danh-muc/nhom-san-pham", label: "Nhóm sản phẩm", key: "DM_NHOM_SP" },
         { href: "/danh-muc/quoc-gia", label: "Quốc gia", key: "DM_QUOC_GIA" },
         { href: "/danh-muc/san-pham", label: "Sản phẩm", key: "DM_SAN_PHAM" },
+        { href: "/danh-muc/don-vi-tinh", label: "Đơn vị tính", key: "DM_DON_VI_TINH" },
+        { href: "/danh-muc/kho-hang", label: "Kho hàng", key: "DM_KHO_HANG" },
+
       ]
     },
     {
@@ -70,15 +80,12 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
       items: [
         { href: "/nhan-su/nhan-vien", label: "1. Nhân viên", key: "NS_NHAN_VIEN" },
         { href: "/nhan-su/hop-dong", label: "2. Hợp đồng lao động", key: "NS_HOP_DONG" },
-        { href: "/nhan-su/nghi-phep", label: "3. Nghỉ phép", key: "NS_NGHI_PHEP" },
-        { href: "/nhan-su/cham-cong", label: "4. Chấm công", key: "NS_CHAM_CONG" },
-        { href: "/nhan-su/bang-luong", label: "5. Bảng lương", key: "NS_BANG_LUONG" },
-        { href: "/nhan-su/tra-cuu-luong", label: "6. Tra cứu lương", key: "NS_TRA_CUU_LUONG" },
-        { href: "/nhan-su/tang-giam-luong", label: "7. Tăng/Giảm lương", key: "NS_TANG_GIAM_LUONG" },
-        { href: "/nhan-su/thuyen-chuyen-bo-nhiem", label: "8. Thuyên chuyển, Bổ nhiệm", key: "NS_DIEU_DONG" },
-        { href: "/nhan-su/bac-luong", label: "9. Bậc lương", key: "NS_BAC_LUONG" },
-        { href: "/nhan-su/phe-duyet", label: "10. Phê duyệt", key: "NS_APPROVE" },
-        { href: "/nhan-su/nghi-viec", label: "11. Nghỉ việc", key: "NS_NGHI_VIEC" },
+        { href: "/nhan-su/cham-cong", label: "3. Chấm công", key: "NS_CHAM_CONG" },
+        { href: "/nhan-su/bang-luong", label: "4. Bảng lương", key: "NS_BANG_LUONG" },
+        { href: "/nhan-su/tang-giam-luong", label: "5. Tăng/Giảm lương", key: "NS_TANG_GIAM_LUONG" },
+        { href: "/nhan-su/thuyen-chuyen-bo-nhiem", label: "6. Thuyên chuyển, Bổ nhiệm", key: "NS_DIEU_DONG" },
+        { href: "/nhan-su/bac-luong", label: "7. Bậc lương", key: "NS_BAC_LUONG" },
+        { href: "/nhan-su/phe-duyet", label: "8. Phê duyệt", key: "NS_APPROVE" },
       ]
     },
     {
@@ -92,10 +99,14 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
     {
       id: "purchasing",
       key: "THU_MUA",
-      label: "Thu mua",
+      label: "Mua hàng",
       items: [
         { href: "/purchasing", label: "Kế hoạch Thu mua", key: "TM_KE_HOACH" },
+        { href: "/purchasing/lenh-mua", label: "Lệnh mua", key: "TM_LENH_MUA" },
+        { href: "/purchasing/phe-duyet", label: "Phê duyệt", key: "TM_APPROVE" },
+        { href: "/purchasing/don-mua", label: "Đơn mua", key: "TM_DON_MUA" },
         { href: "/purchasing/dispatch", label: "Lệnh điều động", key: "TM_DIEU_DONG" },
+        { href: "/purchasing/bao-cao", label: "Báo cáo", key: "TM_BAO_CAO" },
       ]
     },
     {
@@ -104,6 +115,14 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
       label: "Sản xuất",
       items: [
         { href: "/production/ke-hoach-vat-tu", label: "Kế hoạch vật tư", key: "SX_VAT_TU" },
+      ]
+    },
+    {
+      id: "warehouse",
+      key: "THU_KHO",
+      label: "Thủ kho",
+      items: [
+        { href: "/thu-kho/kho-vat-tu", label: "Kho vật tư", key: "TK_KHO_VAT_TU" },
       ]
     },
     {
@@ -131,7 +150,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
 
 
   return (
-    <aside className={`sidebar ${isMobileOpen ? "mobile-open" : ""}`}>
+    <aside className={`sidebar ${isCollapsed ? "collapsed" : ""}`}>
       <div className="sidebar-header">
         <span style={{ fontSize: "1.1rem", fontWeight: "700", letterSpacing: "0.5px" }}>SAPO EMS</span>
         <button className="mobile-only-btn" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -157,7 +176,7 @@ export default function Sidebar({ isMobileOpen, onClose }: SidebarProps) {
         ) : menuGroups.map((group) => (
           <div key={group.id} style={{ marginBottom: "1px" }}>
             <button
-              className={`nav-item ${pathname.startsWith("/" + group.items[0].href.split('/')[1]) ? "active" : ""}`}
+              className={`nav-item ${group.items?.some(item => pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))) ? "active" : ""}`}
               onClick={() => toggleMenu(group.id)}
               style={{ 
                 width: "100%", 

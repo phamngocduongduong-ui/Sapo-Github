@@ -6,7 +6,15 @@ import { User, LogOut, ChevronDown, Bell, Menu as MenuIcon } from "lucide-react"
 import { logout } from "@/app/login/actions";
 import { getNotifications, markNotificationAsRead } from "@/app/(dashboard)/nhan-su/tang-giam-luong/actions";
 
-export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
+export default function Header({ 
+  onMenuClick, 
+  isSidebarCollapsed,
+  onToggleSidebar 
+}: { 
+  onMenuClick: () => void;
+  isSidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
+}) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -14,6 +22,18 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
   const notifRef = useRef<HTMLDivElement>(null);
 
   const [notifLimit, setNotifLimit] = useState(3);
+  const [userInfo, setUserInfo] = useState<{ name: string, branch: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/user-permissions")
+      .then(res => res.json())
+      .then(data => {
+        setUserInfo({
+          name: data.employeeName || "Người dùng",
+          branch: data.branch || "Tất cả chi nhánh"
+        });
+      });
+  }, []);
 
   useEffect(() => {
     fetchNotifications();
@@ -50,12 +70,13 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
     <header className="main-header">
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
         <button 
-          onClick={onMenuClick}
-          className="mobile-menu-btn"
+          onClick={onToggleSidebar}
+          className="menu-toggle-btn"
+          title={isSidebarCollapsed ? "Mở menu" : "Thu gọn menu"}
         >
-          <MenuIcon size={24} />
+          <MenuIcon size={24} color="var(--text-secondary)" />
         </button>
-        <div className="header-logo-mobile">EMS System</div>
+        {!isSidebarCollapsed && <div className="header-logo-mobile">EMS System</div>}
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -106,7 +127,13 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
           )}
         </div>
 
-        <div ref={dropdownRef} style={{ position: "relative" }}>
+        <div ref={dropdownRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {userInfo && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginRight: "0.25rem" }} className="user-info-hide-mobile">
+              <span style={{ fontSize: "0.85rem", fontWeight: "700", color: "#1c1e21" }}>{userInfo.name}</span>
+              <span style={{ fontSize: "0.75rem", color: "#65676b" }}>{userInfo.branch}</span>
+            </div>
+          )}
           <button 
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="header-user-btn"
@@ -119,17 +146,20 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
 
           {dropdownOpen && (
             <div className="user-dropdown">
-              <Link href="/profile?tab=1" onClick={() => setDropdownOpen(false)} className="dropdown-item">👤 Hồ sơ cá nhân</Link>
-              <Link href="/profile?tab=2" onClick={() => setDropdownOpen(false)} className="dropdown-item">🏖️ Đề xuất nghỉ phép</Link>
-              <Link href="/nhan-su/tra-cuu-luong" onClick={() => setDropdownOpen(false)} className="dropdown-item">🔍 Tra cứu lương</Link>
-              <hr style={{ margin: "0.5rem 0", border: "none", borderTop: "1px solid #eee" }} />
-              <form action={logout}>
-                <button type="submit" className="dropdown-item logout-btn">
-                  <LogOut size={16} /> Đăng xuất
-                </button>
-              </form>
+              <Link href="/profile" onClick={() => setDropdownOpen(false)} className="dropdown-item">Hồ sơ cá nhân</Link>
+              <Link href="/nhan-su/nghi-phep" onClick={() => setDropdownOpen(false)} className="dropdown-item">Nghỉ phép</Link>
+              <Link href="/nhan-su/nghi-viec" onClick={() => setDropdownOpen(false)} className="dropdown-item">Nghỉ việc</Link>
+              <Link href="/nhan-su/tra-cuu-luong" onClick={() => setDropdownOpen(false)} className="dropdown-item">Tra cứu lương</Link>
             </div>
           )}
+        </div>
+
+        <div style={{ marginLeft: "0.5rem", borderLeft: "1px solid #eee", paddingLeft: "0.5rem" }}>
+          <form action={logout}>
+            <button type="submit" className="header-icon-btn" title="Đăng xuất" style={{ color: "#e74c3c" }}>
+              <LogOut size={20} />
+            </button>
+          </form>
         </div>
       </div>
 
@@ -146,16 +176,22 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
           z-index: 100;
         }
         .header-logo-mobile {
-          display: none;
+          display: block;
           font-weight: 700;
           color: var(--primary-color);
+          font-size: 1.1rem;
         }
-        .mobile-menu-btn {
-          display: none;
-          padding: 0.5rem;
-          background: none;
-          border: none;
+        .menu-toggle-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px;
+          border-radius: 8px;
+          transition: all 0.2s;
           cursor: pointer;
+        }
+        .menu-toggle-btn:hover {
+          background: #f0f2f5;
         }
         .header-icon-btn, .header-user-btn {
           padding: 0.5rem;
@@ -206,24 +242,40 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
           width: 220px;
           background: #fff;
           border-radius: 12px;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-          border: 1px solid #eee;
-          padding: 0.5rem;
+          box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+          border: 1px solid #edf2f7;
+          padding: 0.4rem;
           display: flex;
           flex-direction: column;
         }
-        .dropdown-item { padding: 0.75rem 1rem; border-radius: 8px; color: #2c3e50; font-size: 0.9rem; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s; }
-        .dropdown-item:hover { background: #f8f9fa; }
+        .dropdown-item { 
+          padding: 0.7rem 1rem; 
+          border-radius: 8px; 
+          color: #2c3e50; 
+          font-size: 0.9rem; 
+          display: block; 
+          transition: all 0.2s; 
+          text-decoration: none; 
+          margin-bottom: 2px;
+          border-bottom: 1px solid transparent;
+        }
+        .dropdown-item:not(:last-child) {
+          border-bottom: 1px solid #f7fafc;
+        }
+        .dropdown-item:hover { 
+          background: #f1f5f9; 
+          color: var(--primary-color);
+        }
+
         .logout-btn { width: 100%; border: none; background: none; color: #e74c3c; cursor: pointer; }
         .user-avatar-circle { width: 36px; height: 36px; border-radius: 50%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; color: #65676b; }
         
         @media (max-width: 1024px) {
-          .mobile-menu-btn { display: block; }
           .header-logo-mobile { display: block; }
         }
         @media (max-width: 640px) {
           .notif-dropdown { width: calc(100vw - 2rem); right: -60px; }
-          .chevron-hide-mobile { display: none; }
+          .chevron-hide-mobile, .user-info-hide-mobile { display: none; }
         }
       `}</style>
     </header>

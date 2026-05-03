@@ -21,7 +21,7 @@ export default async function ProfilePage({
   const currentYear = now.getFullYear();
 
   const user = await prisma.user.findUnique({
-    where: { username: session.username }
+    where: { id: session.userId }
   });
 
   const empName = user?.employeeName || session.username;
@@ -41,11 +41,11 @@ export default async function ProfilePage({
   const usedLeaveDays = attendanceRecords.reduce((sum, rec) => sum + rec.annualLeaveDays, 0);
   const remainingLeaveDays = 12 - usedLeaveDays;
 
-  const pendingLeaveCount = await prisma.leaveRequest.count({
+  const pendingLeaveCount = await (prisma as any).leaverequest.count({
     where: { employeeName: empName, status: "Chờ phê duyệt" }
   });
 
-  const pendingSalaryCount = await prisma.salaryChange.count({
+  const pendingSalaryCount = await (prisma as any).salarychange.count({
     where: { employeeName: empName, status: "Chờ phê duyệt" }
   });
 
@@ -60,7 +60,7 @@ export default async function ProfilePage({
   });
 
   // Section 3 Data: Salary History
-  const salaryHistory = await prisma.salaryChange.findMany({
+  const salaryHistory = await (prisma as any).salarychange.findMany({
     where: { employeeName: empName, status: "Đã phê duyệt" },
     orderBy: { createdAt: "desc" }
   });

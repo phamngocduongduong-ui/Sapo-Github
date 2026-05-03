@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 
 export default async function OverviewPage() {
   // Lấy số đơn nghỉ phép chờ phê duyệt
-  const pendingLeaveCount = await prisma.leaveRequest.count({
+  const pendingLeaveCount = await (prisma as any).leaverequest.count({
     where: { status: "Chờ phê duyệt" }
   });
 

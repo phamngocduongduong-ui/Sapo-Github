@@ -1,6 +1,9 @@
 "use client";
 
-import { Pencil, FileText, Upload, Download, Search } from "lucide-react";
+import { Pencil, FileText, Upload, Download, Search, Clock } from "lucide-react";
+import { formatCurrency } from "@/lib/format";
+import { useState } from "react";
+import HistoryModal from "../../HistoryModal";
 
 interface SalaryLevelTableProps {
   items: any[];
@@ -17,9 +20,7 @@ export default function SalaryLevelTable({
   items, onEdit, onAdd, onExport, onImport, onDownloadTemplate,
   searchTerm, onSearchChange
 }: SalaryLevelTableProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
-  };
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
 
   return (
     <>
@@ -69,7 +70,9 @@ export default function SalaryLevelTable({
             <th>Chuyên cần</th>
             <th>Hiệu quả</th>
             <th>Trách nhiệm</th>
-            <th style={{ width: "100px", textAlign: "center" }}>Thao tác</th>
+            <th>Thu hút</th>
+            <th>Hỗ trợ khác</th>
+            <th style={{ width: "180px", textAlign: "center" }}>Thao tác</th>
           </tr>
         </thead>
         <tbody>
@@ -86,6 +89,8 @@ export default function SalaryLevelTable({
                 <td>{formatCurrency(item.attendanceBonus)}</td>
                 <td>{formatCurrency(item.performanceBonus)}</td>
                 <td>{formatCurrency(item.responsibilityBonus)}</td>
+                <td>{formatCurrency(item.attractionBonus)}</td>
+                <td>{formatCurrency(item.otherBonus)}</td>
                 <td style={{ textAlign: "center" }}>
                   <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center" }}>
                     <button 
@@ -95,6 +100,13 @@ export default function SalaryLevelTable({
                     >
                       <Pencil size={14} /> Sửa
                     </button>
+                    <button 
+                      className="btn btn-sm btn-outline" 
+                      onClick={() => setHistoryRecordId(item.id)}
+                      title="Lịch sử thay đổi"
+                    >
+                      Lịch sử
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -103,6 +115,14 @@ export default function SalaryLevelTable({
         </tbody>
       </table>
     </div>
+
+    {historyRecordId && (
+      <HistoryModal 
+        tableName="SalaryLevel" 
+        recordId={historyRecordId} 
+        onClose={() => setHistoryRecordId(null)} 
+      />
+    )}
     </>
   );
 }

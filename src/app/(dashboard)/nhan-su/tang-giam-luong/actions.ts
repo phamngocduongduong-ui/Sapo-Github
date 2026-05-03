@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
+import { logAudit } from "@/lib/audit";
 
 export async function getSalaryChanges() {
   const session = await getSession();
@@ -15,7 +16,7 @@ export async function getSalaryChanges() {
   const isAdmin = user?.username === "admin" || user?.role === "Admin";
   const userBranches = user?.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
 
-  return await prisma.salaryChange.findMany({
+  return await (prisma as any).salarychange.findMany({
     where: isAdmin ? {} : {
       branch: { in: userBranches }
     },
@@ -35,7 +36,7 @@ export async function getEmployees() {
   const isAdmin = user?.username === "admin" || user?.role === "Admin";
   const userBranches = user?.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
 
-  return await prisma.employee.findMany({
+  return await (prisma as any).employee.findMany({
     where: { 
       status: "ACTIVE",
       ...(isAdmin ? {} : { branch: { in: userBranches } })
@@ -44,14 +45,27 @@ export async function getEmployees() {
   });
 }
 
+async function generateNextSalaryChangeCode() {
+  const all = await (prisma as any).salarychange.findMany({
+    select: { changeCode: true }
+  });
+  const nums = all
+    .map((r: any) => r.changeCode ? parseInt(r.changeCode.substring(3)) : 0) // TGL is 3 chars
+    .filter((n: any) => !isNaN(n));
+  const max = nums.length > 0 ? Math.max(...nums) : 0;
+  return `TGL${(max + 1).toString().padStart(4, "0")}`;
+}
+
 export async function createSalaryChange(data: any) {
   const employee = await prisma.employee.findFirst({
     where: { fullName: data.employeeName }
   });
 
-  await prisma.salaryChange.create({
+  const changeCode = await generateNextSalaryChangeCode();
 
+  const salaryChange = await (prisma as any).salarychange.create({
     data: {
+      changeCode,
       type: data.type,
       isSelf: data.isSelf,
       employeeName: data.employeeName,
@@ -66,6 +80,19 @@ export async function createSalaryChange(data: any) {
       status: "Tạo mới",
     },
   });
+
+  const session = await getSession();
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "SalaryChange",
+    recordId: salaryChange.id,
+    action: "CREATE",
+    newData: salaryChange,
+    changedBy,
+    changeDetail: `Tạo đề nghị ${data.type} cho ${data.employeeName}`
+  });
   revalidatePath("/nhan-su/tang-giam-luong");
 }
 
@@ -75,17 +102,34 @@ export async function updateSalaryChangeStatus(id: string, status: string) {
   if (status === "Đã phê duyệt") {
     const session = await getSession();
     if (session) {
-      updateData.approver = session.employeeName || session.username;
+      const user = await prisma.user.findUnique({ where: { id: session.userId } });
+      updateData.approver = user?.employeeName || user?.username || "Admin";
     }
   }
 
-  const updated = await prisma.salaryChange.update({
+  const session = await getSession();
+  const oldSalaryChange = await (prisma as any).salarychange.findUnique({ where: { id } });
+
+  const updated = await (prisma as any).salarychange.update({
     where: { id },
     data: updateData,
   });
 
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "SalaryChange",
+    recordId: id,
+    action: "STATUS_CHANGE",
+    oldData: { status: oldSalaryChange?.status },
+    newData: { status },
+    changedBy,
+    changeDetail: `Chuyển trạng thái đề nghị lương sang: ${status}`
+  });
+
   if (status === "Đã phê duyệt") {
-    await prisma.notification.create({
+    await (prisma as any).notification.create({
       data: {
         title: "Đề nghị đã được phê duyệt",
         message: `Đề nghị ${updated.type} của ${updated.employeeName} đã được phê duyệt.`,
@@ -96,7 +140,7 @@ export async function updateSalaryChangeStatus(id: string, status: string) {
   }
 
   if (status === "Từ chối") {
-    await prisma.notification.create({
+    await (prisma as any).notification.create({
       data: {
         title: "Đề nghị bị từ chối",
         message: `Đề nghị ${updated.type} của ${updated.employeeName} đã bị từ chối.`,
@@ -107,7 +151,7 @@ export async function updateSalaryChangeStatus(id: string, status: string) {
   }
 
   if (status === "Chờ phê duyệt") {
-    await prisma.notification.create({
+    await (prisma as any).notification.create({
       data: {
         title: "Đề nghị phê duyệt lương",
         message: `Nhân viên ${updated.employeeName} có đề nghị ${updated.type} cần phê duyệt.`,
@@ -122,12 +166,14 @@ export async function updateSalaryChangeStatus(id: string, status: string) {
 }
 
 export async function updateSalaryChange(id: string, data: any) {
+  const session = await getSession();
+  const oldSalaryChange = await (prisma as any).salarychange.findUnique({ where: { id } });
+
   const employee = await prisma.employee.findFirst({
     where: { fullName: data.employeeName }
   });
 
-  await prisma.salaryChange.update({
-
+  const updatedSalaryChange = await (prisma as any).salarychange.update({
     where: { id },
     data: {
       type: data.type,
@@ -140,22 +186,35 @@ export async function updateSalaryChange(id: string, data: any) {
       reason: data.reason,
       note: data.note,
       branch: employee?.branch || undefined,
-      // Status remains same or resets to 'Tạo mới' if user wants
     },
   });
+
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "SalaryChange",
+    recordId: id,
+    action: "UPDATE",
+    oldData: oldSalaryChange,
+    newData: updatedSalaryChange,
+    changedBy,
+    changeDetail: "Cập nhật thông tin đề nghị tăng/giảm lương"
+  });
+
   revalidatePath("/nhan-su/tang-giam-luong");
 }
 
 export async function getCurrentEmployeeSalaryLevel(employeeName: string) {
   // Logic: Lấy bậc lương từ Hợp đồng lao động hoặc từ các Đề nghị tăng/giảm lương đã phê duyệt tùy ngày nào trễ nhất
   
-  const latestContract = await prisma.laborContract.findFirst({
+  const latestContract = await (prisma as any).laborcontract.findFirst({
     where: { employeeName },
     orderBy: { startDate: "desc" },
     select: { salaryLevel: true, startDate: true }
   });
 
-  const latestSalaryChange = await prisma.salaryChange.findFirst({
+  const latestSalaryChange = await (prisma as any).salarychange.findFirst({
     where: { employeeName, status: "Đã phê duyệt" },
     orderBy: [
       { effectiveYear: "desc" },
@@ -164,7 +223,7 @@ export async function getCurrentEmployeeSalaryLevel(employeeName: string) {
     select: { proposedSalaryLevel: true, effectiveMonth: true, effectiveYear: true }
   });
 
-  const latestTransfer = await prisma.transferPromotion.findFirst({
+  const latestTransfer = await (prisma as any).transferpromotion.findFirst({
     where: { employeeName, status: "Đã phê duyệt" },
     orderBy: { effectiveDate: "desc" },
     select: { newSalaryLevel: true, effectiveDate: true }
@@ -203,7 +262,7 @@ export async function getCurrentUser() {
 }
 
 export async function getNotifications(limit: number = 3) {
-  return await prisma.notification.findMany({
+  return await (prisma as any).notification.findMany({
     where: {
       OR: [
         { isRead: false },
@@ -216,9 +275,10 @@ export async function getNotifications(limit: number = 3) {
 }
 
 export async function markNotificationAsRead(id: string) {
-  await prisma.notification.update({
+  await (prisma as any).notification.update({
     where: { id },
     data: { isRead: true }
   });
   revalidatePath("/");
 }
+

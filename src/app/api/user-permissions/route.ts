@@ -10,9 +10,9 @@ export async function GET() {
     }
 
     const userId = session.userId;
-    const user = await prisma.user.findUnique({
+    const user = await (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { username: true, role: true, permissionId: true }
+      select: { username: true, role: true, employeeName: true, branch: true, permission: { select: { id: true } } }
     });
 
     if (!user) {
@@ -21,23 +21,37 @@ export async function GET() {
 
     // Admin (username admin hoặc role Admin) có toàn quyền
     if (user.username === "admin" || user.role === "Admin") {
-      return NextResponse.json({ isAdmin: true });
+      const allBranches = await (prisma as any).branch.findMany({ select: { name: true } });
+      const branchStr = allBranches.map((b: any) => b.name).join(", ");
+      return NextResponse.json({ 
+        isAdmin: true, 
+        employeeName: user.employeeName, 
+        branch: branchStr || "Toàn bộ chi nhánh" 
+      });
     }
 
-    if (!user.permissionId) {
+    const permissionIds = (user as any).permission.map((p: any) => p.id);
+    if (permissionIds.length === 0) {
       return NextResponse.json({ permissions: [], isAdmin: false });
     }
 
-    // Lấy chi tiết quyền từ Mục quyền của User
-    const permissions = await prisma.permissionDetail.findMany({
-      where: { permissionId: user.permissionId, canAccess: true },
+
+    // Lấy chi tiết quyền từ các Mục quyền của User
+    const permissions = await (prisma as any).permissiondetail.findMany({
+      where: { 
+        permissionId: { in: permissionIds }, 
+        canAccess: true 
+      },
       select: { moduleKey: true }
     });
 
     return NextResponse.json({ 
-      permissions: permissions.map(p => p.moduleKey),
-      isAdmin: false
+      permissions: Array.from(new Set(permissions.map((p: any) => p.moduleKey))),
+      isAdmin: false,
+      employeeName: user.employeeName,
+      branch: user.branch
     });
+
   } catch (error) {
     console.error("Error fetching permissions:", error);
     return NextResponse.json({ permissions: [] }, { status: 500 });

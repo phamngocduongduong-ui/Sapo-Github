@@ -7,27 +7,24 @@ export default async function NghiPhepPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const userWithPerms = await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    include: {
-      permission: {
-        include: { details: true }
-      }
-    }
+    include: { permission: { include: { permissiondetail: true } } }
   });
 
-  const user = userWithPerms;
   const isAdmin = user?.username === "admin" || user?.role === "Admin";
-  const hasApprovePerm = isAdmin || (user?.permission?.details.some(d => d.moduleKey === "NS_APPROVE" && d.canAccess) ?? false);
+  const hasApprovePerm = isAdmin || ((user as any)?.permission?.some((p: any) => p.permissiondetail?.some((d: any) => d.moduleKey === "NS_APPROVE" && d.canAccess)) ?? false);
+
   const isEmployee = user?.role !== "Admin" && user?.role !== "Manager" && user?.role !== "HR";
   const userName = user?.employeeName || user?.username || "";
 
-  const requests = await prisma.leaveRequest.findMany({
+  const requests = await (prisma as any).leaverequest.findMany({
     where: isEmployee ? {
       employeeName: userName
     } : {},
     orderBy: { createdAt: "desc" },
   });
+
 
 
 

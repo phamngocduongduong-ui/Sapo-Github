@@ -4,13 +4,13 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 export async function getSalaryLevels() {
-  return await prisma.salaryLevel.findMany({
+  return await (prisma as any).salarylevel.findMany({
     orderBy: { stt: "asc" }
   });
 }
 
 export async function createSalaryLevel(data: any) {
-  const result = await prisma.salaryLevel.create({
+  const result = await (prisma as any).salarylevel.create({
     data: {
       stt: parseInt(data.stt),
       levelCode: data.levelCode,
@@ -18,6 +18,8 @@ export async function createSalaryLevel(data: any) {
       attendanceBonus: parseFloat(data.attendanceBonus || 0),
       performanceBonus: parseFloat(data.performanceBonus || 0),
       responsibilityBonus: parseFloat(data.responsibilityBonus || 0),
+      attractionBonus: parseFloat(data.attractionBonus || 0),
+      otherBonus: parseFloat(data.otherBonus || 0),
     },
   });
   revalidatePath("/nhan-su/bac-luong");
@@ -25,7 +27,7 @@ export async function createSalaryLevel(data: any) {
 }
 
 export async function updateSalaryLevel(id: string, data: any) {
-  const result = await prisma.salaryLevel.update({
+  const result = await (prisma as any).salarylevel.update({
     where: { id },
     data: {
       stt: parseInt(data.stt),
@@ -34,6 +36,8 @@ export async function updateSalaryLevel(id: string, data: any) {
       attendanceBonus: parseFloat(data.attendanceBonus || 0),
       performanceBonus: parseFloat(data.performanceBonus || 0),
       responsibilityBonus: parseFloat(data.responsibilityBonus || 0),
+      attractionBonus: parseFloat(data.attractionBonus || 0),
+      otherBonus: parseFloat(data.otherBonus || 0),
     },
   });
   revalidatePath("/nhan-su/bac-luong");
@@ -41,7 +45,7 @@ export async function updateSalaryLevel(id: string, data: any) {
 }
 
 export async function deleteSalaryLevel(id: string) {
-  const result = await prisma.salaryLevel.delete({
+  const result = await (prisma as any).salarylevel.delete({
     where: { id },
   });
   revalidatePath("/nhan-su/bac-luong");
@@ -51,8 +55,8 @@ export async function deleteSalaryLevel(id: string) {
 export async function importSalaryLevels(dataList: any[]) {
   // Use transaction to delete all and create new
   const result = await prisma.$transaction([
-    prisma.salaryLevel.deleteMany({}),
-    prisma.salaryLevel.createMany({
+    (prisma as any).salarylevel.deleteMany({}),
+    (prisma as any).salarylevel.createMany({
       data: dataList
     })
   ]);

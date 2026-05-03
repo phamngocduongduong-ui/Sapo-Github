@@ -2,6 +2,8 @@
 
 import { useState, useTransition, useRef } from "react";
 import { createBranch, updateBranch } from "./actions";
+import HistoryModal from "../../HistoryModal";
+import { Clock } from "lucide-react";
 
 type Branch = {
   id: string;
@@ -21,6 +23,7 @@ export default function BranchTable({ initialBranches }: { initialBranches: Bran
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   function handleClose() {
@@ -74,7 +77,7 @@ export default function BranchTable({ initialBranches }: { initialBranches: Bran
               <th>Tên chi nhánh</th>
               <th>Địa chỉ</th>
               <th>Trạng thái</th>
-              <th style={{ width: "80px", textAlign: "center" }}>Thao tác</th>
+              <th style={{ width: "160px", textAlign: "center" }}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -90,11 +93,20 @@ export default function BranchTable({ initialBranches }: { initialBranches: Bran
                     <span className={`badge ${st.badge}`}>{st.label}</span>
                   </td>
                   <td style={{ textAlign: "center" }}>
-                    <button
-                      onClick={() => handleEdit(branch)}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem" }}
-                      title="Sửa"
-                    >✏️</button>
+                    <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", alignItems: "center" }}>
+                      <button
+                        onClick={() => handleEdit(branch)}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem" }}
+                        title="Sửa"
+                      >✏️</button>
+                      <button 
+                        className="btn btn-sm btn-outline" 
+                        onClick={() => setHistoryRecordId(branch.id)}
+                        title="Lịch sử thay đổi"
+                      >
+                        Lịch sử
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -109,6 +121,14 @@ export default function BranchTable({ initialBranches }: { initialBranches: Bran
           </tbody>
         </table>
       </div>
+
+      {historyRecordId && (
+        <HistoryModal 
+          tableName="Branch" 
+          recordId={historyRecordId} 
+          onClose={() => setHistoryRecordId(null)} 
+        />
+      )}
 
       {showModal && (
         <div

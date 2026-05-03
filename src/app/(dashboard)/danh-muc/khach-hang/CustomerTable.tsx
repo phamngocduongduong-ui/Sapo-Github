@@ -2,6 +2,8 @@
 
 import { useState, useTransition, useRef } from "react";
 import { createCustomer, updateCustomer } from "./actions";
+import HistoryModal from "../../HistoryModal";
+import { Clock } from "lucide-react";
 
 type Customer = {
   id: string;
@@ -17,6 +19,7 @@ export default function CustomerTable({ initialCustomers }: { initialCustomers: 
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   function handleClose() {
@@ -71,7 +74,7 @@ export default function CustomerTable({ initialCustomers }: { initialCustomers: 
               <th>Số điện thoại</th>
               <th>Email</th>
               <th>Địa chỉ</th>
-              <th style={{ width: "80px", textAlign: "center" }}>Thao tác</th>
+              <th style={{ width: "200px", textAlign: "center" }}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -84,11 +87,20 @@ export default function CustomerTable({ initialCustomers }: { initialCustomers: 
                 <td>{customer.email ?? "—"}</td>
                 <td>{customer.address ?? "—"}</td>
                 <td style={{ textAlign: "center" }}>
-                  <button
-                    onClick={() => handleEdit(customer)}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem" }}
-                    title="Sửa"
-                  >✏️</button>
+                  <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", alignItems: "center" }}>
+                    <button
+                      onClick={() => handleEdit(customer)}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem" }}
+                      title="Sửa"
+                    >✏️</button>
+                    <button 
+                      className="btn btn-sm btn-outline" 
+                      onClick={() => setHistoryRecordId(customer.id)}
+                      title="Lịch sử thay đổi"
+                    >
+                      Lịch sử
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -99,6 +111,14 @@ export default function CustomerTable({ initialCustomers }: { initialCustomers: 
                 </td>
               </tr>
             )}
+
+       {historyRecordId && (
+         <HistoryModal 
+           tableName="Customer" 
+           recordId={historyRecordId} 
+           onClose={() => setHistoryRecordId(null)} 
+         />
+       )}
           </tbody>
         </table>
       </div>

@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getSession } from "@/lib/session";
+import { logAudit } from "@/lib/audit";
 
 // Hàm tính toán chi tiết lương cho 1 nhân viên
 async function calculatePayrollItem(code: string, month: number, year: number) {
@@ -12,49 +14,86 @@ async function calculatePayrollItem(code: string, month: number, year: number) {
   const fullName = employee?.fullName || "";
   if (!fullName) return null;
 
-  // Lấy hợp đồng/đề xuất tăng lương mới nhất
+  // Lấy hợp đồng đã phê duyệt
   const contract = await prisma.laborContract.findFirst({
     where: { employeeName: fullName, status: "Đã phê duyệt" },
     orderBy: { updatedAt: "desc" }
   });
 
-  const salaryIncrease = await prisma.salaryIncreaseRequest.findFirst({
-    where: { employeeName: fullName, status: "Đã phê duyệt" },
-    orderBy: { updatedAt: "desc" }
+  // Lấy thay đổi lương được phê duyệt gần nhất và có hiệu lực (<= tháng/năm bảng lương)
+  const salaryChange = await prisma.salaryChange.findFirst({
+    where: { 
+      employeeName: fullName, 
+      status: "Đã phê duyệt",
+      OR: [
+        { effectiveYear: { lt: year } },
+        { effectiveYear: year, effectiveMonth: { lte: month } }
+      ]
+    },
+    orderBy: [
+      { effectiveYear: "desc" },
+      { effectiveMonth: "desc" }
+    ]
   });
+
+  let activeLevelCode = "";
+  let source: "change" | "contract" | null = null;
+
+  if (salaryChange) {
+    activeLevelCode = salaryChange.proposedSalaryLevel;
+    source = "change";
+  } else if (contract) {
+    activeLevelCode = contract.salaryLevel || "";
+    source = "contract";
+  }
 
   let salaryBase = 0;
   let attendanceAllowance = 0;
   let performanceAllowance = 0;
   let responsibilityAllowance = 0;
+  let attractionAllowance = 0;
+  let otherAllowance = 0;
   let socialInsuranceBase = 0;
 
-  if (contract && salaryIncrease) {
-    if (contract.updatedAt > salaryIncrease.updatedAt) {
-      salaryBase = contract.salaryBase;
-      attendanceAllowance = contract.attendanceAllowance;
-      performanceAllowance = contract.performanceAllowance;
-      responsibilityAllowance = contract.responsibilityAllowance;
-      socialInsuranceBase = contract.socialInsurance;
-    } else {
-      salaryBase = salaryIncrease.proposedSalary;
-      attendanceAllowance = contract.attendanceAllowance;
-      performanceAllowance = contract.performanceAllowance;
-      responsibilityAllowance = contract.responsibilityAllowance;
-      socialInsuranceBase = contract.socialInsurance;
+  // 1. Lấy dữ liệu từ bảng SalaryLevel (Ưu tiên cao nhất cho mọi nguồn)
+  if (activeLevelCode) {
+    const level = await prisma.salaryLevel.findUnique({
+      where: { levelCode: activeLevelCode }
+    });
+    if (level) {
+      salaryBase = level.baseSalary;
+      attendanceAllowance = level.attendanceBonus;
+      performanceAllowance = level.performanceBonus;
+      responsibilityAllowance = level.responsibilityBonus;
+      // Chỉ lấy Attraction và Other từ bảng SalaryLevel nếu nguồn là từ Tăng/Giảm lương
+      // Vì trong hợp đồng, 2 trường này là người dùng tự nhập tay
+      if (source === "change") {
+        attractionAllowance = level.attractionBonus;
+        otherAllowance = level.otherBonus;
+      }
     }
-  } else if (contract) {
+  }
+
+  // 2. Nếu nguồn là Hợp đồng lao động, lấy Attraction và Other từ chính bản ghi hợp đồng (vì nhập tay)
+  if (source === "contract" && contract) {
+    attractionAllowance = contract.attractionAllowance;
+    otherAllowance = contract.otherAllowance;
+  }
+
+  // 3. Fallback: Nếu vẫn chưa có lương cơ bản (ví dụ không tìm thấy Level), lấy từ hợp đồng
+  if (salaryBase === 0 && contract) {
     salaryBase = contract.salaryBase;
     attendanceAllowance = contract.attendanceAllowance;
     performanceAllowance = contract.performanceAllowance;
     responsibilityAllowance = contract.responsibilityAllowance;
+    // Nếu source là change, có thể Attraction vẫn là 0 nếu Level không có, nhưng user muốn lấy từ đâu?
+    // Thường là lấy từ hợp đồng cũ nếu change không định nghĩa lại.
+    if (attractionAllowance === 0) attractionAllowance = contract.attractionAllowance;
+    if (otherAllowance === 0) otherAllowance = contract.otherAllowance;
     socialInsuranceBase = contract.socialInsurance;
-  } else if (salaryIncrease) {
-    salaryBase = salaryIncrease.proposedSalary;
-    attendanceAllowance = 0;
-    performanceAllowance = 0;
-    responsibilityAllowance = 0;
-    socialInsuranceBase = 0;
+  } else if (contract) {
+    // Luôn lấy mức đóng BHXH từ hợp đồng chính thức
+    socialInsuranceBase = contract.socialInsurance;
   }
 
   if (salaryBase <= 0) {
@@ -65,11 +104,12 @@ async function calculatePayrollItem(code: string, month: number, year: number) {
       attendanceBonus: 0,
       performanceBonus: 0,
       responsibilityBonus: 0,
+      attractionBonus: 0,
+      otherBonus: 0,
       overtimePay: 0,
       socialInsuranceDeduction: 0
     };
   }
- Riverside
 
   // Lấy dữ liệu chấm công
   const attendance = await prisma.attendance.findUnique({
@@ -98,6 +138,12 @@ async function calculatePayrollItem(code: string, month: number, year: number) {
 
   // 4. Trách nhiệm
   const responsibilityBonus = responsibilityAllowance;
+
+  // 4b. Thu hút
+  const attractionBonus = attractionAllowance;
+
+  // 4c. Hỗ trợ khác
+  const otherBonus = otherAllowance;
 
   // 5. Làm thêm giờ
   const workplace = (employee?.workplace || "").toLowerCase();
@@ -136,9 +182,22 @@ async function calculatePayrollItem(code: string, month: number, year: number) {
     attendanceBonus: Math.round(attendanceBonus),
     performanceBonus: Math.round(performanceBonus),
     responsibilityBonus: Math.round(responsibilityBonus),
+    attractionBonus: Math.round(attractionBonus),
+    otherBonus: Math.round(otherBonus),
     overtimePay: Math.round(overtimePay),
     socialInsuranceDeduction: Math.round(socialInsuranceDeduction)
   };
+}
+
+async function generateNextPayrollCode() {
+  const all = await prisma.payroll.findMany({
+    select: { payrollCode: true }
+  });
+  const nums = all
+    .map(r => r.payrollCode ? parseInt(r.payrollCode.substring(2)) : 0)
+    .filter(n => !isNaN(n));
+  const max = nums.length > 0 ? Math.max(...nums) : 0;
+  return `BL${(max + 1).toString().padStart(4, "0")}`;
 }
 
 export async function createPayroll(formData: FormData, selectedEmployeeCodes: string[]) {
@@ -166,9 +225,11 @@ export async function createPayroll(formData: FormData, selectedEmployeeCodes: s
     branch = firstEmp?.branch || "";
   }
 
+  const payrollCode = await generateNextPayrollCode();
 
   const payroll = await prisma.payroll.create({
     data: { 
+      payrollCode,
       month, 
       year, 
       branch, 
@@ -181,26 +242,37 @@ export async function createPayroll(formData: FormData, selectedEmployeeCodes: s
 
   for (const code of selectedEmployeeCodes) {
     const calcResult = await calculatePayrollItem(code, month, year);
-    if (!calcResult) {
-      throw new Error(`Nhân viên ${code} chưa có thông tin lương được phê duyệt.`);
+    if (calcResult) {
+      await prisma.payrollDetail.create({
+        data: { payrollId: payroll.id, ...calcResult }
+      });
     }
-
-    await prisma.payrollDetail.create({
-      data: {
-        payrollId: payroll.id,
-        ...calcResult
-      }
-    });
   }
+
+  const session = await getSession();
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "Payroll",
+    recordId: payroll.id,
+    action: "CREATE",
+    newData: payroll,
+    changedBy,
+    changeDetail: `Tạo bảng lương tháng ${month}/${year}`
+  });
 
   revalidatePath("/nhan-su/bang-luong");
 }
 
-export async function updatePayroll(id: string, formData: FormData) {
+export async function updatePayroll(id: string, formData: FormData, selectedEmployeeCodes: string[]) {
   const month = parseInt(formData.get("month") as string);
   const year = parseInt(formData.get("year") as string);
   const approver = formData.get("approver") as string;
   const note = formData.get("note") as string;
+
+  const session = await getSession();
+  const oldPayroll = await prisma.payroll.findUnique({ where: { id }, include: { details: true } });
 
   await prisma.payroll.update({
     where: { id },
@@ -211,14 +283,45 @@ export async function updatePayroll(id: string, formData: FormData) {
       note 
     }
   });
-  revalidatePath("/nhan-su/bang-luong");
-}
 
-export async function getPayrolls() {
-  return await prisma.payroll.findMany({
-    orderBy: [{ year: "desc" }, { month: "desc" }],
-    include: { _count: { select: { details: true } } }
+  // Đồng bộ danh sách nhân viên
+  const currentDetails = await prisma.payrollDetail.findMany({ where: { payrollId: id } });
+  const currentCodes = currentDetails.map(d => d.employeeCode);
+
+  // Xóa bớt
+  const codesToRemove = currentCodes.filter(c => !selectedEmployeeCodes.includes(c));
+  if (codesToRemove.length > 0) {
+    await prisma.payrollDetail.deleteMany({
+      where: { payrollId: id, employeeCode: { in: codesToRemove } }
+    });
+  }
+
+  // Thêm mới
+  const codesToAdd = selectedEmployeeCodes.filter(c => !currentCodes.includes(c));
+  for (const code of codesToAdd) {
+    const calcResult = await calculatePayrollItem(code, month, year);
+    if (calcResult) {
+      await prisma.payrollDetail.create({
+        data: { payrollId: id, ...calcResult }
+      });
+    }
+  }
+
+  const updatedPayroll = await prisma.payroll.findUnique({ where: { id }, include: { details: true } });
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "Payroll",
+    recordId: id,
+    action: "UPDATE",
+    oldData: oldPayroll,
+    newData: updatedPayroll,
+    changedBy,
+    changeDetail: `Cập nhật bảng lương tháng ${month}/${year}`
   });
+
+  revalidatePath("/nhan-su/bang-luong");
 }
 
 export async function deletePayroll(id: string) {
@@ -230,23 +333,79 @@ export async function getPayrollDetails(payrollId: string) {
   return await prisma.payrollDetail.findMany({ where: { payrollId } });
 }
 
+// Hàm mới để làm mới toàn bộ dữ liệu bảng lương
+export async function refreshAllPayrollDetails(payrollId: string) {
+  const payroll = await prisma.payroll.findUnique({ where: { id: payrollId } });
+  if (!payroll) throw new Error("Không tìm thấy bảng lương.");
+
+  const details = await prisma.payrollDetail.findMany({ where: { payrollId } });
+  
+  for (const detail of details) {
+    const calcResult = await calculatePayrollItem(detail.employeeCode, payroll.month, payroll.year);
+    if (calcResult) {
+      await prisma.payrollDetail.update({
+        where: { id: detail.id },
+        data: calcResult
+      });
+    }
+  }
+  
+  revalidatePath("/nhan-su/bang-luong");
+  return await prisma.payrollDetail.findMany({ where: { payrollId } });
+}
+
 export async function updatePayrollDetail(id: string, data: any) {
-  await prisma.payrollDetail.update({
+  const session = await getSession();
+  const oldDetail = await prisma.payrollDetail.findUnique({ where: { id } });
+
+  const updatedDetail = await prisma.payrollDetail.update({
     where: { id },
     data: {
       incomePerWorkday: parseFloat(data.incomePerWorkday),
       attendanceBonus: parseFloat(data.attendanceBonus),
       performanceBonus: parseFloat(data.performanceBonus),
       responsibilityBonus: parseFloat(data.responsibilityBonus || 0),
+      attractionBonus: parseFloat(data.attractionBonus || 0),
+      otherBonus: parseFloat(data.otherBonus || 0),
       overtimePay: parseFloat(data.overtimePay),
       socialInsuranceDeduction: parseFloat(data.socialInsuranceDeduction || 0)
     }
   });
+
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  await logAudit({
+    tableName: "PayrollDetail",
+    recordId: id,
+    action: "UPDATE",
+    oldData: oldDetail,
+    newData: updatedDetail,
+    changedBy,
+    changeDetail: `Cập nhật chi tiết lương của nhân viên: ${updatedDetail.employeeName}`
+  });
+
   revalidatePath("/nhan-su/bang-luong");
 }
 
 export async function updatePayrollStatus(id: string, status: string) {
+  const session = await getSession();
+  const oldPayroll = await prisma.payroll.findUnique({ where: { id } });
+
   await prisma.payroll.update({ where: { id }, data: { status } });
+
+  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const changedBy = user?.employeeName || user?.username || "Admin";
+
+  await logAudit({
+    tableName: "Payroll",
+    recordId: id,
+    action: "STATUS_CHANGE",
+    oldData: { status: oldPayroll?.status },
+    newData: { status },
+    changedBy,
+    changeDetail: `Chuyển trạng thái bảng lương tháng ${oldPayroll?.month}/${oldPayroll?.year} sang: ${status}`
+  });
   revalidatePath("/nhan-su/bang-luong");
 }
 
@@ -267,14 +426,36 @@ export async function syncPayrollWithAttendance(employeeCode: string, month: num
   if (calcResult) {
     await prisma.payrollDetail.update({
       where: { id: detail.id },
-      data: {
-        incomePerWorkday: calcResult.incomePerWorkday,
-        attendanceBonus: calcResult.attendanceBonus,
-        performanceBonus: calcResult.performanceBonus,
-        responsibilityBonus: calcResult.responsibilityBonus,
-        overtimePay: calcResult.overtimePay,
-        socialInsuranceDeduction: calcResult.socialInsuranceDeduction
-      }
+      data: calcResult
     });
   }
+}
+
+export async function getEmployeeEligibility(employeeCodes: string[], month: number, year: number) {
+  const eligibility: Record<string, { hasContract: boolean, hasAttendance: boolean }> = {};
+  
+  for (const code of employeeCodes) {
+    const employee = await prisma.employee.findUnique({
+      where: { employeeCode: code }
+    });
+    
+    if (!employee) continue;
+
+    // Check for approved contract
+    const contract = await prisma.laborContract.findFirst({
+      where: { employeeName: employee.fullName, status: "Đã phê duyệt" }
+    });
+
+    // Check for attendance record for specific month/year
+    const attendance = await prisma.attendance.findUnique({
+      where: { employeeCode_month_year: { employeeCode: code, month, year } }
+    });
+
+    eligibility[code] = {
+      hasContract: !!contract,
+      hasAttendance: !!attendance
+    };
+  }
+  
+  return eligibility;
 }

@@ -6,7 +6,7 @@ export default async function DonHangPage() {
   const session = await getSession();
   
   const orders = await prisma.order.findMany({
-    include: { items: true },
+    include: { orderitem: true },
     orderBy: { createdAt: "desc" },
   });
 

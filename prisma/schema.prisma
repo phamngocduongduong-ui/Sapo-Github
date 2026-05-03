@@ -3,153 +3,84 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String           @id @default(uuid())
-  username     String           @unique
-  password     String
-  employeeName String?
-  employeeId   String?
-  branch       String?
-  role         String           @default("SALES")
-  status       String           @default("ACTIVE")
-  permissionId String?
-  permission   Permission?      @relation(fields: [permissionId], references: [id])
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+model attendance {
+  id                   String   @id
+  employeeCode         String
+  employeeName         String
+  branch               String?
+  gender               String?
+  department           String?
+  annualLeaveDays      Float    @default(0)
+  paidLeaveDays        Float    @default(0)
+  unpaidLeaveDays      Float    @default(0)
+  sundayOvertimeHours  Float    @default(0)
+  holidayOvertimeHours Float    @default(0)
+  weekdayOvertimeHours Float    @default(0)
+  month                Int
+  year                 Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime
+
+  @@unique([employeeCode, month, year], map: "Attendance_employeeCode_month_year_key")
 }
 
-model Permission {
-  id          String             @id @default(uuid())
-  code        String             @unique
-  name        String             @unique
-  status      String             @default("ACTIVE")
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  users       User[]
-  details     PermissionDetail[]
+model auditlog {
+  id           String   @id @default(cuid())
+  tableName    String
+  recordId     String
+  action       String
+  oldData      Json?
+  newData      Json?
+  changedBy    String
+  changeDetail String?
+  createdAt    DateTime @default(now())
 }
 
-model PermissionDetail {
-  id           String     @id @default(uuid())
-  permissionId String
-  moduleKey    String
-  canAccess    Boolean    @default(false)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@unique([permissionId, moduleKey])
-}
-
-
-
-model Branch {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String   @unique
+model branch {
+  id        String   @id
+  code      String   @unique(map: "Branch_code_key")
+  name      String   @unique(map: "Branch_name_key")
   address   String?
   status    String   @default("ACTIVE")
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime
 }
 
-model Order {
-  id                   String          @id @default(uuid())
-  orderCode            String          @unique
-  customerCode         String
-  employeeName         String
-  orderDate            DateTime        @default(now())
-  branch               String?
-  requestDeliveryDate  DateTime?
-  productionFinishDate DateTime?
-  shipDate             DateTime?
-  thermometer          Boolean         @default(false)
-  status               String          @default("Tạo mới")
-  note                 String?
-  materialPlanId       String?
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-  materialPlan         MaterialPlan?   @relation(fields: [materialPlanId], references: [id])
-  items                OrderItem[]
-  productionPlan       ProductionPlan?
-  purchasingPlan       PurchasingPlan?
+model country {
+  id        String   @id
+  code      String   @unique(map: "Country_code_key")
+  name      String   @unique(map: "Country_name_key")
+  createdAt DateTime @default(now())
+  updatedAt DateTime
 }
 
-model MaterialPlan {
-  id         String   @id @default(uuid())
-  planNumber String   @unique
-  planDate   DateTime @default(now())
-  creator    String
-  status     String   @default("Tạo mới")
-  note       String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  orders     Order[]
+model customer {
+  id        String   @id
+  code      String   @unique(map: "Customer_code_key")
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
 }
 
-model OrderItem {
-  id             String   @id @default(uuid())
-  orderId        String
-  productName    String
-  packaging      String?
-  quantity       Int      @default(0)
-  hasPallet      Boolean  @default(false)
-  hasCornerGuard Boolean  @default(false)
-  note           String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+model department {
+  id        String   @id
+  code      String   @unique(map: "Department_code_key")
+  name      String   @unique(map: "Department_name_key")
+  status    String   @default("ACTIVE")
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
 }
 
-model ProductionPlan {
-  id        String               @id @default(uuid())
-  orderId   String               @unique
-  status    String               @default("PENDING")
-  startDate DateTime?
-  endDate   DateTime?
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-  order     Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  items     ProductionPlanItem[]
-}
-
-model ProductionPlanItem {
-  id               String         @id @default(uuid())
-  productionPlanId String
-  product          String
-  quantity         Int
-  producedQuantity Int            @default(0)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  productionPlan   ProductionPlan @relation(fields: [productionPlanId], references: [id], onDelete: Cascade)
-}
-
-model PurchasingPlan {
-  id             String               @id @default(uuid())
-  orderId        String               @unique
-  status         String               @default("PENDING")
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  dispatchOrders DispatchOrder[]
-  order          Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  items          PurchasingPlanItem[]
-}
-
-model PurchasingPlanItem {
-  id               String         @id @default(uuid())
-  purchasingPlanId String
-  material         String
-  quantity         Int
-  unit             String
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  purchasingPlan   PurchasingPlan @relation(fields: [purchasingPlanId], references: [id], onDelete: Cascade)
-}
-
-model DispatchOrder {
-  id               String          @id @default(uuid())
+model dispatchorder {
+  id               String          @id
   purchasingPlanId String?
   employeeName     String
   dispatchDate     DateTime
@@ -160,13 +91,15 @@ model DispatchOrder {
   status           String          @default("PENDING")
   note             String?
   createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  purchasingPlan   PurchasingPlan? @relation(fields: [purchasingPlanId], references: [id])
+  updatedAt        DateTime
+  purchasingplan   purchasingplan? @relation(fields: [purchasingPlanId], references: [id], map: "DispatchOrder_purchasingPlanId_fkey")
+
+  @@index([purchasingPlanId], map: "DispatchOrder_purchasingPlanId_fkey")
 }
 
-model Employee {
-  id             String    @id @default(uuid())
-  employeeCode   String    @unique
+model employee {
+  id             String    @id
+  employeeCode   String    @unique(map: "Employee_employeeCode_key")
   fullName       String
   position       String
   department     String
@@ -186,114 +119,14 @@ model Employee {
   workplace      String?
   creator        String?
   createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  updatedAt      DateTime
 }
 
-
-
-model Customer {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String
-  phone     String?
-  email     String?
-  address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Supplier {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String
-  phone     String?
-  email     String?
-  address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model ProductCategory {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  products    Product[]
-}
-
-model Product {
-  id         String          @id @default(uuid())
-  code       String          @unique
-  name       String
-  unit       String
-  categoryId String
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
-  category   ProductCategory @relation(fields: [categoryId], references: [id])
-}
-
-model Department {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String   @unique
-  status    String   @default("ACTIVE")
-  note      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Position {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String   @unique
-  status    String   @default("ACTIVE")
-  note      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Country {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model LeaveRequest {
-  id           String   @id @default(uuid())
-  createdAt    DateTime @default(now())
-  employeeName String
-  branch       String?
-  startDate    DateTime
-  endDate      DateTime
-  totalDays    Int
-  reason       String
-  status       String   @default("Tạo mới")
-  approver     String?
-  note         String?
-  updatedAt    DateTime @updatedAt
-}
-
-model SalaryIncreaseRequest {
-  id             String   @id @default(uuid())
-  createdAt      DateTime @default(now())
-  employeeName   String
-  currentSalary  Float?
-  proposedSalary Float
-  reason         String
-  status         String   @default("Tạo mới")
-  approver       String?
-  note           String?
-  updatedAt      DateTime @updatedAt
-}
-
-model LaborContract {
-  id                      String    @id @default(uuid())
+model laborcontract {
+  id                      String    @id
   employeeName            String
   branch                  String?
-  contractNumber          String    @unique
+  contractNumber          String    @unique(map: "LaborContract_contractNumber_key")
   contractType            String
   contractDate            DateTime
   startDate               DateTime
@@ -315,66 +148,323 @@ model LaborContract {
   approver                String?
   note                    String?
   createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  updatedAt               DateTime
+  durationMonths          Int?
 }
 
+model leaverequest {
+  id           String   @id
+  createdAt    DateTime @default(now())
+  employeeName String
+  branch       String?
+  startDate    DateTime
+  endDate      DateTime
+  totalDays    Int
+  reason       String
+  status       String   @default("Tạo mới")
+  approver     String?
+  note         String?
+  updatedAt    DateTime
+  leaveCode    String?  @unique(map: "LeaveRequest_leaveCode_key")
+  subReason    String?
+}
 
-model Attendance {
-  id                   String   @id @default(uuid())
-  employeeCode         String
+model materialplan {
+  id         String   @id
+  planNumber String   @unique(map: "MaterialPlan_planNumber_key")
+  planDate   DateTime @default(now())
+  creator    String
+  status     String   @default("Tạo mới")
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+  order      order[]
+}
+
+model notification {
+  id         String   @id
+  title      String
+  message    String
+  link       String?
+  isRead     Boolean  @default(false)
+  type       String?
+  targetRole String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+}
+
+model order {
+  id                   String          @id
+  orderCode            String          @unique(map: "Order_orderCode_key")
+  customerCode         String
   employeeName         String
+  orderDate            DateTime        @default(now())
   branch               String?
-  gender               String?
-  department           String?
-  annualLeaveDays      Float    @default(0)
-  paidLeaveDays        Float    @default(0)
-  unpaidLeaveDays      Float    @default(0)
-  sundayOvertimeHours  Float    @default(0)
-  holidayOvertimeHours Float    @default(0)
-  weekdayOvertimeHours Float    @default(0)
-  month                Int
-  year                 Int
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  requestDeliveryDate  DateTime?
+  productionFinishDate DateTime?
+  shipDate             DateTime?
+  thermometer          Boolean         @default(false)
+  status               String          @default("Tạo mới")
+  note                 String?
+  materialPlanId       String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime
+  materialplan         materialplan?   @relation(fields: [materialPlanId], references: [id], map: "Order_materialPlanId_fkey")
+  orderitem            orderitem[]
+  productionplan       productionplan?
+  purchasingplan       purchasingplan?
 
-  @@unique([employeeCode, month, year])
+  @@index([materialPlanId], map: "Order_materialPlanId_fkey")
 }
 
-model Payroll {
-  id        String          @id @default(uuid())
-  month     Int
-  year      Int
-  branch    String?
-  creator   String
-  approver  String?
-  note      String?
-  status    String          @default("Tạo mới")
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-  details   PayrollDetail[]
+model orderitem {
+  id             String   @id
+  orderId        String
+  productName    String
+  packaging      String?
+  quantity       Int      @default(0)
+  hasPallet      Boolean  @default(false)
+  hasCornerGuard Boolean  @default(false)
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime
+  order          order    @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "OrderItem_orderId_fkey")
 
-  @@unique([month, year])
+  @@index([orderId], map: "OrderItem_orderId_fkey")
 }
 
-model PayrollDetail {
-  id                       String   @id @default(uuid())
+model payroll {
+  id            String          @id
+  month         Int
+  year          Int
+  branch        String?
+  creator       String
+  approver      String?
+  note          String?
+  status        String          @default("Tạo mới")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  payrollCode   String?         @unique(map: "Payroll_payrollCode_key")
+  payrolldetail payrolldetail[]
+
+  @@unique([month, year], map: "Payroll_month_year_key")
+}
+
+model payrolldetail {
+  id                       String   @id
   payrollId                String
   employeeCode             String
   employeeName             String?
   incomePerWorkday         Float    @default(0)
-  attendanceBonus          Float    @default(0) // Số tiền chuyên cần
-  performanceBonus         Float    @default(0) // Tiền hiệu quả
-  responsibilityBonus      Float    @default(0) // Tiền trách nhiệm
-  overtimePay              Float    @default(0) // Tiền làm thêm giờ
-  socialInsuranceDeduction Float    @default(0) // BHXH (Nhân viên đóng)
+  attendanceBonus          Float    @default(0)
+  performanceBonus         Float    @default(0)
+  responsibilityBonus      Float    @default(0)
+  attractionBonus          Float    @default(0)
+  otherBonus               Float    @default(0)
+  overtimePay              Float    @default(0)
+  socialInsuranceDeduction Float    @default(0)
   createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
-  payroll                  Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  updatedAt                DateTime
+  payroll                  payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade, map: "PayrollDetail_payrollId_fkey")
+
+  @@index([payrollId], map: "PayrollDetail_payrollId_fkey")
 }
-model SalaryChange {
-  id                  String   @id @default(uuid())
+
+model permission {
+  id               String             @id
+  code             String             @unique(map: "Permission_code_key")
+  name             String             @unique(map: "Permission_name_key")
+  status           String             @default("ACTIVE")
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  permissiondetail permissiondetail[]
+  user             user[]             @relation("permissiontouser")
+}
+
+model permissiondetail {
+  id           String     @id
+  permissionId String
+  moduleKey    String
+  canAccess    Boolean    @default(false)
+  permission   permission @relation(fields: [permissionId], references: [id], onDelete: Cascade, map: "PermissionDetail_permissionId_fkey")
+
+  @@unique([permissionId, moduleKey], map: "PermissionDetail_permissionId_moduleKey_key")
+}
+
+model position {
+  id        String   @id
+  code      String   @unique(map: "Position_code_key")
+  name      String   @unique(map: "Position_name_key")
+  status    String   @default("ACTIVE")
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model product {
+  id              String          @id
+  code            String          @unique(map: "Product_code_key")
+  name            String
+  categoryId      String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime
+  note            String?
+  status          String          @default("Hoạt động")
+  productcategory productcategory @relation(fields: [categoryId], references: [id], map: "Product_categoryId_fkey")
+  unit            unit[]          @relation("producttounit")
+
+  @@index([categoryId], map: "Product_categoryId_fkey")
+}
+
+model productcategory {
+  id          String    @id
+  name        String    @unique(map: "ProductCategory_name_key")
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  code        String    @unique(map: "ProductCategory_code_key")
+  status      String    @default("Hoạt động")
+  product     product[]
+}
+
+model productionplan {
+  id                 String               @id
+  orderId            String               @unique(map: "ProductionPlan_orderId_key")
+  status             String               @default("PENDING")
+  startDate          DateTime?
+  endDate            DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  order              order                @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "ProductionPlan_orderId_fkey")
+  productionplanitem productionplanitem[]
+}
+
+model productionplanitem {
+  id               String         @id
+  productionPlanId String
+  product          String
+  quantity         Int
+  producedQuantity Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime
+  productionplan   productionplan @relation(fields: [productionPlanId], references: [id], onDelete: Cascade, map: "ProductionPlanItem_productionPlanId_fkey")
+
+  @@index([productionPlanId], map: "ProductionPlanItem_productionPlanId_fkey")
+}
+
+model purchaseorder {
+  id                  String                @id
+  poCode              String                @unique(map: "PurchaseOrder_poCode_key")
+  creator             String
+  branch              String?
+  createdDate         DateTime              @default(now())
+  requestedDate       DateTime
+  purpose             String
+  status              String                @default("Tạo mới")
+  deliveryLocation    String?
+  note                String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  purchaseorderdetail purchaseorderdetail[]
+  purchaseinvoice     purchaseinvoice[]
+}
+
+model purchaseorderdetail {
+  id                String        @id
+  purchaseOrderId   String
+  productCode       String
+  productName       String
+  requestedQuantity Float         @default(0)
+  deliveryLocation  String?
+  note              String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime
+  unit              String?
+  purchaseorder     purchaseorder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade, map: "PurchaseOrderDetail_purchaseOrderId_fkey")
+
+  @@index([purchaseOrderId], map: "PurchaseOrderDetail_purchaseOrderId_fkey")
+}
+
+model purchaseinvoice {
+  id                  String                  @id
+  invoiceCode         String                  @unique(map: "PurchaseInvoice_invoiceCode_key")
+  creator             String
+  branch              String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime
+  supplier            String
+  status              String                  @default("Tạo mới")
+  deliveryDate        DateTime
+  note                String?
+  purchaseOrderId     String?
+  poCode              String?
+  invoiceType         String                  @default("Nhập kho")
+  warehouseName       String?
+  purchaseorder       purchaseorder?          @relation(fields: [purchaseOrderId], references: [id])
+  purchaseinvoicedetail purchaseinvoicedetail[]
+}
+
+model purchaseinvoicedetail {
+  id                String          @id
+  purchaseInvoiceId String
+  productCode       String
+  productName       String
+  requestedQuantity Float           @default(0)
+  purchasedQuantity Float           @default(0)
+  deliveryLocation  String?
+  unit              String?
+  note              String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime
+  purchaseinvoice   purchaseinvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade, map: "PurchaseInvoiceDetail_purchaseInvoiceId_fkey")
+
+  @@index([purchaseInvoiceId], map: "PurchaseInvoiceDetail_purchaseInvoiceId_fkey")
+}
+
+
+model purchasingplan {
+  id                 String               @id
+  orderId            String               @unique(map: "PurchasingPlan_orderId_key")
+  status             String               @default("PENDING")
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  dispatchorder      dispatchorder[]
+  order              order                @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "PurchasingPlan_orderId_fkey")
+  purchasingplanitem purchasingplanitem[]
+}
+
+model purchasingplanitem {
+  id               String         @id
+  purchasingPlanId String
+  material         String
+  quantity         Int
+  unit             String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime
+  purchasingplan   purchasingplan @relation(fields: [purchasingPlanId], references: [id], onDelete: Cascade, map: "PurchasingPlanItem_purchasingPlanId_fkey")
+
+  @@index([purchasingPlanId], map: "PurchasingPlanItem_purchasingPlanId_fkey")
+}
+
+model resignation {
+  id              String   @id
+  employeeName    String
+  branch          String?
+  requestDate     DateTime @default(now())
+  resignationDate DateTime
+  reason          String
+  status          String   @default("Tạo mới")
+  approver        String?
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime
+  resignationCode String?  @unique(map: "Resignation_resignationCode_key")
+}
+
+model salarychange {
+  id                  String   @id
   requestDate         DateTime @default(now())
-  type                String   // Tăng lương / Giảm lương
+  type                String
   isSelf              Boolean  @default(false)
   employeeName        String
   branch              String?
@@ -388,11 +478,50 @@ model SalaryChange {
   reason              String?
   note                String?
   createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  updatedAt           DateTime
+  changeCode          String?  @unique(map: "SalaryChange_changeCode_key")
 }
 
-model TransferPromotion {
-  id                 String   @id @default(uuid())
+model salaryincreaserequest {
+  id             String   @id
+  createdAt      DateTime @default(now())
+  employeeName   String
+  currentSalary  Float?
+  proposedSalary Float
+  reason         String
+  status         String   @default("Tạo mới")
+  approver       String?
+  note           String?
+  updatedAt      DateTime
+}
+
+model salarylevel {
+  id                  String   @id
+  stt                 Int
+  levelCode           String   @unique(map: "SalaryLevel_levelCode_key")
+  baseSalary          Float
+  attendanceBonus     Float    @default(0)
+  performanceBonus    Float    @default(0)
+  responsibilityBonus Float    @default(0)
+  attractionBonus     Float    @default(0)
+  otherBonus          Float    @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime
+}
+
+model supplier {
+  id        String   @id
+  code      String   @unique(map: "Supplier_code_key")
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model transferpromotion {
+  id                 String   @id
   requestDate        DateTime @default(now())
   employeeName       String
   branch             String?
@@ -407,35 +536,36 @@ model TransferPromotion {
   creator            String
   note               String?
   createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  updatedAt          DateTime
 }
 
-model Notification {
-  id          String   @id @default(uuid())
-  title       String
-  message     String
-  link        String?
-  isRead      Boolean  @default(false)
-  type        String?  // e.g., 'APPROVAL'
-  targetRole  String?  // Who should see this
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model unit {
+  id        String    @id
+  code      String    @unique(map: "Unit_code_key")
+  name      String    @unique(map: "Unit_name_key")
+  status    String    @default("Hoạt động")
+  note      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime
+  product   product[] @relation("producttounit")
 }
 
-model SalaryLevel {
-  id                  String   @id @default(uuid())
-  stt                 Int
-  levelCode           String   @unique
-  baseSalary          Float
-  attendanceBonus     Float    @default(0)
-  performanceBonus    Float    @default(0)
-  responsibilityBonus Float    @default(0)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+model user {
+  id           String       @id
+  username     String       @unique(map: "User_username_key")
+  password     String
+  employeeName String?
+  employeeId   String?
+  branch       String?
+  role         String       @default("SALES")
+  status       String       @default("ACTIVE")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime
+  permission   permission[] @relation("permissiontouser")
 }
 
-model Violation {
-  id           String   @id @default(uuid())
+model violation {
+  id           String   @id
   employeeName String
   branch       String?
   date         DateTime @default(now())
@@ -443,18 +573,43 @@ model Violation {
   level        String?
   note         String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime
 }
-model Resignation {
-  id           String   @id @default(uuid())
-  employeeName String
-  branch       String?
-  requestDate  DateTime @default(now())
-  resignationDate DateTime
-  reason       String
-  status       String   @default("Tạo mới")
-  approver     String?
-  note         String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+
+model warehouse {
+  id        String   @id
+  code      String   @unique(map: "Warehouse_code_key")
+  name      String   @unique(map: "Warehouse_name_key")
+  status    String   @default("Hoạt động")
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model warehouselog {
+  id            String               @id
+  logCode       String               @unique
+  logType       String
+  creator       String
+  createdAt     DateTime             @default(now())
+  referenceCode String?
+  logDate       DateTime             @default(now())
+  subject       String?
+  description   String?
+  status        String               @default("Đã nhập kho")
+  note          String?
+  details       warehouselogdetail[]
+}
+
+model warehouselogdetail {
+  id                String       @id
+  warehouseLogId    String
+  productCode       String
+  productName       String
+  unit              String?
+  requestedQuantity Float        @default(0)
+  actualQuantity    Float        @default(0)
+  orderCode         String?
+  note              String?
+  warehouselog      warehouselog @relation(fields: [warehouseLogId], references: [id], onDelete: Cascade)
 }

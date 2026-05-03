@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useRef, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { createMaterialPlan, updateMaterialPlan, deleteMaterialPlan } from "./actions";
-import { Check } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
+import HistoryModal from "../../HistoryModal";
 
 export default function MaterialPlanTable({ initialPlans, pendingItems, currentUser }: { initialPlans: any[], pendingItems: any[], currentUser: string }) {
+  const router = useRouter();
   const [plans, setPlans] = useState<any[]>(initialPlans);
   const [activeMainTab, setActiveMainTab] = useState(1);
   const [showModal, setShowModal] = useState(false);
@@ -13,6 +16,7 @@ export default function MaterialPlanTable({ initialPlans, pendingItems, currentU
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Auto-Sync
@@ -80,7 +84,12 @@ export default function MaterialPlanTable({ initialPlans, pendingItems, currentU
         <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <h4 style={{ margin: 0 }}>Danh sách Kế hoạch Vật tư</h4>
-            <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Tạo kế hoạch mới</button>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button className="btn btn-outline" onClick={() => router.refresh()}>
+                <RotateCcw size={18} style={{ marginRight: "6px" }} /> Làm mới
+              </button>
+              <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Tạo kế hoạch mới</button>
+            </div>
           </div>
           <div className="table-container">
             <table className="table">
@@ -92,7 +101,7 @@ export default function MaterialPlanTable({ initialPlans, pendingItems, currentU
                   <th>Người tạo</th>
                   <th>Trạng thái</th>
                   <th>Ghi chú</th>
-                  <th style={{ width: "80px", textAlign: "center" }}>Thao tác</th>
+                  <th style={{ width: "150px", textAlign: "center" }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -113,7 +122,16 @@ export default function MaterialPlanTable({ initialPlans, pendingItems, currentU
                     </td>
                     <td>{plan.note}</td>
                     <td style={{ textAlign: "center" }}>
-                      <button onClick={() => handleEdit(plan)} className="btn-icon">✏️</button>
+                      <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center" }}>
+                        <button onClick={() => handleEdit(plan)} className="btn btn-sm btn-outline">✏️ Sửa</button>
+                        <button 
+                          className="btn btn-sm btn-outline" 
+                          onClick={() => setHistoryRecordId(plan.id)}
+                          title="Lịch sử thay đổi"
+                        >
+                          Lịch sử
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -165,6 +183,14 @@ export default function MaterialPlanTable({ initialPlans, pendingItems, currentU
             </table>
           </div>
         </>
+      )}
+
+      {historyRecordId && (
+        <HistoryModal 
+          tableName="MaterialPlan" 
+          recordId={historyRecordId} 
+          onClose={() => setHistoryRecordId(null)} 
+        />
       )}
 
       {showModal && (
@@ -255,5 +281,3 @@ export default function MaterialPlanTable({ initialPlans, pendingItems, currentU
   );
 }
 
-// Cần thêm useMemo từ react
-import { useMemo } from "react";

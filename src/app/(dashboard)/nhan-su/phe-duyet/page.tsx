@@ -53,32 +53,25 @@ export default async function PheDuyetPage() {
   ]);
 
   return (
-    <main className="main-content">
-      <div className="page-header" style={{ marginBottom: "1.5rem" }}>
-        <h1 className="page-title">✅ Phê duyệt hồ sơ & Lệnh mua</h1>
-        <p style={{ color: "#64748b" }}>Quản lý và xét duyệt các yêu cầu trong hệ thống</p>
-      </div>
-
-      <ApprovalTabs 
-        pending={{
-          contracts: pendingContracts,
-          leaves: pendingLeaves,
-          salaryChanges: pendingSalaryChanges,
-          transfers: pendingTransfers,
-          resignations: pendingResignations,
-          payrolls: pendingPayrolls,
-          purchaseOrders: pendingPurchaseOrders
-        }}
-        approved={{
-          contracts: approvedContracts,
-          leaves: approvedLeaves,
-          salaryChanges: approvedSalaryChanges,
-          transfers: approvedTransfers,
-          resignations: approvedResignations,
-          payrolls: approvedPayrolls,
-          purchaseOrders: approvedPurchaseOrders
-        }}
-      />
-    </main>
+    <ApprovalTabs 
+      pending={{
+        contracts: pendingContracts,
+        leaves: pendingLeaves,
+        salaryChanges: pendingSalaryChanges,
+        transfers: pendingTransfers,
+        resignations: pendingResignations,
+        payrolls: pendingPayrolls,
+        purchaseOrders: pendingPurchaseOrders
+      }}
+      approved={{
+        contracts: approvedContracts,
+        leaves: approvedLeaves,
+        salaryChanges: approvedSalaryChanges,
+        transfers: approvedTransfers,
+        resignations: approvedResignations,
+        payrolls: approvedPayrolls,
+        purchaseOrders: approvedPurchaseOrders
+      }}
+    />
   );
 }

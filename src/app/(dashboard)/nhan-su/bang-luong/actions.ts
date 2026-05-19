@@ -15,13 +15,13 @@ async function calculatePayrollItem(code: string, month: number, year: number) {
   if (!fullName) return null;
 
   // Lấy hợp đồng đã phê duyệt
-  const contract = await prisma.laborContract.findFirst({
+  const contract = await (prisma as any).laborcontract.findFirst({
     where: { employeeName: fullName, status: "Đã phê duyệt" },
     orderBy: { updatedAt: "desc" }
   });
 
   // Lấy thay đổi lương được phê duyệt gần nhất và có hiệu lực (<= tháng/năm bảng lương)
-  const salaryChange = await prisma.salaryChange.findFirst({
+  const salaryChange = await (prisma as any).salarychange.findFirst({
     where: { 
       employeeName: fullName, 
       status: "Đã phê duyệt",
@@ -57,7 +57,7 @@ async function calculatePayrollItem(code: string, month: number, year: number) {
 
   // 1. Lấy dữ liệu từ bảng SalaryLevel (Ưu tiên cao nhất cho mọi nguồn)
   if (activeLevelCode) {
-    const level = await prisma.salaryLevel.findUnique({
+    const level = await (prisma as any).salarylevel.findUnique({
       where: { levelCode: activeLevelCode }
     });
     if (level) {
@@ -229,6 +229,7 @@ export async function createPayroll(formData: FormData, selectedEmployeeCodes: s
 
   const payroll = await prisma.payroll.create({
     data: { 
+      id: crypto.randomUUID(),
       payrollCode,
       month, 
       year, 
@@ -243,8 +244,8 @@ export async function createPayroll(formData: FormData, selectedEmployeeCodes: s
   for (const code of selectedEmployeeCodes) {
     const calcResult = await calculatePayrollItem(code, month, year);
     if (calcResult) {
-      await prisma.payrollDetail.create({
-        data: { payrollId: payroll.id, ...calcResult }
+      await (prisma as any).payrolldetail.create({
+        data: { id: crypto.randomUUID(), payrollId: payroll.id, ...calcResult }
       });
     }
   }
@@ -272,7 +273,7 @@ export async function updatePayroll(id: string, formData: FormData, selectedEmpl
   const note = formData.get("note") as string;
 
   const session = await getSession();
-  const oldPayroll = await prisma.payroll.findUnique({ where: { id }, include: { details: true } });
+  const oldPayroll = await (prisma as any).payroll.findUnique({ where: { id }, include: { payrolldetail: true } });
 
   await prisma.payroll.update({
     where: { id },
@@ -285,29 +286,29 @@ export async function updatePayroll(id: string, formData: FormData, selectedEmpl
   });
 
   // Đồng bộ danh sách nhân viên
-  const currentDetails = await prisma.payrollDetail.findMany({ where: { payrollId: id } });
-  const currentCodes = currentDetails.map(d => d.employeeCode);
+  const currentDetails = await (prisma as any).payrolldetail.findMany({ where: { payrollId: id } });
+  const currentCodes = currentDetails.map((d: any) => d.employeeCode);
 
   // Xóa bớt
-  const codesToRemove = currentCodes.filter(c => !selectedEmployeeCodes.includes(c));
+  const codesToRemove = currentCodes.filter((c: any) => !selectedEmployeeCodes.includes(c));
   if (codesToRemove.length > 0) {
-    await prisma.payrollDetail.deleteMany({
+    await (prisma as any).payrolldetail.deleteMany({
       where: { payrollId: id, employeeCode: { in: codesToRemove } }
     });
   }
 
   // Thêm mới
-  const codesToAdd = selectedEmployeeCodes.filter(c => !currentCodes.includes(c));
+  const codesToAdd = selectedEmployeeCodes.filter((c: any) => !currentCodes.includes(c));
   for (const code of codesToAdd) {
     const calcResult = await calculatePayrollItem(code, month, year);
     if (calcResult) {
-      await prisma.payrollDetail.create({
-        data: { payrollId: id, ...calcResult }
+      await (prisma as any).payrolldetail.create({
+        data: { id: crypto.randomUUID(), payrollId: id, ...calcResult }
       });
     }
   }
 
-  const updatedPayroll = await prisma.payroll.findUnique({ where: { id }, include: { details: true } });
+  const updatedPayroll = await (prisma as any).payroll.findUnique({ where: { id }, include: { payrolldetail: true } });
   const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
   const changedBy = user?.employeeName || user?.username || "Hệ thống";
 
@@ -330,7 +331,7 @@ export async function deletePayroll(id: string) {
 }
 
 export async function getPayrollDetails(payrollId: string) {
-  return await prisma.payrollDetail.findMany({ where: { payrollId } });
+  return await (prisma as any).payrolldetail.findMany({ where: { payrollId } });
 }
 
 // Hàm mới để làm mới toàn bộ dữ liệu bảng lương
@@ -338,12 +339,12 @@ export async function refreshAllPayrollDetails(payrollId: string) {
   const payroll = await prisma.payroll.findUnique({ where: { id: payrollId } });
   if (!payroll) throw new Error("Không tìm thấy bảng lương.");
 
-  const details = await prisma.payrollDetail.findMany({ where: { payrollId } });
+  const details = await (prisma as any).payrolldetail.findMany({ where: { payrollId } });
   
   for (const detail of details) {
     const calcResult = await calculatePayrollItem(detail.employeeCode, payroll.month, payroll.year);
     if (calcResult) {
-      await prisma.payrollDetail.update({
+      await (prisma as any).payrolldetail.update({
         where: { id: detail.id },
         data: calcResult
       });
@@ -351,14 +352,14 @@ export async function refreshAllPayrollDetails(payrollId: string) {
   }
   
   revalidatePath("/nhan-su/bang-luong");
-  return await prisma.payrollDetail.findMany({ where: { payrollId } });
+  return await (prisma as any).payrolldetail.findMany({ where: { payrollId } });
 }
 
 export async function updatePayrollDetail(id: string, data: any) {
   const session = await getSession();
-  const oldDetail = await prisma.payrollDetail.findUnique({ where: { id } });
+  const oldDetail = await (prisma as any).payrolldetail.findUnique({ where: { id } });
 
-  const updatedDetail = await prisma.payrollDetail.update({
+  const updatedDetail = await (prisma as any).payrolldetail.update({
     where: { id },
     data: {
       incomePerWorkday: parseFloat(data.incomePerWorkday),
@@ -416,7 +417,7 @@ export async function syncPayrollWithAttendance(employeeCode: string, month: num
 
   if (!payroll) return;
 
-  const detail = await prisma.payrollDetail.findFirst({
+  const detail = await (prisma as any).payrolldetail.findFirst({
     where: { payrollId: payroll.id, employeeCode }
   });
 
@@ -424,7 +425,7 @@ export async function syncPayrollWithAttendance(employeeCode: string, month: num
 
   const calcResult = await calculatePayrollItem(employeeCode, month, year);
   if (calcResult) {
-    await prisma.payrollDetail.update({
+    await (prisma as any).payrolldetail.update({
       where: { id: detail.id },
       data: calcResult
     });
@@ -442,7 +443,7 @@ export async function getEmployeeEligibility(employeeCodes: string[], month: num
     if (!employee) continue;
 
     // Check for approved contract
-    const contract = await prisma.laborContract.findFirst({
+    const contract = await (prisma as any).laborcontract.findFirst({
       where: { employeeName: employee.fullName, status: "Đã phê duyệt" }
     });
 

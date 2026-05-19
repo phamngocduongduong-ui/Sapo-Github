@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const count = await prisma.laborContract.deleteMany({});
+    const count = await (prisma as any).laborcontract.deleteMany({});
     return NextResponse.json({ 
       success: true, 
       message: `Đã xóa thành công ${count.count} hợp đồng lao động.`,

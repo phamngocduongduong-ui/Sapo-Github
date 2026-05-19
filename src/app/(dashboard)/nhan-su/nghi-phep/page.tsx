@@ -15,13 +15,13 @@ export default async function NghiPhepPage() {
   const isAdmin = user?.username === "admin" || user?.role === "Admin";
   const hasApprovePerm = isAdmin || ((user as any)?.permission?.some((p: any) => p.permissiondetail?.some((d: any) => d.moduleKey === "NS_APPROVE" && d.canAccess)) ?? false);
 
-  const isEmployee = user?.role !== "Admin" && user?.role !== "Manager" && user?.role !== "HR";
   const userName = user?.employeeName || user?.username || "";
+  
+  // Only Admin sees all. Everyone else (including HR/Manager) only sees their own.
+  const whereClause = isAdmin ? {} : { employeeName: userName };
 
   const requests = await (prisma as any).leaverequest.findMany({
-    where: isEmployee ? {
-      employeeName: userName
-    } : {},
+    where: whereClause,
     orderBy: { createdAt: "desc" },
   });
 
@@ -29,23 +29,12 @@ export default async function NghiPhepPage() {
 
 
   return (
-    <main className="main-content" style={{ padding: "2rem", width: "100%" }}>
-      <h1 className="page-title" style={{ marginBottom: "0.25rem" }}>
-        🏖️ Quản lý Nghỉ phép
-      </h1>
-      <p style={{ color: "#888", marginBottom: "2rem", fontSize: "0.9rem" }}>
-        Đăng ký và theo dõi trạng thái nghỉ phép cá nhân
-      </p>
-
-      <div className="card" style={{ padding: "1.5rem" }}>
-        <LeaveRequestTable 
-          initialRequests={requests as any} 
-          currentUserName={userName} 
-          isAdmin={isAdmin}
-          userRole={user?.role || ""}
-          hasApprovePerm={hasApprovePerm}
-        />
-      </div>
-    </main>
+    <LeaveRequestTable 
+      initialRequests={requests as any} 
+      currentUserName={userName} 
+      isAdmin={isAdmin}
+      userRole={user?.role || ""}
+      hasApprovePerm={hasApprovePerm}
+    />
   );
 }

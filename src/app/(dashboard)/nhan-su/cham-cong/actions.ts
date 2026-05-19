@@ -55,7 +55,10 @@ export async function createAttendance(formData: FormData) {
       }
     },
     update: attendanceData,
-    create: attendanceData
+    create: {
+      id: crypto.randomUUID(),
+      ...attendanceData
+    }
   });
 
   // Tự động đồng bộ với bảng lương nếu có
@@ -177,7 +180,10 @@ export async function importAttendances(data: any[]) {
         employeeCode_month_year: { employeeCode, month, year }
       },
       update: attendanceData,
-      create: attendanceData
+      create: {
+        id: crypto.randomUUID(),
+        ...attendanceData
+      }
     });
 
     // Tự động tính toán lại bảng lương cho nhân viên này nếu có

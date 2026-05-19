@@ -20,7 +20,7 @@ export default async function ChamCongPage() {
 
   const eligibleEmployees = await (prisma as any).employee.findMany({
     where: {
-      status: "ACTIVE",
+      status: { notIn: ["Nghỉ việc", "INACTIVE"] },
       branch: isAdmin ? undefined : { in: userBranches }
     },
     select: {

@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const module = searchParams.get("module");
@@ -31,8 +33,8 @@ export async function GET(request: Request) {
           orderBy: { createdAt: "desc" } 
         }));
       case "orders":
-        return NextResponse.json(await prisma.order.findMany({ 
-          include: { items: true }, 
+        return NextResponse.json(await (prisma as any).order.findMany({ 
+          include: { orderitem: true }, 
           orderBy: { createdAt: "desc" } 
         }));
       case "attendance":
@@ -43,13 +45,13 @@ export async function GET(request: Request) {
       case "payroll":
         return NextResponse.json(await prisma.payroll.findMany({ 
           where: isAdmin ? {} : { branch: { in: userBranches } },
-          include: { _count: { select: { details: true } } }, 
+          include: { _count: { select: { payrolldetail: true } } }, 
           orderBy: { createdAt: "desc" } 
         }));
       case "salary-levels":
-        return NextResponse.json(await prisma.salaryLevel.findMany({ orderBy: { stt: "asc" } }));
+        return NextResponse.json(await (prisma as any).salarylevel.findMany({ orderBy: { stt: "asc" } }));
       case "labor-contracts":
-        return NextResponse.json(await prisma.laborContract.findMany({ 
+        return NextResponse.json(await (prisma as any).laborcontract.findMany({ 
           where: isAdmin ? {} : { branch: { in: userBranches } },
           orderBy: { createdAt: "desc" } 
         }));
@@ -58,21 +60,21 @@ export async function GET(request: Request) {
       case "positions":
         return NextResponse.json(await prisma.position.findMany({ orderBy: { createdAt: "desc" } }));
       case "salary-changes":
-        return NextResponse.json(await prisma.salaryChange.findMany({ 
+        return NextResponse.json(await (prisma as any).salarychange.findMany({ 
           where: isAdmin ? {} : { branch: { in: userBranches } },
           orderBy: { createdAt: "desc" } 
         }));
       case "transfer-promotions":
-        return NextResponse.json(await prisma.transferPromotion.findMany({ 
+        return NextResponse.json(await (prisma as any).transferpromotion.findMany({ 
           where: isAdmin ? {} : { branch: { in: userBranches } },
           orderBy: { createdAt: "desc" } 
         }));
       case "material-plans":
-        return NextResponse.json(await prisma.materialPlan.findMany({ include: { orders: true }, orderBy: { createdAt: "desc" } }));
+        return NextResponse.json(await (prisma as any).materialplan.findMany({ include: { order: true }, orderBy: { createdAt: "desc" } }));
       case "purchasing-plans":
-        return NextResponse.json(await prisma.purchasingPlan.findMany({ include: { order: true, items: true }, orderBy: { createdAt: "desc" } }));
+        return NextResponse.json(await (prisma as any).purchasingplan.findMany({ include: { order: true, items: true }, orderBy: { createdAt: "desc" } }));
       case "dispatch-orders":
-        return NextResponse.json(await prisma.dispatchOrder.findMany({ orderBy: { createdAt: "desc" } }));
+        return NextResponse.json(await (prisma as any).dispatchorder.findMany({ orderBy: { createdAt: "desc" } }));
       case "violations":
         return NextResponse.json(await prisma.violation.findMany({ 
           where: isAdmin ? {} : { branch: { in: userBranches } },
@@ -80,16 +82,20 @@ export async function GET(request: Request) {
         }));
       case "leave-requests":
         const isEmployee = user.role !== "Admin" && user.role !== "Manager" && user.role !== "HR";
-        return NextResponse.json(await prisma.leaveRequest.findMany({ 
+        return NextResponse.json(await (prisma as any).leaverequest.findMany({ 
           where: isEmployee ? { employeeName: userName } : {},
+          orderBy: { createdAt: "desc" } 
+        }));
+      case "security-registrations":
+        return NextResponse.json(await (prisma as any).securityregistration.findMany({ 
           orderBy: { createdAt: "desc" } 
         }));
       case "approvals":
         const [pContracts, pLeaves, pSalaryChanges, pTransfers, pResignations, pPayrolls] = await Promise.all([
-          prisma.laborContract.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
-          prisma.leaveRequest.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
-          prisma.salaryChange.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
-          prisma.transferPromotion.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+          (prisma as any).laborcontract.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+          (prisma as any).leaverequest.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+          (prisma as any).salarychange.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
+          (prisma as any).transferpromotion.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
           (prisma as any).resignation.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
           prisma.payroll.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
         ]);

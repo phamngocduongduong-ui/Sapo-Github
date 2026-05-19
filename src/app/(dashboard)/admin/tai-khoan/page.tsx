@@ -12,7 +12,7 @@ export default async function TaiKhoanPage() {
   });
 
   const activeEmployees = await prisma.employee.findMany({
-    where: { status: "ACTIVE" },
+    where: { status: { notIn: ["Nghỉ việc", "INACTIVE"] } },
     select: { fullName: true },
     orderBy: { fullName: "asc" }
   });

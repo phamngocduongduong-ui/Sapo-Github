@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { cookies } from "next/headers";
 
 export async function GET() {
   try {
     const session = await getSession();
     if (!session || !session.userId) {
+      cookies().delete("session");
       return NextResponse.json({ permissions: [] }, { status: 401 });
     }
 
@@ -16,6 +18,7 @@ export async function GET() {
     });
 
     if (!user) {
+      cookies().delete("session");
       return NextResponse.json({ permissions: [] }, { status: 404 });
     }
 

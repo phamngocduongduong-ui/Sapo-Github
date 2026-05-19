@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import { 
-  ShoppingCart, FileText, CheckCircle2, Clock, 
-  Plus, Trash2, Edit, Send, Undo2, History, X, Save, RefreshCw
+  Plus, Trash2, Edit, Send, Undo2, History, X, Save, RefreshCw,
+  MoreHorizontal, CheckCircle, PowerOff, Mail, Clock, AlertTriangle
 } from "lucide-react";
 import { 
   getPurchaseOrders, createPurchaseOrder, updatePurchaseOrder, 
@@ -22,6 +22,15 @@ export default function PurchaseOrderPage() {
   const [isPending, startTransition] = useTransition();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<string>("Tạo mới");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [confirmUpdate, setConfirmUpdate] = useState<{ id: string, status: string, info: string } | null>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, []);
 
 
   useEffect(() => {
@@ -114,10 +123,26 @@ export default function PurchaseOrderPage() {
     });
   };
 
-  const handleStatusChange = (id: string, status: string) => {
-    if (!confirm(`Bạn muốn ${status.toLowerCase()} lệnh mua này?`)) return;
+  const handleStatusChange = (id: string, status: string, info?: string) => {
+    setConfirmUpdate({ id, status, info: info || "" });
+  };
+
+  const executeStatusChange = () => {
+    if (!confirmUpdate) return;
+    const { id, status } = confirmUpdate;
+    setConfirmUpdate(null);
     startTransition(async () => {
       await updatePOStatus(id, status);
+      fetchData();
+    });
+  };
+
+  const executeDelete = () => {
+    if (!confirmUpdate) return;
+    const { id } = confirmUpdate;
+    setConfirmUpdate(null);
+    startTransition(async () => {
+      await deletePurchaseOrder(id);
       fetchData();
     });
   };
@@ -207,29 +232,58 @@ export default function PurchaseOrderPage() {
                         {item.status}
                       </span>
                     </td>
-                    <td style={{ textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center" }}>
-                        {item.status === "Tạo mới" && (
-                          <>
-                            <button className="btn btn-sm btn-outline" onClick={() => openEditModal(item)}>Sửa</button>
-                            <button className="btn btn-sm btn-primary" onClick={() => handleStatusChange(item.id, "Chờ phê duyệt")}>Gửi duyệt</button>
-                            <button className="btn btn-sm btn-danger" onClick={() => handleDelete(item.id)}>Xóa</button>
-                          </>
-                        )}
-                        {item.status === "Chờ phê duyệt" && (
-                          <>
-                            {(currentUser?.username === "admin" || currentUser?.permission?.some((p: any) => p.name === "Phê duyệt" || p.name === "Admin")) ? (
-                              <>
-                                <button className="btn btn-sm btn-success" onClick={() => handleStatusChange(item.id, "Chờ thực hiện")}>Phê duyệt</button>
-                                <button className="btn btn-sm btn-danger" onClick={() => handleStatusChange(item.id, "Tạo mới")}>Từ chối</button>
-                              </>
-                            ) : (
-                              <button className="btn btn-sm btn-outline" onClick={() => handleStatusChange(item.id, "Tạo mới")}>Thu hồi</button>
-                            )}
-                          </>
-                        )}
-                        <button className="btn btn-sm btn-outline" onClick={() => setHistoryRecordId(item.id)}>Lịch sử</button>
-                      </div>
+                    <td style={{ textAlign: "right", position: "relative" }}>
+                      <button 
+                        className="action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === item.id ? null : item.id);
+                        }}
+                      >
+                        <MoreHorizontal size={18} />
+                      </button>
+
+                      {openMenuId === item.id && (
+                        <div className="action-dropdown" onClick={(e) => e.stopPropagation()}>
+                          <div className="dropdown-item" onClick={() => { setHistoryRecordId(item.id); setOpenMenuId(null); }}>
+                            <History size={14} /> Lịch sử
+                          </div>
+                          
+                          {item.status === "Tạo mới" && (
+                            <>
+                              <div className="dropdown-item" onClick={() => { openEditModal(item); setOpenMenuId(null); }}>
+                                <Edit size={14} /> Chỉnh sửa
+                              </div>
+                              <div className="dropdown-item success" onClick={() => handleStatusChange(item.id, "Chờ phê duyệt", `Mã: ${item.poCode}`)}>
+                                <Mail size={14} /> Gửi duyệt
+                              </div>
+                              <div className="divider"></div>
+                              <div className="dropdown-item danger" onClick={() => setConfirmUpdate({ id: item.id, status: "DELETE", info: item.poCode })}>
+                                <Trash2 size={14} /> Xóa lệnh mua
+                              </div>
+                            </>
+                          )}
+
+                          {item.status === "Chờ phê duyệt" && (
+                            <>
+                              {(currentUser?.username === "admin" || currentUser?.permission?.some((p: any) => p.name === "Phê duyệt" || p.name === "Admin")) ? (
+                                <>
+                                  <div className="dropdown-item success" onClick={() => handleStatusChange(item.id, "Chờ thực hiện", `Mã: ${item.poCode}`)}>
+                                    <CheckCircle size={14} /> Phê duyệt
+                                  </div>
+                                  <div className="dropdown-item danger" onClick={() => handleStatusChange(item.id, "Tạo mới", `Mã: ${item.poCode}`)}>
+                                    <X size={14} /> Từ chối
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="dropdown-item warning" onClick={() => handleStatusChange(item.id, "Tạo mới", `Mã: ${item.poCode}`)}>
+                                  <Undo2 size={14} /> Thu hồi
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -419,6 +473,76 @@ export default function PurchaseOrderPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Custom Confirmation Modal */}
+      {confirmUpdate && (
+        <div className="modal-overlay-base" style={{ zIndex: 9999 }}>
+          <div className="modal-content-base" style={{ maxWidth: "450px", textAlign: "center", padding: "2rem" }}>
+            <div style={{ 
+              width: "60px", 
+              height: "60px", 
+              borderRadius: "50%", 
+              background: confirmUpdate.status === "DELETE" ? "#fef2f2" : "#fff7ed", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              margin: "0 auto 1.5rem",
+              color: confirmUpdate.status === "DELETE" ? "#ef4444" : "#f97316"
+            }}>
+              {confirmUpdate.status === "DELETE" ? <AlertTriangle size={32} /> : <Clock size={32} />}
+            </div>
+            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+              {confirmUpdate.status === "Chờ phê duyệt" ? "Gửi phê duyệt" : 
+               confirmUpdate.status === "Tạo mới" ? "Thu hồi/Từ chối" : 
+               confirmUpdate.status === "Chờ thực hiện" ? "Phê duyệt lệnh mua" : 
+               confirmUpdate.status === "DELETE" ? "Xác nhận xóa" :
+               "Xác nhận thay đổi"}
+            </h3>
+            <div style={{ color: "#475569", marginBottom: "2rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+              {confirmUpdate.status === "Chờ phê duyệt" ? (
+                <>
+                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc muốn gửi hồ sơ để chờ phê duyệt không?</p>
+                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
+                    <PowerOff size={16} /> Lệnh mua sẽ không được chỉnh sửa trong thời gian chờ phê duyệt.
+                  </p>
+                </>
+              ) : confirmUpdate.status === "Tạo mới" ? (
+                <>
+                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn muốn thu hồi/từ chối hồ sơ không?</p>
+                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px", whiteSpace: "nowrap" }}>
+                    <Undo2 size={16} /> Hồ sơ sẽ không trong danh sách chờ phê duyệt.
+                  </p>
+                </>
+              ) : confirmUpdate.status === "Chờ thực hiện" ? (
+                <>
+                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn đồng ý phê duyệt lệnh mua này không?</p>
+                  <p style={{ fontSize: "0.875rem", color: "#22c55e", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#f0fdf4", padding: "8px", borderRadius: "6px" }}>
+                    <CheckCircle size={16} /> Lệnh mua sẽ được chuyển sang bộ phận mua hàng để thực hiện.
+                  </p>
+                </>
+              ) : confirmUpdate.status === "DELETE" ? (
+                <>
+                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn muốn xóa lệnh mua này không?</p>
+                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
+                    <Trash2 size={16} /> Dữ liệu sau khi xóa sẽ không thể khôi phục.
+                  </p>
+                </>
+              ) : (
+                <p>Bạn có chắc chắn muốn chuyển trạng thái hồ sơ này sang <strong>"{confirmUpdate.status}"</strong> không?</p>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmUpdate(null)}>Hủy bỏ</button>
+              <button 
+                className="btn btn-primary" 
+                style={{ flex: 1, background: confirmUpdate.status === "DELETE" || confirmUpdate.status === "Từ chối" ? "#ef4444" : "#2563eb" }} 
+                onClick={confirmUpdate.status === "DELETE" ? executeDelete : executeStatusChange}
+              >
+                Xác nhận
+              </button>
+            </div>
           </div>
         </div>
       )}

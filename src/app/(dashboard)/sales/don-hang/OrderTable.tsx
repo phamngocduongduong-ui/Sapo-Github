@@ -3,8 +3,8 @@
 import { useState, useTransition, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
-import { createOrder, updateOrder, deleteOrder, approveOrder } from "./actions";
-import { Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw, MoreHorizontal, Pencil, History, CheckCircle, PowerOff, Mail, Clock, Eye } from "lucide-react";
+import { createOrder, updateOrder, deleteOrder, approveOrder, updateOrderStatus } from "./actions";
 import HistoryModal from "../../HistoryModal";
 import { formatNumber } from "@/lib/format";
 
@@ -26,8 +26,17 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
 
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [confirmUpdate, setConfirmUpdate] = useState<{ id: string, status: string, info: string } | null>(null);
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, []);
 
   // Auto-Sync
   useRealTimeSync("orders", orders, setOrders);
@@ -76,10 +85,22 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
     setShowModal(true);
   }
 
-  function handleApprove(id: string) {
-    if (!confirm("Xác nhận phê duyệt đơn hàng này?")) return;
+  function handleStatusChange(id: string, newStatus: string, info?: string) {
+    setConfirmUpdate({ id, status: newStatus, info: info || "" });
+  }
+
+  function executeStatusChange() {
+    if (!confirmUpdate) return;
+    const { id, status: newStatus } = confirmUpdate;
+    setConfirmUpdate(null);
     startTransition(async () => {
-      try { await approveOrder(id); } catch (e: any) { alert(e.message); }
+      try {
+        if (newStatus === "Chờ kế hoạch sản xuất") {
+          await approveOrder(id);
+        } else {
+          await updateOrderStatus(id, newStatus);
+        }
+      } catch (err: any) { alert(err.message); }
     });
   }
 
@@ -207,19 +228,45 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
                   </td>
                   <td>{order.shipDate ? new Date(order.shipDate).toLocaleDateString("vi-VN") : "—"}</td>
                   <td style={{ textAlign: "center" }}>{order.thermometer ? "✅ Có" : "❌ Không"}</td>
-                  <td style={{ textAlign: "center" }}>
-                    <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleEdit(order); }} className="btn-icon">✏️</button>
-                      {order.status === "Tạo mới" && (
-                        <button onClick={(e) => { e.stopPropagation(); handleApprove(order.id); }} className="btn-icon" title="Phê duyệt" style={{ color: "#27ae60" }}>✔️</button>
-                      )}
+                  <td style={{ textAlign: "right", position: "relative" }}>
+                    <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
                       <button 
-                        className="btn btn-sm btn-outline" 
-                        onClick={(e) => { e.stopPropagation(); setHistoryRecordId(order.id); }}
-                        title="Lịch sử thay đổi"
+                        className="action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === order.id ? null : order.id);
+                        }}
                       >
-                        Lịch sử
+                        <MoreHorizontal size={18} />
                       </button>
+
+                      {openMenuId === order.id && (
+                        <div className="action-dropdown" onClick={(e) => e.stopPropagation()}>
+                          <div className="dropdown-item" onClick={() => { handleView(order); setOpenMenuId(null); }}>
+                            <Eye size={14} /> Xem chi tiết
+                          </div>
+                          {order.status === "Tạo mới" && (
+                            <div className="dropdown-item" onClick={() => { handleEdit(order); setOpenMenuId(null); }}>
+                              <Pencil size={14} /> Chỉnh sửa
+                            </div>
+                          )}
+                          <div className="dropdown-item" onClick={() => { setHistoryRecordId(order.id); setOpenMenuId(null); }}>
+                            <History size={14} /> Lịch sử
+                          </div>
+                          
+                          {order.status === "Tạo mới" && (
+                            <div className="dropdown-item success" onClick={() => handleStatusChange(order.id, "Chờ kế hoạch sản xuất", `đơn ${order.orderCode}`)}>
+                              <CheckCircle size={14} /> Phê duyệt đơn
+                            </div>
+                          )}
+
+                          {order.status === "Chờ kế hoạch sản xuất" && (
+                            <div className="dropdown-item warning" onClick={() => handleStatusChange(order.id, "Tạo mới", `đơn ${order.orderCode}`)}>
+                              <RotateCcw size={14} /> Thu hồi đơn
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -376,6 +423,54 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
         .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 4px; border-radius: 4px; transition: background 0.2s; }
         .btn-icon:hover { background: rgba(0,0,0,0.05); }
       `}</style>
+      {/* Custom Confirmation Modal */}
+      {confirmUpdate && (
+        <div className="modal-overlay-base" style={{ zIndex: 9999 }}>
+          <div className="modal-content-base" style={{ maxWidth: "450px", textAlign: "center", padding: "2rem" }}>
+            <div style={{ 
+              width: "60px", 
+              height: "60px", 
+              borderRadius: "50%", 
+              background: "#fff7ed", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              margin: "0 auto 1.5rem",
+              color: "#f97316"
+            }}>
+              <Clock size={32} />
+            </div>
+            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+              {confirmUpdate.status === "Chờ kế hoạch sản xuất" ? "Phê duyệt đơn hàng" : 
+               confirmUpdate.status === "Tạo mới" ? "Thu hồi hồ sơ" : 
+               "Xác nhận thay đổi"}
+            </h3>
+            <div style={{ color: "#475569", marginBottom: "2rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+              {confirmUpdate.status === "Chờ kế hoạch sản xuất" ? (
+                <>
+                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn đồng ý phê duyệt {confirmUpdate.info} không?</p>
+                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
+                    <Check size={16} /> Đơn hàng sẽ có giá trị kể từ thời điểm phê duyệt.
+                  </p>
+                </>
+              ) : confirmUpdate.status === "Tạo mới" ? (
+                <>
+                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn muốn thu hồi hồ sơ không?</p>
+                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px", whiteSpace: "nowrap" }}>
+                    <RotateCcw size={16} /> Hồ sơ sẽ không trong danh sách chờ phê duyệt.
+                  </p>
+                </>
+              ) : (
+                <p>Bạn có chắc chắn muốn chuyển trạng thái đơn này sang <strong>"{confirmUpdate.status}"</strong> không?</p>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmUpdate(null)}>Hủy bỏ</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={executeStatusChange}>Xác nhận</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

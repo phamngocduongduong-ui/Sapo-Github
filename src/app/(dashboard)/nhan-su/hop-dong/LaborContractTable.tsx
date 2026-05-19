@@ -414,14 +414,14 @@ export default function LaborContractTable({
         <h3 style={{ margin: 0 }}>Danh sách Hợp đồng lao động</h3>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           <button className="btn btn-outline" onClick={handleDownloadTemplate}>
-            <FileSpreadsheet size={18} style={{ marginRight: "6px" }} /> File mẫu
+            <FileSpreadsheet size={18} style={{ marginRight: "5px" }} /> File mẫu
           </button>
           <label className="btn btn-outline" style={{ cursor: "pointer" }}>
-            <Upload size={18} style={{ marginRight: "6px" }} /> Import Excel
+            <Upload size={18} style={{ marginRight: "5px" }} /> Nhập Excel
             <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
           </label>
           <button className="btn btn-outline" onClick={handleExportExcel}>
-            <Download size={18} style={{ marginRight: "6px" }} /> Tải Excel
+            <Download size={18} style={{ marginRight: "5px" }} /> Xuất Excel
           </button>
           <button className="btn btn-outline" onClick={() => router.refresh()}>
             <RotateCcw size={18} style={{ marginRight: "6px" }} /> Làm mới

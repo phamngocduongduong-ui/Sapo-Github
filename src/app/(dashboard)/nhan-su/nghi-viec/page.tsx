@@ -34,19 +34,12 @@ export default async function NghiViecPage() {
   ]);
 
   return (
-    <main className="main-content" style={{ padding: "2rem", width: "100%" }}>
-      <div className="page-header" style={{ marginBottom: "2rem" }}>
-        <h1 className="page-title">📄 Quản lý Nghỉ việc</h1>
-        <p style={{ color: "#64748b" }}>Quản lý các yêu cầu thôi việc và cập nhật trạng thái nhân sự tự động</p>
-      </div>
-
-      <ResignationTable 
-        initialData={resignations} 
-        employees={employees}
-        canApprove={canApprove}
-        currentUserName={currentUserName}
-        currentUserBranch={currentUserBranch}
-      />
-    </main>
+    <ResignationTable 
+      initialData={resignations} 
+      employees={employees}
+      canApprove={canApprove}
+      currentUserName={currentUserName}
+      currentUserBranch={currentUserBranch}
+    />
   );
 }

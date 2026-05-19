@@ -23,8 +23,9 @@ export async function createEmployee(formData: FormData) {
   const workplace = formData.get("workplace") as string;
   const branch = formData.get("branch") as string;
   const salaryLevel = formData.get("salaryLevel") as string;
+  const cardCode = formData.get("cardCode") as string;
 
-  if (!employeeCode || !fullName || !position || !department) {
+  if (!employeeCode || !fullName || !gender || !startDate || !branch || !department || !position) {
     throw new Error("Vui lòng điền đầy đủ các thông tin bắt buộc (*)");
   }
 
@@ -33,12 +34,23 @@ export async function createEmployee(formData: FormData) {
   });
   if (existing) throw new Error("Mã nhân viên đã tồn tại.");
 
+  if (cardCode && cardCode.trim() !== "") {
+    const trimmedCard = cardCode.trim();
+    const duplicateCard = await prisma.employee.findFirst({
+      where: { cardCode: trimmedCard }
+    });
+    if (duplicateCard) {
+      throw new Error(`Mã thẻ đã sử dụng cho nhân viên ${duplicateCard.fullName}`);
+    }
+  }
+
   const session = await getSession();
   const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
   const creator = user?.employeeName || user?.username || "Hệ thống";
 
   const newEmp = await prisma.employee.create({
     data: {
+      id: crypto.randomUUID(),
       employeeCode,
       fullName,
       position,
@@ -51,12 +63,13 @@ export async function createEmployee(formData: FormData) {
       address: address || "",
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
-      status: "ACTIVE", // ACTIVE = Hoạt động
+      status: "Đang làm việc", // Đang làm việc = Hoạt động
       educationLevel: educationLevel || "",
       maritalStatus: maritalStatus || "Không",
       workplace: workplace || "",
       branch: branch || "",
       salaryLevel: salaryLevel || "",
+      cardCode: cardCode || "",
       creator
     }
   });
@@ -72,6 +85,7 @@ export async function createEmployee(formData: FormData) {
 
 
   revalidatePath("/nhan-su/nhan-vien");
+  revalidatePath("/admin/tai-khoan");
 }
 
 export async function updateEmployee(id: string, formData: FormData) {
@@ -92,11 +106,29 @@ export async function updateEmployee(id: string, formData: FormData) {
   const workplace = formData.get("workplace") as string;
   const branch = formData.get("branch") as string;
   const salaryLevel = formData.get("salaryLevel") as string;
+  const cardCode = formData.get("cardCode") as string;
 
   const oldEmployee = await prisma.employee.findUnique({
     where: { id }
   });
   if (!oldEmployee) throw new Error("Nhân viên không tồn tại.");
+
+  if (!fullName || !gender || !startDate || !branch || !department || !position) {
+    throw new Error("Vui lòng điền đầy đủ các thông tin bắt buộc (*)");
+  }
+
+  if (cardCode && cardCode.trim() !== "") {
+    const trimmedCard = cardCode.trim();
+    const duplicateCard = await prisma.employee.findFirst({
+      where: { 
+        cardCode: trimmedCard,
+        id: { not: id }
+      }
+    });
+    if (duplicateCard) {
+      throw new Error(`Mã thẻ đã sử dụng cho nhân viên ${duplicateCard.fullName}`);
+    }
+  }
 
   const oldName = oldEmployee.fullName;
 
@@ -120,6 +152,7 @@ export async function updateEmployee(id: string, formData: FormData) {
       workplace: workplace || "",
       branch: branch || "",
       salaryLevel: salaryLevel || "",
+      cardCode: cardCode || "",
     }
   });
 
@@ -211,6 +244,7 @@ export async function updateEmployee(id: string, formData: FormData) {
   revalidatePath("/sales");
   revalidatePath("/purchasing/dispatch");
   revalidatePath("/nhan-su/bang-luong");
+  revalidatePath("/admin/tai-khoan");
 }
 
 export async function generateNextContractNumber(employeeName: string) {
@@ -259,10 +293,11 @@ export async function updateEmployeeStatus(id: string, status: string) {
     oldData: { status: oldEmployee?.status },
     newData: { status },
     changedBy,
-    changeDetail: `Thay đổi trạng thái nhân viên sang: ${status === "ACTIVE" ? "Hoạt động" : "Ngưng hoạt động"}`
+    changeDetail: `Thay đổi trạng thái nhân viên sang: ${status === "Đang làm việc" ? "Đang làm việc" : "Nghỉ việc"}`
   });
 
   revalidatePath("/nhan-su/nhan-vien");
+  revalidatePath("/admin/tai-khoan");
 }
 
 export async function bulkUpsertEmployees(dataList: any[]) {
@@ -299,15 +334,17 @@ export async function bulkUpsertEmployees(dataList: any[]) {
       const finalCode = employeeCode || (await generateNextEmployeeCode(branch));
       await prisma.employee.create({
         data: {
+          id: crypto.randomUUID(),
           employeeCode: finalCode,
           ...updateData,
-          status: "ACTIVE",
+          status: "Đang làm việc",
           creator
         }
       });
     }
   }
   revalidatePath("/nhan-su/nhan-vien");
+  revalidatePath("/admin/tai-khoan");
 }
 
 export async function generateNextEmployeeCode(branchName: string) {

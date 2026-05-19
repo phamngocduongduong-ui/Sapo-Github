@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";
-import { getProducts, createProduct, updateProduct, updateProductStatus, deleteProduct, getCategories, getUnits } from "./actions";
+import { getProducts, createProduct, updateProduct, updateProductStatus, deleteProduct, getCategories, getUnits, getWarehouses } from "./actions";
 import HistoryModal from "../../HistoryModal";
 
 export default function ProductPage() {
   const [items, setItems] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [search, setSearch] = useState("");
@@ -27,9 +28,10 @@ export default function ProductPage() {
   }
 
   async function loadFormOptions() {
-    const [catData, unitData] = await Promise.all([getCategories(), getUnits()]);
+    const [catData, unitData, whData] = await Promise.all([getCategories(), getUnits(), getWarehouses()]);
     setCategories(catData);
     setUnits(unitData);
+    setWarehouses(whData);
   }
 
   const filteredItems = items.filter(item => 
@@ -111,9 +113,10 @@ export default function ProductPage() {
           <table className="table">
             <thead>
               <tr>
-                <th style={{ width: "120px" }}>Mã SP</th>
+                 <th style={{ width: "120px" }}>Mã SP</th>
                 <th>Tên sản phẩm</th>
                 <th>Nhóm sản phẩm</th>
+                <th>Kho mặc định</th>
                 <th>Đơn vị tính</th>
                 <th>Ghi chú</th>
                 <th style={{ width: "140px" }}>Trạng thái</th>
@@ -129,6 +132,7 @@ export default function ProductPage() {
                     <td style={{ fontWeight: 600 }}>{item.code}</td>
                     <td style={{ fontWeight: 500 }}>{item.name}</td>
                     <td>{item.productcategory?.name || "—"}</td>
+                    <td>{item.warehouse?.name || "—"}</td>
                     <td>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
                         {item.unit?.map((u: any) => (
@@ -178,14 +182,25 @@ export default function ProductPage() {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: "block", marginBottom: "0.4rem", fontSize: "0.85rem", fontWeight: 600 }}>Nhóm sản phẩm *</label>
-                <select name="categoryId" className="input" required defaultValue={editingItem?.categoryId || ""}>
-                  <option value="" disabled>-- Chọn nhóm sản phẩm --</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.4rem", fontSize: "0.85rem", fontWeight: 600 }}>Nhóm sản phẩm *</label>
+                  <select name="categoryId" className="input" required defaultValue={editingItem?.categoryId || ""}>
+                    <option value="" disabled>-- Chọn nhóm --</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.4rem", fontSize: "0.85rem", fontWeight: 600 }}>Kho mặc định</label>
+                  <select name="warehouseId" className="input" defaultValue={editingItem?.warehouseId || ""}>
+                    <option value="">-- Không chọn --</option>
+                    {warehouses.map(wh => (
+                      <option key={wh.id} value={wh.id}>{wh.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>

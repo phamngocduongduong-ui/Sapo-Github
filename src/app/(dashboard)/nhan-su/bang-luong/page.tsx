@@ -31,7 +31,7 @@ export default async function PayrollPage() {
 
   const employees = await prisma.employee.findMany({
     where: { 
-      status: "ACTIVE",
+      status: { notIn: ["Nghỉ việc", "INACTIVE"] },
       ...(isAdmin ? {} : { branch: { in: user?.branch?.split(",").map(b => b.trim()).filter(Boolean) || [] } })
     },
     select: { 

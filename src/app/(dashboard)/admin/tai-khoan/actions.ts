@@ -9,12 +9,8 @@ export async function ensureDefaultAdmin() {
     // 1. Kiểm tra và tạo chi nhánh mặc định nếu chưa có
     const branchCount = await prisma.branch.count();
     if (branchCount === 0) {
-      await prisma.branch.createMany({
-        data: [
-          { code: "CN001", name: "Tổng công ty" },
-          { code: "CN002", name: "Chi nhánh Hà Nội" },
-          { code: "CN003", name: "Chi nhánh TP.HCM" }
-        ]
+      await prisma.branch.create({
+        data: { code: "HCM", name: "Hồ Chí Minh" }
       });
     }
 
@@ -23,9 +19,10 @@ export async function ensureDefaultAdmin() {
     if (!adminPermission) {
       adminPermission = await prisma.permission.create({
         data: {
+          id: crypto.randomUUID(),
           code: "ADMIN_FULL",
           name: "Quản trị hệ thống (Toàn quyền)",
-          details: {
+          permissiondetail: {
             create: [
               { moduleKey: "NS_EMPLOYEE", canAccess: true },
               { moduleKey: "NS_CONTRACT", canAccess: true },
@@ -37,6 +34,8 @@ export async function ensureDefaultAdmin() {
               { moduleKey: "NS_BAC_LUONG", canAccess: true },
               { moduleKey: "NS_APPROVE", canAccess: true },
               { moduleKey: "NS_NGHI_VIEC", canAccess: true },
+              { moduleKey: "LUONG_BHXH", canAccess: true },
+              { moduleKey: "LB_CHAM_CONG", canAccess: true },
               { moduleKey: "SALES_ORDER", canAccess: true },
               { moduleKey: "PROD_MATERIAL_PLAN", canAccess: true },
             ]

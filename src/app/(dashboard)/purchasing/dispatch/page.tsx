@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import DispatchTable from "./DispatchTable";
 
 export default async function DispatchPage() {
-  const orders = await prisma.dispatchOrder.findMany({
+  const orders = await (prisma as any).dispatchorder.findMany({
     orderBy: { createdAt: "desc" },
   });
 

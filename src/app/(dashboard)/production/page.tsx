@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/db";
 
 export default async function ProductionPage() {
-  const plans = await prisma.productionPlan.findMany({
-    include: { order: true, items: true },
+  const plans = await (prisma as any).productionplan.findMany({
+    include: { order: true, productionplanitem: true },
     orderBy: { createdAt: 'desc' }
   });
 

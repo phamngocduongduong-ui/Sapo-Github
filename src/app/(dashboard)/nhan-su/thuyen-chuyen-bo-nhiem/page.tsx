@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { Check, RotateCcw, Filter, Search } from "lucide-react";
+import { Check, RotateCcw, Filter, Search, MoreHorizontal, History, CheckCircle, PowerOff, Mail, Clock, AlertTriangle } from "lucide-react";
 import { getTransferPromotions, createTransferPromotion, updateTransferStatus } from "./actions";
 import HistoryModal from "../../HistoryModal";
 import { getEmployees } from "../tang-giam-luong/actions";
@@ -12,8 +12,17 @@ export default function TransferPromotionPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState("");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [confirmUpdate, setConfirmUpdate] = useState<{ id: string, status: string, info: string } | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, []);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,8 +78,14 @@ export default function TransferPromotionPage() {
     });
   }
 
-  function handleStatusUpdate(id: string, status: string) {
-    if (!confirm(`Xác nhận chuyển trạng thái sang "${status}"?`)) return;
+  function handleStatusUpdate(id: string, status: string, info?: string) {
+    setConfirmUpdate({ id, status, info: info || "" });
+  }
+
+  async function executeStatusUpdate() {
+    if (!confirmUpdate) return;
+    const { id, status } = confirmUpdate;
+    setConfirmUpdate(null);
     startTransition(async () => {
       await updateTransferStatus(id, status);
       fetchData();
@@ -141,41 +156,52 @@ export default function TransferPromotionPage() {
                         {item.status}
                       </span>
                     </td>
-                    <td style={{ textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center", whiteSpace: "nowrap" }}>
-                        {item.status === "Đã phê duyệt" ? (
-                          <span style={{ fontSize: "0.8rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
-                            <Check size={14} /> Hoàn tất
-                          </span>
-                        ) : (
-                          <>
-                            {item.status === "Tạo mới" && (
-                              <>
-                                <button onClick={() => handleStatusUpdate(item.id, "Chờ phê duyệt")} className="btn btn-sm btn-primary">Gửi</button>
-                                <button onClick={() => handleStatusUpdate(item.id, "Đã hủy")} className="btn btn-sm btn-danger">Hủy</button>
-                              </>
-                            )}
-                            {item.status === "Chờ phê duyệt" && (
-                              <>
-                                <button onClick={() => handleStatusUpdate(item.id, "Tạo mới")} className="btn btn-sm btn-warning">Thu hồi</button>
-                                {isAdmin && (
-                                  <>
-                                    <button onClick={() => handleStatusUpdate(item.id, "Đã phê duyệt")} className="btn btn-sm btn-primary">Duyệt</button>
-                                    <button onClick={() => handleStatusUpdate(item.id, "Từ chối")} className="btn btn-sm btn-danger">Từ chối</button>
-                                  </>
-                                )}
-                              </>
-                            )}
-                          </>
-                        )}
-                        <button 
-                          className="btn btn-sm btn-outline" 
-                          onClick={() => setHistoryRecordId(item.id)}
-                          title="Lịch sử thay đổi"
-                        >
-                          Lịch sử
-                        </button>
-                      </div>
+                    <td style={{ textAlign: "right", position: "relative" }}>
+                      <button 
+                        className="action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === item.id ? null : item.id);
+                        }}
+                      >
+                        <MoreHorizontal size={18} />
+                      </button>
+
+                      {openMenuId === item.id && (
+                        <div className="action-dropdown" onClick={(e) => e.stopPropagation()}>
+                          <div className="dropdown-item" onClick={() => { setHistoryRecordId(item.id); setOpenMenuId(null); }}>
+                            <History size={14} /> Lịch sử
+                          </div>
+                          
+                          {item.status === "Tạo mới" && (
+                            <>
+                              <div className="dropdown-item success" onClick={() => handleStatusUpdate(item.id, "Chờ phê duyệt", `của NV ${item.employeeName}`)}>
+                                <Mail size={14} /> Gửi duyệt
+                              </div>
+                              <div className="dropdown-item danger" onClick={() => handleStatusUpdate(item.id, "Đã hủy", `của NV ${item.employeeName}`)}>
+                                <PowerOff size={14} /> Hủy đề xuất
+                              </div>
+                            </>
+                          )}
+
+                          {item.status === "Chờ phê duyệt" && (
+                            <div className="dropdown-item warning" onClick={() => handleStatusUpdate(item.id, "Tạo mới", `của NV ${item.employeeName}`)}>
+                              <RotateCcw size={14} /> Thu hồi
+                            </div>
+                          )}
+
+                          {item.status === "Chờ phê duyệt" && isAdmin && (
+                            <>
+                              <div className="dropdown-item success" onClick={() => handleStatusUpdate(item.id, "Đã phê duyệt", `của NV ${item.employeeName}`)}>
+                                <CheckCircle size={14} /> Duyệt đề xuất
+                              </div>
+                              <div className="dropdown-item danger" onClick={() => handleStatusUpdate(item.id, "Từ chối", `của NV ${item.employeeName}`)}>
+                                <PowerOff size={14} /> Từ chối
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -249,6 +275,62 @@ export default function TransferPromotionPage() {
                 <button type="submit" className="btn btn-primary" disabled={isPending}>{isPending ? "Đang lưu..." : "Lưu đề xuất"}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Custom Confirmation Modal */}
+      {confirmUpdate && (
+        <div className="modal-overlay-base" style={{ zIndex: 9999 }}>
+          <div className="modal-content-base" style={{ maxWidth: "450px", textAlign: "center", padding: "2rem" }}>
+            <div style={{ 
+              width: "60px", 
+              height: "60px", 
+              borderRadius: "50%", 
+              background: "#fff7ed", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              margin: "0 auto 1.5rem",
+              color: "#f97316"
+            }}>
+              <Clock size={32} />
+            </div>
+            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+              {confirmUpdate.status === "Chờ phê duyệt" ? "Gửi phê duyệt" : 
+               confirmUpdate.status === "Tạo mới" ? "Thu hồi hồ sơ" : 
+               confirmUpdate.status === "Đã phê duyệt" ? "Phê duyệt hồ sơ" : 
+               "Xác nhận thay đổi"}
+            </h3>
+            <div style={{ color: "#475569", marginBottom: "2rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+              {confirmUpdate.status === "Chờ phê duyệt" ? (
+                <>
+                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc muốn gửi hồ sơ để chờ phê duyệt không?</p>
+                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
+                    <PowerOff size={16} /> Hồ sơ sẽ không được chỉnh sửa trong thời gian chờ phê duyệt.
+                  </p>
+                </>
+              ) : confirmUpdate.status === "Tạo mới" ? (
+                <>
+                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn muốn thu hồi hồ sơ không?</p>
+                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px", whiteSpace: "nowrap" }}>
+                    <RotateCcw size={16} /> Hồ sơ sẽ không trong danh sách chờ phê duyệt.
+                  </p>
+                </>
+              ) : confirmUpdate.status === "Đã phê duyệt" ? (
+                <>
+                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn đồng ý phê duyệt không?</p>
+                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
+                    <CheckCircle size={16} /> Hồ sơ sẽ có giá trị kể từ thời điểm phê duyệt.
+                  </p>
+                </>
+              ) : (
+                <p>Bạn có chắc chắn muốn chuyển trạng thái hồ sơ này sang <strong>"{confirmUpdate.status}"</strong> không?</p>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmUpdate(null)}>Hủy bỏ</button>
+              <button className="btn btn-primary" style={{ flex: 1, background: confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy" ? "#ef4444" : "#2563eb" }} onClick={executeStatusUpdate}>Xác nhận</button>
+            </div>
           </div>
         </div>
       )}

@@ -4,21 +4,29 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 export async function saveCategoryPermissions(permissionId: string, permissions: { moduleKey: string, canAccess: boolean }[]) {
-  // Xóa các chi tiết quyền cũ của danh mục này
-  await (prisma as any).permissiondetail.deleteMany({
-    where: { permissionId }
-  });
+  // Đảm bảo chỉ lưu các moduleKey duy nhất và hợp lệ
+  const uniquePermissions = Array.from(
+    new Map(permissions.map(p => [p.moduleKey, p])).values()
+  );
 
-  // Tạo các chi tiết quyền mới
-  await (prisma as any).permissiondetail.createMany({
-    data: permissions.map(p => ({
-      permissionId,
-      moduleKey: p.moduleKey,
-      canAccess: p.canAccess
-    }))
-  });
+  await prisma.$transaction([
+    // 1. Xóa các chi tiết quyền cũ
+    (prisma as any).permissiondetail.deleteMany({
+      where: { permissionId }
+    }),
+    // 2. Tạo các chi tiết quyền mới
+    (prisma as any).permissiondetail.createMany({
+      data: uniquePermissions.map(p => ({
+        permissionId,
+        moduleKey: p.moduleKey,
+        canAccess: p.canAccess
+      }))
+    })
+  ]);
 
   revalidatePath("/admin/quyen-su-dung");
+  revalidatePath("/admin/tai-khoan");
+  revalidatePath("/");
 }
 
 export async function getCategoryPermissions(permissionId: string) {

@@ -13,7 +13,11 @@ import {
   X,
   RotateCcw,
   Filter,
-  Clock
+  Clock,
+  MoreHorizontal,
+  History,
+  AlertTriangle,
+  CheckCircle
 } from "lucide-react";
 import HistoryModal from "../../HistoryModal";
 import * as XLSX from "xlsx";
@@ -57,6 +61,15 @@ export default function AttendanceTable({
   const [isLoading, setIsLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, []);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -81,14 +94,15 @@ export default function AttendanceTable({
     setCurrentPage(1);
   }, [search]);
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Bạn có chắc chắn muốn xóa bản ghi này?")) {
-      try {
-        await deleteAttendance(id);
-        setData(data.filter(item => item.id !== id));
-      } catch (error) {
-        alert("Lỗi khi xóa: " + (error as any).message);
-      }
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
+    try {
+      await deleteAttendance(id);
+      setData(data.filter(item => item.id !== id));
+    } catch (error) {
+      alert("Lỗi khi xóa: " + (error as any).message);
     }
   };
 
@@ -151,12 +165,12 @@ export default function AttendanceTable({
         <h3 style={{ margin: 0 }}>📋 Bảng chấm công</h3>
         
         <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-          <button onClick={handleDownloadTemplate} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Download size={14} /> Mẫu
+          <button onClick={handleDownloadTemplate} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+            <Download size={14} /> File mẫu
           </button>
           
-          <label className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", margin: 0 }}>
-            <Upload size={14} /> Import
+          <label className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", margin: 0 }}>
+            <Upload size={14} /> Nhập Excel
             <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
           </label>
           
@@ -231,30 +245,31 @@ export default function AttendanceTable({
                   <td style={{ textAlign: "center" }}>{formatNumber(item.weekdayOvertimeHours)}</td>
                   <td style={{ textAlign: "center" }}>{formatNumber(item.sundayOvertimeHours)}</td>
                   <td style={{ textAlign: "center" }}>{formatNumber(item.holidayOvertimeHours)}</td>
-                  <td>
-                    <div style={{ display: "flex", justifyContent: "center", gap: "0.4rem", whiteSpace: "nowrap" }}>
-                      <button 
-                        onClick={() => { setEditingItem(item); setIsModalOpen(true); }}
-                        className="btn btn-sm btn-outline" 
-                        style={{ gap: "4px" }}
-                      >
-                        <Pencil size={14} /> Sửa
-                      </button>
-                        <button 
-                          onClick={() => handleDelete(item.id)}
-                          className="btn btn-sm btn-outline btn-danger" 
-                          style={{ gap: "4px", color: "#e74c3c" }}
-                        >
-                          <Trash2 size={14} /> Xóa
-                        </button>
-                      <button 
-                        className="btn btn-sm btn-outline" 
-                        onClick={() => setHistoryRecordId(item.id)}
-                        title="Lịch sử thay đổi"
-                      >
-                        Lịch sử
-                      </button>
-                    </div>
+                  <td style={{ textAlign: "right", position: "relative" }}>
+                    <button 
+                      className="action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === item.id ? null : item.id);
+                      }}
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+
+                    {openMenuId === item.id && (
+                      <div className="action-dropdown" onClick={(e) => e.stopPropagation()}>
+                        <div className="dropdown-item" onClick={() => { setEditingItem(item); setIsModalOpen(true); setOpenMenuId(null); }}>
+                          <Pencil size={14} /> Chỉnh sửa
+                        </div>
+                        <div className="dropdown-item" onClick={() => { setHistoryRecordId(item.id); setOpenMenuId(null); }}>
+                          <History size={14} /> Lịch sử
+                        </div>
+                        <div className="divider"></div>
+                        <div className="dropdown-item danger" onClick={() => { setConfirmDeleteId(item.id); setOpenMenuId(null); }}>
+                          <Trash2 size={14} /> Xóa bản ghi
+                        </div>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))
@@ -389,6 +404,44 @@ export default function AttendanceTable({
                 <button type="submit" className="btn btn-primary">Lưu lại</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {confirmDeleteId && (
+        <div className="modal-overlay-base" style={{ zIndex: 9999 }}>
+          <div className="modal-content-base" style={{ maxWidth: "450px", textAlign: "center", padding: "2rem" }}>
+            <div style={{ 
+              width: "60px", 
+              height: "60px", 
+              borderRadius: "50%", 
+              background: "#fef2f2", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              margin: "0 auto 1.5rem",
+              color: "#ef4444"
+            }}>
+              <AlertTriangle size={32} />
+            </div>
+            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+              Xác nhận xóa
+            </h3>
+            <div style={{ color: "#475569", marginBottom: "2rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+              <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn muốn xóa bản ghi chấm công này không?</p>
+              <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
+                <Trash2 size={16} /> Dữ liệu sau khi xóa sẽ không thể khôi phục.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmDeleteId(null)}>Bỏ qua</button>
+              <button 
+                className="btn btn-primary" 
+                style={{ flex: 1, background: "#ef4444" }} 
+                onClick={executeDelete}
+              >
+                Xác nhận xóa
+              </button>
+            </div>
           </div>
         </div>
       )}

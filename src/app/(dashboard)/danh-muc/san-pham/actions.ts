@@ -25,8 +25,15 @@ export async function getProducts() {
     include: {
       productcategory: true,
       unit: true,
+      warehouse: true,
     },
     orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getWarehouses() {
+  return await prisma.warehouse.findMany({
+    where: { status: "Hoạt động" },
   });
 }
 
@@ -49,19 +56,21 @@ export async function createProduct(formData: FormData) {
   const status = formData.get("status") as string;
   const note = formData.get("note") as string;
   const unitIds = formData.getAll("unitIds") as string[];
+  const warehouseId = formData.get("warehouseId") as string;
 
   const product = await prisma.product.create({
     data: {
       code,
       name,
       categoryId,
+      warehouseId: warehouseId || null,
       status,
       note,
       unit: {
         connect: unitIds.map(id => ({ id }))
       }
     },
-    include: { unit: true }
+    include: { unit: true, warehouse: true }
   });
 
   await createAuditLog("Product", product.id, "CREATE", null, product, `Thêm mới sản phẩm: ${name}`);
@@ -81,6 +90,7 @@ export async function updateProduct(id: string, formData: FormData) {
   const status = formData.get("status") as string;
   const note = formData.get("note") as string;
   const unitIds = formData.getAll("unitIds") as string[];
+  const warehouseId = formData.get("warehouseId") as string;
 
   const product = await prisma.product.update({
     where: { id },
@@ -88,6 +98,7 @@ export async function updateProduct(id: string, formData: FormData) {
       code,
       name,
       categoryId,
+      warehouseId: warehouseId || null,
       status,
       note,
       unit: {
@@ -95,7 +106,7 @@ export async function updateProduct(id: string, formData: FormData) {
         connect: unitIds.map(id => ({ id }))
       }
     },
-    include: { unit: true }
+    include: { unit: true, warehouse: true }
   });
 
   await createAuditLog("Product", id, "UPDATE", oldProduct, product, `Cập nhật sản phẩm: ${name}`);

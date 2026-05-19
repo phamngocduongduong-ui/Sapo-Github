@@ -2,7 +2,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { login } from "./actions";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 function SubmitButton() {
@@ -14,7 +14,7 @@ function SubmitButton() {
   );
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const [state, formAction] = useFormState(login, undefined);
   const [showPassword, setShowPassword] = useState(false);
   const searchParams = useSearchParams();
@@ -75,5 +75,17 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f6fa", color: "#888", fontFamily: "inherit" }}>
+        Đang tải...
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

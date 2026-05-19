@@ -9,10 +9,15 @@ export function useRealTimeSync<T>(
   intervalMs: number = 3000
 ) {
   const dataRef = useRef(currentData);
+  const onUpdateRef = useRef(onUpdate);
 
   useEffect(() => {
     dataRef.current = currentData;
   }, [currentData]);
+
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -21,7 +26,6 @@ export function useRealTimeSync<T>(
         if (res.status === 403) {
           const errorData = await res.json();
           if (errorData.error === "ACCOUNT_INACTIVE") {
-            // Xóa cookie và chuyển hướng nếu tài khoản bị khóa
             document.cookie = "session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             window.location.href = "/login?error=inactive";
             return;
@@ -29,9 +33,8 @@ export function useRealTimeSync<T>(
         }
         if (res.ok) {
           const newData = await res.json();
-          // So sánh dữ liệu để tránh cập nhật state liên tục nếu không có thay đổi
           if (JSON.stringify(newData) !== JSON.stringify(dataRef.current)) {
-            onUpdate(newData);
+            onUpdateRef.current(newData);
           }
         }
       } catch (error) {
@@ -40,5 +43,5 @@ export function useRealTimeSync<T>(
     }, intervalMs);
 
     return () => clearInterval(interval);
-  }, [module, onUpdate, intervalMs]);
+  }, [module, intervalMs]); // onUpdate removed from dependencies
 }

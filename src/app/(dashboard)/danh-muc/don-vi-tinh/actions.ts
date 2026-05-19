@@ -34,7 +34,13 @@ export async function createUnit(formData: FormData) {
   const note = formData.get("note") as string;
 
   const unit = await prisma.unit.create({
-    data: { code, name, status, note },
+    data: {
+      id: crypto.randomUUID(),
+      code,
+      name,
+      status,
+      note
+    },
   });
 
   await createAuditLog("Unit", unit.id, "CREATE", null, unit, `Thêm mới đơn vị tính: ${name}`);

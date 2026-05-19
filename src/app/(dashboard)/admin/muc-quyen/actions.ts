@@ -17,10 +17,17 @@ export async function createPermission(formData: FormData) {
   if (!code || !name) throw new Error("Mã và tên quyền là bắt buộc.");
 
   await prisma.permission.create({
-    data: { code, name, status }
+    data: {
+      id: crypto.randomUUID(),
+      code,
+      name,
+      status
+    }
   });
 
   revalidatePath("/admin/muc-quyen");
+  revalidatePath("/admin/quyen-su-dung");
+  revalidatePath("/admin/tai-khoan");
 }
 
 export async function updatePermission(id: string, formData: FormData) {
@@ -35,6 +42,8 @@ export async function updatePermission(id: string, formData: FormData) {
   });
 
   revalidatePath("/admin/muc-quyen");
+  revalidatePath("/admin/quyen-su-dung");
+  revalidatePath("/admin/tai-khoan");
 }
 
 export async function updatePermissionStatus(id: string, status: string) {
@@ -43,4 +52,6 @@ export async function updatePermissionStatus(id: string, status: string) {
     data: { status }
   });
   revalidatePath("/admin/muc-quyen");
+  revalidatePath("/admin/quyen-su-dung");
+  revalidatePath("/admin/tai-khoan");
 }

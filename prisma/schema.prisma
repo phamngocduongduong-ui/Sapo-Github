@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -23,8 +23,7 @@ model attendance {
   month                Int
   year                 Int
   createdAt            DateTime @default(now())
-  updatedAt            DateTime
-
+  updatedAt            DateTime @updatedAt
   @@unique([employeeCode, month, year], map: "Attendance_employeeCode_month_year_key")
 }
 
@@ -41,42 +40,45 @@ model auditlog {
 }
 
 model branch {
-  id        String   @id
+  id        String   @id @default(cuid())
   code      String   @unique(map: "Branch_code_key")
   name      String   @unique(map: "Branch_name_key")
   address   String?
   status    String   @default("ACTIVE")
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
 }
 
 model country {
-  id        String   @id
+  id        String   @id @default(cuid())
   code      String   @unique(map: "Country_code_key")
   name      String   @unique(map: "Country_name_key")
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
 }
 
 model customer {
-  id        String   @id
-  code      String   @unique(map: "Customer_code_key")
-  name      String
-  phone     String?
-  email     String?
-  address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime
+  id             String   @id @default(cuid())
+  code           String   @unique(map: "Customer_code_key")
+  name           String
+  abbreviation   String?
+  classification String?  @default("Trong nước")
+  country        String?
+  phone          String?
+  email          String?
+  address        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model department {
-  id        String   @id
+  id        String   @id @default(cuid())
   code      String   @unique(map: "Department_code_key")
   name      String   @unique(map: "Department_name_key")
   status    String   @default("ACTIVE")
   note      String?
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
 }
 
 model dispatchorder {
@@ -91,14 +93,14 @@ model dispatchorder {
   status           String          @default("PENDING")
   note             String?
   createdAt        DateTime        @default(now())
-  updatedAt        DateTime
+  updatedAt        DateTime @updatedAt
   purchasingplan   purchasingplan? @relation(fields: [purchasingPlanId], references: [id], map: "DispatchOrder_purchasingPlanId_fkey")
 
   @@index([purchasingPlanId], map: "DispatchOrder_purchasingPlanId_fkey")
 }
 
 model employee {
-  id             String    @id
+  id             String    @id @default(cuid())
   employeeCode   String    @unique(map: "Employee_employeeCode_key")
   fullName       String
   position       String
@@ -118,12 +120,13 @@ model employee {
   maritalStatus  String?
   workplace      String?
   creator        String?
+  cardCode       String?
   createdAt      DateTime  @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
 }
 
 model laborcontract {
-  id                      String    @id
+  id                      String    @id @default(cuid())
   employeeName            String
   branch                  String?
   contractNumber          String    @unique(map: "LaborContract_contractNumber_key")
@@ -148,12 +151,12 @@ model laborcontract {
   approver                String?
   note                    String?
   createdAt               DateTime  @default(now())
-  updatedAt               DateTime
+  updatedAt               DateTime @updatedAt
   durationMonths          Int?
 }
 
 model leaverequest {
-  id           String   @id
+  id           String   @id @default(cuid())
   createdAt    DateTime @default(now())
   employeeName String
   branch       String?
@@ -164,7 +167,7 @@ model leaverequest {
   status       String   @default("Tạo mới")
   approver     String?
   note         String?
-  updatedAt    DateTime
+  updatedAt    DateTime @updatedAt
   leaveCode    String?  @unique(map: "LeaveRequest_leaveCode_key")
   subReason    String?
 }
@@ -177,7 +180,7 @@ model materialplan {
   status     String   @default("Tạo mới")
   note       String?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
   order      order[]
 }
 
@@ -190,7 +193,7 @@ model notification {
   type       String?
   targetRole String?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
 }
 
 model order {
@@ -208,7 +211,7 @@ model order {
   note                 String?
   materialPlanId       String?
   createdAt            DateTime        @default(now())
-  updatedAt            DateTime
+  updatedAt            DateTime @updatedAt
   materialplan         materialplan?   @relation(fields: [materialPlanId], references: [id], map: "Order_materialPlanId_fkey")
   orderitem            orderitem[]
   productionplan       productionplan?
@@ -227,7 +230,7 @@ model orderitem {
   hasCornerGuard Boolean  @default(false)
   note           String?
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
   order          order    @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "OrderItem_orderId_fkey")
 
   @@index([orderId], map: "OrderItem_orderId_fkey")
@@ -243,7 +246,7 @@ model payroll {
   note          String?
   status        String          @default("Tạo mới")
   createdAt     DateTime        @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
   payrollCode   String?         @unique(map: "Payroll_payrollCode_key")
   payrolldetail payrolldetail[]
 
@@ -264,7 +267,7 @@ model payrolldetail {
   overtimePay              Float    @default(0)
   socialInsuranceDeduction Float    @default(0)
   createdAt                DateTime @default(now())
-  updatedAt                DateTime
+  updatedAt                DateTime @updatedAt
   payroll                  payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade, map: "PayrollDetail_payrollId_fkey")
 
   @@index([payrollId], map: "PayrollDetail_payrollId_fkey")
@@ -276,13 +279,13 @@ model permission {
   name             String             @unique(map: "Permission_name_key")
   status           String             @default("ACTIVE")
   createdAt        DateTime           @default(now())
-  updatedAt        DateTime
+  updatedAt        DateTime @updatedAt
   permissiondetail permissiondetail[]
   user             user[]             @relation("permissiontouser")
 }
 
 model permissiondetail {
-  id           String     @id
+  id           String     @id @default(cuid())
   permissionId String
   moduleKey    String
   canAccess    Boolean    @default(false)
@@ -292,36 +295,39 @@ model permissiondetail {
 }
 
 model position {
-  id        String   @id
+  id        String   @id @default(cuid())
   code      String   @unique(map: "Position_code_key")
   name      String   @unique(map: "Position_name_key")
   status    String   @default("ACTIVE")
   note      String?
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
 }
 
 model product {
-  id              String          @id
+  id              String          @id @default(cuid())
   code            String          @unique(map: "Product_code_key")
   name            String
   categoryId      String
   createdAt       DateTime        @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime @updatedAt
   note            String?
   status          String          @default("Hoạt động")
+  warehouseId     String?
   productcategory productcategory @relation(fields: [categoryId], references: [id], map: "Product_categoryId_fkey")
+  warehouse       warehouse?      @relation(fields: [warehouseId], references: [id], map: "Product_warehouseId_fkey")
   unit            unit[]          @relation("producttounit")
 
   @@index([categoryId], map: "Product_categoryId_fkey")
+  @@index([warehouseId], map: "Product_warehouseId_fkey")
 }
 
 model productcategory {
-  id          String    @id
+  id          String    @id @default(cuid())
   name        String    @unique(map: "ProductCategory_name_key")
   description String?
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
   code        String    @unique(map: "ProductCategory_code_key")
   status      String    @default("Hoạt động")
   product     product[]
@@ -334,7 +340,7 @@ model productionplan {
   startDate          DateTime?
   endDate            DateTime?
   createdAt          DateTime             @default(now())
-  updatedAt          DateTime
+  updatedAt          DateTime @updatedAt
   order              order                @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "ProductionPlan_orderId_fkey")
   productionplanitem productionplanitem[]
 }
@@ -346,7 +352,7 @@ model productionplanitem {
   quantity         Int
   producedQuantity Int            @default(0)
   createdAt        DateTime       @default(now())
-  updatedAt        DateTime
+  updatedAt        DateTime @updatedAt
   productionplan   productionplan @relation(fields: [productionPlanId], references: [id], onDelete: Cascade, map: "ProductionPlanItem_productionPlanId_fkey")
 
   @@index([productionPlanId], map: "ProductionPlanItem_productionPlanId_fkey")
@@ -364,7 +370,7 @@ model purchaseorder {
   deliveryLocation    String?
   note                String?
   createdAt           DateTime              @default(now())
-  updatedAt           DateTime
+  updatedAt           DateTime @updatedAt
   purchaseorderdetail purchaseorderdetail[]
   purchaseinvoice     purchaseinvoice[]
 }
@@ -378,7 +384,7 @@ model purchaseorderdetail {
   deliveryLocation  String?
   note              String?
   createdAt         DateTime      @default(now())
-  updatedAt         DateTime
+  updatedAt         DateTime @updatedAt
   unit              String?
   purchaseorder     purchaseorder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade, map: "PurchaseOrderDetail_purchaseOrderId_fkey")
 
@@ -391,7 +397,7 @@ model purchaseinvoice {
   creator             String
   branch              String?
   createdAt           DateTime                @default(now())
-  updatedAt           DateTime
+  updatedAt           DateTime @updatedAt
   supplier            String
   status              String                  @default("Tạo mới")
   deliveryDate        DateTime
@@ -415,7 +421,7 @@ model purchaseinvoicedetail {
   unit              String?
   note              String?
   createdAt         DateTime        @default(now())
-  updatedAt         DateTime
+  updatedAt         DateTime @updatedAt
   purchaseinvoice   purchaseinvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade, map: "PurchaseInvoiceDetail_purchaseInvoiceId_fkey")
 
   @@index([purchaseInvoiceId], map: "PurchaseInvoiceDetail_purchaseInvoiceId_fkey")
@@ -427,7 +433,7 @@ model purchasingplan {
   orderId            String               @unique(map: "PurchasingPlan_orderId_key")
   status             String               @default("PENDING")
   createdAt          DateTime             @default(now())
-  updatedAt          DateTime
+  updatedAt          DateTime @updatedAt
   dispatchorder      dispatchorder[]
   order              order                @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "PurchasingPlan_orderId_fkey")
   purchasingplanitem purchasingplanitem[]
@@ -440,7 +446,7 @@ model purchasingplanitem {
   quantity         Int
   unit             String
   createdAt        DateTime       @default(now())
-  updatedAt        DateTime
+  updatedAt        DateTime @updatedAt
   purchasingplan   purchasingplan @relation(fields: [purchasingPlanId], references: [id], onDelete: Cascade, map: "PurchasingPlanItem_purchasingPlanId_fkey")
 
   @@index([purchasingPlanId], map: "PurchasingPlanItem_purchasingPlanId_fkey")
@@ -457,7 +463,7 @@ model resignation {
   approver        String?
   note            String?
   createdAt       DateTime @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime @updatedAt
   resignationCode String?  @unique(map: "Resignation_resignationCode_key")
 }
 
@@ -478,7 +484,7 @@ model salarychange {
   reason              String?
   note                String?
   createdAt           DateTime @default(now())
-  updatedAt           DateTime
+  updatedAt           DateTime @updatedAt
   changeCode          String?  @unique(map: "SalaryChange_changeCode_key")
 }
 
@@ -492,7 +498,7 @@ model salaryincreaserequest {
   status         String   @default("Tạo mới")
   approver       String?
   note           String?
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
 }
 
 model salarylevel {
@@ -506,7 +512,7 @@ model salarylevel {
   attractionBonus     Float    @default(0)
   otherBonus          Float    @default(0)
   createdAt           DateTime @default(now())
-  updatedAt           DateTime
+  updatedAt           DateTime @updatedAt
 }
 
 model supplier {
@@ -517,7 +523,7 @@ model supplier {
   email     String?
   address   String?
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
 }
 
 model transferpromotion {
@@ -536,7 +542,7 @@ model transferpromotion {
   creator            String
   note               String?
   createdAt          DateTime @default(now())
-  updatedAt          DateTime
+  updatedAt          DateTime @updatedAt
 }
 
 model unit {
@@ -546,12 +552,12 @@ model unit {
   status    String    @default("Hoạt động")
   note      String?
   createdAt DateTime  @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
   product   product[] @relation("producttounit")
 }
 
 model user {
-  id           String       @id
+  id           String       @id @default(cuid())
   username     String       @unique(map: "User_username_key")
   password     String
   employeeName String?
@@ -560,12 +566,12 @@ model user {
   role         String       @default("SALES")
   status       String       @default("ACTIVE")
   createdAt    DateTime     @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime @updatedAt
   permission   permission[] @relation("permissiontouser")
 }
 
 model violation {
-  id           String   @id
+  id           String   @id @default(cuid())
   employeeName String
   branch       String?
   date         DateTime @default(now())
@@ -573,17 +579,18 @@ model violation {
   level        String?
   note         String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime @updatedAt
 }
 
 model warehouse {
-  id        String   @id
+  id        String   @id @default(cuid())
   code      String   @unique(map: "Warehouse_code_key")
   name      String   @unique(map: "Warehouse_name_key")
   status    String   @default("Hoạt động")
   note      String?
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
+  product   product[]
 }
 
 model warehouselog {
@@ -612,4 +619,142 @@ model warehouselogdetail {
   orderCode         String?
   note              String?
   warehouselog      warehouselog @relation(fields: [warehouseLogId], references: [id], onDelete: Cascade)
+}
+
+model checkin {
+  id           String   @id @default(cuid())
+  date         DateTime
+  employeeId   String
+  employeeCode String
+  employeeName String
+  location     String?
+  areaId       String?
+  timeIn       DateTime?
+  timeOut      DateTime?
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model checkin_area {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  latitude  Float
+  longitude Float
+  radius    Int      @default(100) // Meters
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model finishedgoodslocation {
+  id          String   @id @default(cuid())
+  row         String   // Dãy
+  bin         String   // Ô
+  level       String   // Tầng
+  warehouseId String?
+  capacity    Float?   @default(900) // Sức chứa tối đa (mặc định 900)
+  note        String?
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stock       finishedgoodsstock[]
+  receiptItems finishedgoodsreceiptdetail[]
+  issueItems   finishedgoodsissuedetail[]
+
+  @@unique([row, bin, level])
+}
+
+model finishedgoodsstock {
+  id          String   @id @default(cuid())
+  productCode String
+  productName String
+  batchNumber String
+  locationId  String
+  orderCode   String?  // Mã đơn hàng liên kết
+  quantity    Float    @default(0)
+  updatedAt   DateTime @updatedAt
+
+  location    finishedgoodslocation @relation(fields: [locationId], references: [id])
+
+  @@unique([productCode, batchNumber, locationId, orderCode])
+}
+
+model finishedgoodsreceipt {
+  id          String   @id @default(cuid())
+  receiptCode String   @unique
+  date        DateTime @default(now())
+  creator     String
+  purpose     String?  // Mục đích nhập
+  description String?  // Diễn giải
+  note        String?
+  status      String   @default("COMPLETED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  details     finishedgoodsreceiptdetail[]
+}
+
+model finishedgoodsreceiptdetail {
+  id                String   @id @default(cuid())
+  receiptId         String
+  productCode       String
+  productName       String
+  batchNumber       String
+  locationId        String
+  quantity          Float
+  unit              String?
+  orderCode         String?
+  note              String?
+
+  receipt           finishedgoodsreceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  location          finishedgoodslocation @relation(fields: [locationId], references: [id])
+}
+
+model finishedgoodsissue {
+  id          String   @id @default(cuid())
+  issueCode   String   @unique
+  date        DateTime @default(now())
+  creator     String
+  note        String?
+  status      String   @default("COMPLETED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  details     finishedgoodsissuedetail[]
+}
+
+model finishedgoodsissuedetail {
+  id                String   @id @default(cuid())
+  issueId           String
+  productCode       String
+  productName       String
+  batchNumber       String
+  locationId        String
+  quantity          Float
+  unit              String?
+  orderCode         String?
+  note              String?
+
+  issue             finishedgoodsissue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  location          finishedgoodslocation @relation(fields: [locationId], references: [id])
+}
+
+model securityregistration {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  licensePlate String
+  driverName   String
+  idCardNumber String
+  phoneNumber  String?
+  unit         String
+  purpose      String
+  status       String   @default("Đã vào")
+  timeIn       DateTime @default(now())
+  timeOut      DateTime?
+  note         String?
+  creator      String?
+  updatedAt    DateTime @updatedAt
 }

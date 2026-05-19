@@ -23,7 +23,7 @@ export default async function LaborContractPage() {
   // Lấy danh sách nhân viên đang hoạt động thuộc chi nhánh được phép
   const employees = await prisma.employee.findMany({
     where: { 
-      status: "ACTIVE",
+      status: { notIn: ["Nghỉ việc", "INACTIVE"] },
       ...(isAdmin ? {} : { branch: { in: userBranches } })
     },
     select: { 
@@ -62,28 +62,15 @@ export default async function LaborContractPage() {
   });
 
   return (
-    <main className="main-content">
-      <div className="page-header" style={{ marginBottom: "2rem" }}>
-        <h1 className="page-title" style={{ marginBottom: "0.25rem" }}>
-          📄 Quản lý Hợp đồng lao động
-        </h1>
-        <p style={{ color: "#64748b", fontSize: "0.95rem" }}>
-          Quản lý thông tin lương, phụ cấp và các loại hợp đồng lao động
-        </p>
-      </div>
-
-      <div className="card" style={{ padding: "1.5rem" }}>
-        <LaborContractTable 
-          initialContracts={contracts as any} 
-          employees={employees} 
-          positions={positions} 
-          departments={departments}
-          approvers={approverList}
-          currentUserName={userName}
-          salaryLevels={salaryLevels}
-          isAdmin={isAdmin}
-        />
-      </div>
-    </main>
+    <LaborContractTable 
+      initialContracts={contracts as any} 
+      employees={employees} 
+      positions={positions} 
+      departments={departments}
+      approvers={approverList}
+      currentUserName={userName}
+      salaryLevels={salaryLevels}
+      isAdmin={isAdmin}
+    />
   );
 }

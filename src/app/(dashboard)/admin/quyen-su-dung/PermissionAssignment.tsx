@@ -21,6 +21,7 @@ const MODULES = [
       { key: "DM_SAN_PHAM", label: "Sản phẩm" },
       { key: "DM_DON_VI_TINH", label: "Đơn vị tính" },
       { key: "DM_KHO_HANG", label: "Kho hàng" },
+      { key: "DM_VI_TRI", label: "Vị trí kho" },
     ]
   },
   {
@@ -30,14 +31,20 @@ const MODULES = [
       { key: "NS_NHAN_VIEN", label: "Nhân viên" },
       { key: "NS_HOP_DONG", label: "Hợp đồng lao động" },
       { key: "NS_NGHI_PHEP", label: "Nghỉ phép" },
-      { key: "NS_CHAM_CONG", label: "Chấm công" },
+      { key: "NS_DIEU_DONG", label: "Thuyên chuyển, Bổ nhiệm" },
+      { key: "NS_NGHI_VIEC", label: "Nghỉ việc" },
+      { key: "NS_APPROVE", label: "Phê duyệt" },
+    ]
+  },
+  {
+    key: "LUONG_BHXH",
+    label: "💳 Lương và BHXH",
+    children: [
+      { key: "LB_CHAM_CONG", label: "Chấm công" },
       { key: "NS_BANG_LUONG", label: "Bảng lương" },
       { key: "NS_TRA_CUU_LUONG", label: "Tra cứu lương" },
       { key: "NS_TANG_GIAM_LUONG", label: "Tăng/Giảm lương" },
-      { key: "NS_DIEU_DONG", label: "Thuyên chuyển, Bổ nhiệm" },
       { key: "NS_BAC_LUONG", label: "Bậc lương" },
-      { key: "NS_NGHI_VIEC", label: "Nghỉ việc" },
-      { key: "NS_APPROVE", label: "Phê duyệt" },
     ]
   },
   {
@@ -53,6 +60,7 @@ const MODULES = [
     children: [
       { key: "TM_KE_HOACH", label: "Kế hoạch Thu mua" },
       { key: "TM_LENH_MUA", label: "Lệnh mua" },
+      { key: "TM_APPROVE", label: "Phê duyệt" },
       { key: "TM_DON_MUA", label: "Đơn mua" },
       { key: "TM_DIEU_DONG", label: "Lệnh điều động" },
       { key: "TM_BAO_CAO", label: "Báo cáo" },
@@ -66,12 +74,29 @@ const MODULES = [
     ]
   },
   {
+    key: "THU_KHO",
+    label: "📦 Thủ kho",
+    children: [
+      { key: "TK_KHO_VAT_TU", label: "Kho vật tư" },
+      { key: "TK_KHO_THANH_PHAM", label: "Kho thành phẩm" },
+    ]
+  },
+  {
     key: "QUAN_TRI",
     label: "⚙️ Quản trị",
     children: [
       { key: "QT_TAI_KHOAN", label: "Tài khoản" },
       { key: "QT_MUC_QUYEN", label: "Mục quyền" },
       { key: "QT_PHAN_QUYEN", label: "Phân quyền" },
+    ]
+  },
+  {
+    key: "AN_NINH",
+    label: "🛡️ An ninh",
+    children: [
+      { key: "AN_DANG_KY", label: "Đăng ký" },
+      { key: "AN_DANH_SACH", label: "Danh sách" },
+      { key: "AN_KIEM_TRA", label: "Kiểm tra" },
     ]
   }
 ];
@@ -81,6 +106,7 @@ export default function PermissionAssignment({ categories }: { categories: any[]
   const router = useRouter();
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -92,12 +118,19 @@ export default function PermissionAssignment({ categories }: { categories: any[]
   }, [selectedCategoryId]);
 
   async function loadPermissions(permissionId: string) {
-    const data = await getCategoryPermissions(permissionId);
-    const permMap: Record<string, boolean> = {};
-    data.forEach(p => {
-      permMap[p.moduleKey] = p.canAccess;
-    });
-    setPermissions(permMap);
+    setLoading(true);
+    try {
+      const data = await getCategoryPermissions(permissionId);
+      const permMap: Record<string, boolean> = {};
+      data.forEach(p => {
+        permMap[p.moduleKey] = p.canAccess;
+      });
+      setPermissions(permMap);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleParentToggle(parentKey: string, checked: boolean) {
@@ -192,54 +225,70 @@ export default function PermissionAssignment({ categories }: { categories: any[]
                 </tr>
               </thead>
                   <tbody>
-                    {MODULES.map(parent => {
-                      const isParentChecked = permissions[parent.key] || false;
-                      const rows = [
-                        <tr key={`parent-${parent.key}`} style={{ background: "#f8fafc" }}>
-                          <td style={{ fontWeight: "700", color: "var(--primary-color)" }}>
-                            <label htmlFor={`parent-${parent.key}`} style={{ cursor: "pointer", display: "block", width: "100%" }}>
-                              {parent.label}
-                            </label>
-                          </td>
-                          <td style={{ textAlign: "center" }}>
-                            <input 
-                              id={`parent-${parent.key}`}
-                              type="checkbox" 
-                              checked={isParentChecked}
-                              onChange={(e) => handleParentToggle(parent.key, e.target.checked)}
-                              style={{ width: "20px", height: "20px", cursor: "pointer" }}
-                            />
-                          </td>
-                          <td style={{ fontSize: "0.85rem", color: "#64748b" }}>Phân hệ mẹ</td>
-                        </tr>
-                      ];
-
-                      parent.children.forEach(child => {
-                        rows.push(
-                          <tr key={`child-${child.key}`} style={{ opacity: isParentChecked ? 1 : 0.6 }}>
-                            <td style={{ paddingLeft: "2.5rem" }}>
-                              <label htmlFor={`child-${child.key}`} style={{ cursor: isParentChecked ? "pointer" : "not-allowed", display: "block", width: "100%" }}>
-                                {child.label}
-                              </label>
-                            </td>
-                            <td style={{ textAlign: "center" }}>
-                              <input 
-                                id={`child-${child.key}`}
-                                type="checkbox" 
-                                checked={permissions[child.key] || false}
-                                disabled={!isParentChecked}
-                                onChange={(e) => handleChildToggle(child.key, e.target.checked)}
-                                style={{ width: "18px", height: "18px", cursor: isParentChecked ? "pointer" : "not-allowed" }}
-                              />
-                            </td>
-                            <td style={{ fontSize: "0.85rem", color: "#94a3b8" }}>
-                              {!isParentChecked && "Bị khóa bởi phân hệ mẹ"}
-                            </td>
-                          </tr>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={3} style={{ textAlign: "center", padding: "3rem" }}>
+                          <div className="loader" style={{ margin: "0 auto" }}></div>
+                          <p style={{ marginTop: "1rem", color: "#64748b" }}>Đang tải dữ liệu quyền...</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      MODULES.map(parent => {
+                        const isParentChecked = permissions[parent.key] || false;
+                        return (
+                          <React.Fragment key={parent.key}>
+                            <tr style={{ background: "#f8fafc" }}>
+                              <td style={{ fontWeight: "700", color: "var(--primary-color)" }}>
+                                <label 
+                                  htmlFor={`parent-${parent.key}`} 
+                                  style={{ cursor: "pointer", display: "flex", alignItems: "center", width: "100%", height: "100%" }}
+                                >
+                                  {parent.label}
+                                </label>
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                <input 
+                                  id={`parent-${parent.key}`}
+                                  type="checkbox" 
+                                  checked={isParentChecked}
+                                  onChange={(e) => handleParentToggle(parent.key, e.target.checked)}
+                                  style={{ width: "20px", height: "20px", cursor: "pointer" }}
+                                />
+                              </td>
+                              <td style={{ fontSize: "0.85rem", color: "#64748b" }}>Phân hệ mẹ</td>
+                            </tr>
+                            {parent.children.map(child => {
+                              const isChildChecked = permissions[child.key] || false;
+                              return (
+                                <tr key={child.key} style={{ opacity: isParentChecked ? 1 : 0.6 }}>
+                                  <td style={{ paddingLeft: "2.5rem" }}>
+                                    <label 
+                                      htmlFor={`child-${child.key}`} 
+                                      style={{ cursor: isParentChecked ? "pointer" : "not-allowed", display: "block", width: "100%" }}
+                                    >
+                                      {child.label}
+                                    </label>
+                                  </td>
+                                  <td style={{ textAlign: "center" }}>
+                                    <input 
+                                      id={`child-${child.key}`}
+                                      type="checkbox" 
+                                      checked={isChildChecked}
+                                      disabled={!isParentChecked}
+                                      onChange={(e) => handleChildToggle(child.key, e.target.checked)}
+                                      style={{ width: "18px", height: "18px", cursor: isParentChecked ? "pointer" : "not-allowed" }}
+                                    />
+                                  </td>
+                                  <td style={{ fontSize: "0.85rem", color: "#94a3b8" }}>
+                                    {!isParentChecked && "Bị khóa bởi phân hệ mẹ"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
                         );
-                      });
-                      return rows;
-                    })}
+                      })
+                    )}
                   </tbody>
 
 

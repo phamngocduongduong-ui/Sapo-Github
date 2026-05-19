@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/db";
 
 export default async function PurchasingPage() {
-  const plans = await prisma.purchasingPlan.findMany({
-    include: { order: true, items: true },
+  const plans = await (prisma as any).purchasingplan.findMany({
+    include: { order: true, purchasingplanitem: true },
     orderBy: { createdAt: 'desc' }
   });
 

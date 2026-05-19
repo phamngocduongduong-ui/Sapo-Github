@@ -27,14 +27,14 @@ export default function SalaryLevelTable({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
         <h3 style={{ margin: 0 }}>Khai báo bậc lương</h3>
         <div style={{ display: "flex", gap: "0.75rem" }}>
-          <button className="btn" onClick={onDownloadTemplate} style={{ background: "#f1f5f9", color: "#475569", display: "flex", alignItems: "center", gap: "6px" }}>
+          <button className="btn" onClick={onDownloadTemplate} style={{ background: "#f1f5f9", color: "#475569", display: "flex", alignItems: "center", gap: "5px" }}>
             <FileText size={18} /> File mẫu
           </button>
-          <label className="btn" style={{ background: "#f1f5f9", color: "#475569", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
-            <Upload size={18} /> Import
+          <label className="btn" style={{ background: "#f1f5f9", color: "#475569", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+            <Upload size={18} /> Nhập Excel
             <input type="file" hidden accept=".xlsx, .xls" onChange={onImport} />
           </label>
-          <button className="btn" onClick={onExport} style={{ background: "#27ae60", color: "#fff", display: "flex", alignItems: "center", gap: "6px" }}>
+          <button className="btn" onClick={onExport} style={{ background: "#27ae60", color: "#fff", display: "flex", alignItems: "center", gap: "5px" }}>
             <Download size={18} /> Xuất Excel
           </button>
           <button className="btn btn-primary" onClick={onAdd}>+ Thêm mới</button>

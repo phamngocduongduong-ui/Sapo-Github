@@ -136,8 +136,6 @@ export default function SalaryIncreaseTable({
           </div>
         </div>
       )}
-        </div>
-      )}
 
       {historyRecordId && (
         <HistoryModal 

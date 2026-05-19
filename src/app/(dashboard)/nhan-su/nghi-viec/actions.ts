@@ -45,6 +45,7 @@ export async function createResignation(formData: FormData) {
 
   const resignation = await (prisma as any).resignation.create({
     data: {
+      id: crypto.randomUUID(),
       resignationCode,
       employeeName,
       branch: employee?.branch || branch || "",

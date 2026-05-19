@@ -6,17 +6,17 @@ export default async function KeHoachVatTuPage() {
   const session = await getSession();
 
   // Lấy danh sách kế hoạch vật tư
-  const plans = await prisma.materialPlan.findMany({
+  const plans = await (prisma as any).materialplan.findMany({
     include: { 
-      orders: {
-        include: { items: true }
+      order: {
+        include: { orderitem: true }
       }
     },
     orderBy: { createdAt: "desc" },
   });
 
   // Lấy danh sách chi tiết hàng hóa của các đơn hàng "Chờ kế hoạch sản xuất" và chưa có kế hoạch
-  const pendingItems = await prisma.orderItem.findMany({
+  const pendingItems = await (prisma as any).orderitem.findMany({
     where: {
       order: {
         status: "Chờ kế hoạch sản xuất",

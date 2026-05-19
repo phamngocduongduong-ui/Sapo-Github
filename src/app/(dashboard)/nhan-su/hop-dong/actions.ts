@@ -32,7 +32,12 @@ export async function createLaborContract(formData: FormData) {
   const otherAllowance = parseFloat(formData.get("otherAllowance") as string || "0");
   const socialInsurance = parseFloat(formData.get("socialInsurance") as string || "0");
 
-  if (!employeeName || !contractType || !contractDate || !startDate || !position || !department || !creator) {
+  const session = await getSession();
+  const user = await (prisma as any).user.findUnique({ where: { id: session?.userId || "" } });
+  const sessionCreator = user?.employeeName || user?.username || "Hệ thống";
+  const finalCreator = creator || sessionCreator;
+
+  if (!employeeName || !contractType || !contractDate || !startDate || !position || !department || !finalCreator) {
     const missing = [];
     if (!employeeName) missing.push("Nhân viên");
     if (!contractType) missing.push("Loại hợp đồng");
@@ -40,7 +45,7 @@ export async function createLaborContract(formData: FormData) {
     if (!startDate) missing.push("Ngày bắt đầu");
     if (!position) missing.push("Chức vụ");
     if (!department) missing.push("Bộ phận");
-    if (!creator) missing.push("Người tạo");
+    if (!finalCreator) missing.push("Người tạo");
     throw new Error(`Thiếu thông tin bắt buộc: ${missing.join(", ")}`);
   }
 
@@ -53,17 +58,18 @@ export async function createLaborContract(formData: FormData) {
     throw new Error(`Không thể tạo số hợp đồng cho nhân viên "${employeeName}". Vui lòng kiểm tra chi nhánh của nhân viên này trong danh sách nhân viên.`);
   }
 
-  const existing = await prisma.laborContract.findUnique({
+  const existing = await (prisma as any).laborcontract.findUnique({
     where: { contractNumber }
   });
   if (existing) throw new Error("Số hợp đồng đã tồn tại.");
 
-  const employee = await prisma.employee.findFirst({
+  const employee = await (prisma as any).employee.findFirst({
     where: { fullName: employeeName }
   });
 
-  const contract = await prisma.laborContract.create({
+  const contract = await (prisma as any).laborcontract.create({
     data: {
+      id: crypto.randomUUID(),
       employeeName,
       contractNumber,
       contractType,
@@ -74,7 +80,7 @@ export async function createLaborContract(formData: FormData) {
       position,
       department,
       salaryLevel: salaryLevel || "",
-      creator,
+      creator: finalCreator,
       approver: approver || "",
       note: note || "",
       branch: employee?.branch || "",
@@ -91,8 +97,6 @@ export async function createLaborContract(formData: FormData) {
     }
   });
 
-  const session = await getSession();
-  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
   const changedBy = user?.employeeName || user?.username || "Hệ thống";
 
   await logAudit({
@@ -131,13 +135,18 @@ export async function updateLaborContract(id: string, formData: FormData, status
   const socialInsurance = parseFloat(formData.get("socialInsurance") as string || "0");
 
   const session = await getSession();
-  const oldContract = await prisma.laborContract.findUnique({ where: { id } });
+  const oldContract = await (prisma as any).laborcontract.findUnique({ where: { id } });
 
-  const employee = await prisma.employee.findFirst({
+  if (!oldContract) throw new Error("Hợp đồng không tồn tại.");
+  if (oldContract.status !== "Tạo mới" && oldContract.status !== "Từ chối") {
+    throw new Error(`Không thể chỉnh sửa hợp đồng đang ở trạng thái "${oldContract.status}".`);
+  }
+
+  const employee = await (prisma as any).employee.findFirst({
     where: { fullName: employeeName }
   });
 
-  const updatedContract = await prisma.laborContract.update({
+  const updatedContract = await (prisma as any).laborcontract.update({
     where: { id },
     data: {
       employeeName,
@@ -164,7 +173,7 @@ export async function updateLaborContract(id: string, formData: FormData, status
     }
   });
 
-  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const user = await (prisma as any).user.findUnique({ where: { id: session?.userId || "" } });
   const changedBy = user?.employeeName || user?.username || "Hệ thống";
 
   await logAudit({
@@ -182,14 +191,14 @@ export async function updateLaborContract(id: string, formData: FormData, status
 
 export async function updateContractStatus(id: string, status: string) {
   const session = await getSession();
-  const oldContract = await prisma.laborContract.findUnique({ where: { id } });
+  const oldContract = await (prisma as any).laborcontract.findUnique({ where: { id } });
 
-  await prisma.laborContract.update({
+  await (prisma as any).laborcontract.update({
     where: { id },
     data: { status }
   });
 
-  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const user = await (prisma as any).user.findUnique({ where: { id: session?.userId || "" } });
   const changedBy = user?.employeeName || user?.username || "Admin";
 
   await logAudit({
@@ -206,11 +215,11 @@ export async function updateContractStatus(id: string, status: string) {
 
 export async function bulkUpsertLaborContracts(dataList: any[]) {
   const session = await getSession();
-  const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+  const user = await (prisma as any).user.findUnique({ where: { id: session?.userId || "" } });
   const creator = user?.employeeName || user?.username || "Hệ thống";
 
   // Fetch all salary levels for lookup
-  const salaryLevels = await prisma.salaryLevel.findMany();
+  const salaryLevels = await (prisma as any).salarylevel.findMany();
 
   for (const item of dataList) {
     const { contractNumber, employeeName, ...rest } = item;
@@ -245,23 +254,24 @@ export async function bulkUpsertLaborContracts(dataList: any[]) {
     // Try to find existing contract by number or by (employeeName + contractType)
     let existing;
     if (contractNumber) {
-      existing = await prisma.laborContract.findUnique({ where: { contractNumber } });
+      existing = await (prisma as any).laborcontract.findUnique({ where: { contractNumber } });
     } else {
-      existing = await prisma.laborContract.findFirst({
-        where: { employeeName, contractType: contractType || "" }
+      existing = await (prisma as any).laborcontract.findFirst({
+        where: { employeeName, contractType: updateData.contractType || "" }
       });
     }
 
     if (existing) {
-      await prisma.laborContract.update({
+      await (prisma as any).laborcontract.update({
         where: { id: existing.id },
         data: updateData
       });
     } else {
       // Generate new number if missing
       const finalNo = contractNumber || (await generateNextContractNumber(employeeName));
-      await prisma.laborContract.create({
+      await (prisma as any).laborcontract.create({
         data: {
+          id: crypto.randomUUID(),
           contractNumber: finalNo,
           ...updateData,
           status: "Tạo mới",

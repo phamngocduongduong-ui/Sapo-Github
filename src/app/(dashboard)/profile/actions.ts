@@ -122,8 +122,9 @@ export async function createSalaryRequest(formData: FormData) {
     throw new Error("Vui lòng điền đầy đủ thông tin");
   }
 
-  await prisma.salaryIncreaseRequest.create({
+  await (prisma as any).salaryincreaserequest.create({
     data: {
+      id: crypto.randomUUID(),
       employeeName,
       currentSalary,
       proposedSalary,

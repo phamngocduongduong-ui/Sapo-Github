@@ -17,8 +17,9 @@ export async function createDispatchOrder(formData: FormData) {
     throw new Error("Vui lòng điền đầy đủ thông tin bắt buộc.");
   }
 
-  const dispatch = await prisma.dispatchOrder.create({
+  const dispatch = await (prisma as any).dispatchorder.create({
     data: {
+      id: crypto.randomUUID(),
       dispatchDate: new Date(dispatchDate),
       expectedDate: new Date(expectedDate),
       employeeName,
@@ -59,9 +60,9 @@ export async function updateDispatchOrder(id: string, formData: FormData) {
   }
 
   const session = await getSession();
-  const oldDispatch = await prisma.dispatchOrder.findUnique({ where: { id } });
+  const oldDispatch = await (prisma as any).dispatchorder.findUnique({ where: { id } });
 
-  const updatedDispatch = await prisma.dispatchOrder.update({
+  const updatedDispatch = await (prisma as any).dispatchorder.update({
     where: { id },
     data: {
       dispatchDate: new Date(dispatchDate),
@@ -91,9 +92,9 @@ export async function updateDispatchOrder(id: string, formData: FormData) {
 
 export async function updateDispatchStatus(id: string, status: string) {
   const session = await getSession();
-  const oldDispatch = await prisma.dispatchOrder.findUnique({ where: { id } });
+  const oldDispatch = await (prisma as any).dispatchorder.findUnique({ where: { id } });
 
-  await prisma.dispatchOrder.update({
+  await (prisma as any).dispatchorder.update({
     where: { id },
     data: { status },
   });

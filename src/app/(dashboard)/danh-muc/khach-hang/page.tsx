@@ -1,17 +1,23 @@
 import { prisma } from "@/lib/db";
 import CustomerTable from "./CustomerTable";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function KhachHangPage() {
-  const customers = await prisma.customer.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  const [customers, countries] = await Promise.all([
+    (prisma as any).$queryRawUnsafe(`
+      SELECT id, code, name, abbreviation, classification, country, phone, email, address, status, createdAt, updatedAt 
+      FROM customer 
+      ORDER BY createdAt DESC
+    `),
+    (prisma as any).$queryRawUnsafe(`SELECT * FROM country ORDER BY name ASC`)
+  ]);
 
   return (
-    <main className="main-content" style={{ padding: "2rem", width: "100%" }}>
-      <h1 className="page-title">👥 Danh mục Khách hàng</h1>
-      <div className="card" style={{ padding: "1.5rem" }}>
-        <CustomerTable initialCustomers={customers} />
-      </div>
+    <main className="main-content" style={{ padding: "10px" }}>
+      <CustomerTable initialCustomers={customers} countries={countries.map(c => c.name)} />
     </main>
   );
 }
+

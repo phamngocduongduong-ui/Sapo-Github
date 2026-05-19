@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import UserTable from "./UserTable";
 import { ensureDefaultAdmin } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 export default async function TaiKhoanPage() {
   // Đảm bảo có tài khoản admin mặc định
   await ensureDefaultAdmin();

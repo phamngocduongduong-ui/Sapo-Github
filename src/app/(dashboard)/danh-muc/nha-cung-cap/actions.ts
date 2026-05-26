@@ -35,6 +35,7 @@ export async function createSupplier(formData: FormData) {
   const address = (formData.get("address") as string || "").trim().toUpperCase();
   const debtPolicy = (formData.get("debtPolicy") as string || "").trim();
   const debtDays = parseInt(formData.get("debtDays") as string || "0", 10) || 0;
+  const bankAccountInfo = (formData.get("bankAccountInfo") as string || "").trim();
 
   if (!name) {
     throw new Error("Tên nhà cung cấp là bắt buộc.");
@@ -63,7 +64,8 @@ export async function createSupplier(formData: FormData) {
       address: address || null,
       debtPolicy: debtPolicy || null,
       debtDays,
-      status: "Hoạt động"
+      status: "Hoạt động",
+      bankAccountInfo: bankAccountInfo || null
     }
   });
 
@@ -79,6 +81,7 @@ export async function updateSupplier(id: string, formData: FormData) {
   const address = (formData.get("address") as string || "").trim().toUpperCase();
   const debtPolicy = (formData.get("debtPolicy") as string || "").trim();
   const debtDays = parseInt(formData.get("debtDays") as string || "0", 10) || 0;
+  const bankAccountInfo = (formData.get("bankAccountInfo") as string || "").trim();
 
   if (!name) {
     throw new Error("Tên nhà cung cấp là bắt buộc.");
@@ -93,7 +96,8 @@ export async function updateSupplier(id: string, formData: FormData) {
       email: email || null,
       address: address || null,
       debtPolicy: debtPolicy || null,
-      debtDays
+      debtDays,
+      bankAccountInfo: bankAccountInfo || null
     }
   });
 
@@ -150,6 +154,7 @@ export async function bulkReplaceSuppliers(data: any[]) {
     const debtPolicy = (item.debtPolicy || "").trim();
     const debtDays = parseInt(item.debtDays || "0", 10) || 0;
     const status = item.status || "Hoạt động";
+    const bankAccountInfo = (item.bankAccountInfo || "").trim();
 
     await (prisma as any).supplier.create({
       data: {
@@ -162,7 +167,8 @@ export async function bulkReplaceSuppliers(data: any[]) {
         address: address || null,
         debtPolicy: debtPolicy || null,
         debtDays,
-        status
+        status,
+        bankAccountInfo: bankAccountInfo || null
       }
     });
   }

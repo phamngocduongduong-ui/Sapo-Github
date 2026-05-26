@@ -48,13 +48,11 @@ export default async function PayrollApprovalPage() {
   };
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <ApprovalTabs 
-        pending={hrData.pending}
-        approved={hrData.approved}
-        isEmbedded={false}
-        showLuongThuongOnly={true}
-      />
-    </div>
+    <ApprovalTabs 
+      pending={hrData.pending}
+      approved={hrData.approved}
+      isEmbedded={false}
+      showLuongThuongOnly={true}
+    />
   );
 }

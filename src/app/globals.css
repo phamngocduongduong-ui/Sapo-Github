@@ -2518,15 +2518,19 @@ select.input-base {
   background-color: #003466 !important;
   color: white !important;
   padding: 6px 15px !important;
+  font-size: 13px !important;
   font-weight: 700 !important;
   display: block !important;
   border-radius: 0 !important;
-  margin-top: -10px !important;
+  margin-top: 0px !important;
   margin-left: -10px !important;
   margin-right: -10px !important;
-  margin-bottom: 20px !important;
+  margin-bottom: 10px !important;
   width: calc(100% + 20px) !important;
   box-sizing: border-box !important;
+  font-family: "Segoe UI", -apple-system, sans-serif !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
 }
 
 @media (max-width: 640px) {

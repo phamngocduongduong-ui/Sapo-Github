@@ -354,10 +354,10 @@ export default function ApprovalTabs({
           font-weight: 700 !important;
           text-transform: uppercase !important;
           letter-spacing: 0.5px !important;
-          margin-top: -10px !important;
+          margin-top: 0px !important;
           margin-left: -10px !important;
           margin-right: -10px !important;
-          margin-bottom: 20px !important;
+          margin-bottom: 10px !important;
           width: calc(100% + 20px) !important;
           box-sizing: border-box !important;
           font-family: "Segoe UI", sans-serif !important;
@@ -394,7 +394,8 @@ export default function ApprovalTabs({
           border: 1px solid #cbd5e1 !important;
           border-radius: 6px !important;
           overflow-x: auto !important;
-          margin-top: 20px !important;
+          margin-top: 10px !important;
+          min-height: unset !important;
         }
         .base-table {
           width: 100% !important;
@@ -462,10 +463,10 @@ export default function ApprovalTabs({
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0 10px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0" }}>
         
         {/* Module Tabs */}
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "nowrap", alignItems: "center", overflowX: "auto" }}>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "nowrap", alignItems: "center", overflowX: "auto", padding: "4px 2px" }}>
           {(showHopDongLaoDongOnly || isLegacy) && (
             <button
               onClick={() => setActiveTab("contract")}
@@ -539,8 +540,6 @@ export default function ApprovalTabs({
             </button>
           )}
           
-          <div style={{ flex: 1 }} />
-          
           <button
             onClick={() => setActiveTab("all")}
             className={`sapo-btn ${activeTab === "all" ? "" : "btn-outline"}`}
@@ -548,40 +547,37 @@ export default function ApprovalTabs({
           >
             Tất cả <span style={{ marginLeft: "4px", opacity: 0.85 }}>({flattenData(approved).length})</span>
           </button>
+
+          <button
+            type="button"
+            className="sapo-btn btn-outline"
+            onClick={() => router.refresh()}
+            style={{ height: "32px", padding: "0 12px", borderRadius: "6px", fontWeight: 500 }}
+          >
+            Làm mới
+          </button>
         </div>
 
         {/* Toolbar Container */}
-        <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "5px" }}>
-          {selectedItem && activeTab !== "all" && (
-            <>
-              <button
-                type="button"
-                className="sapo-btn"
-                onClick={() => handleAction(selectedItem.id, selectedItem.moduleType, 'approve', `${selectedItem.moduleLabel} - ${selectedItem.employeeName || selectedItem.fullName}`)}
-              >
-                Phê duyệt
-              </button>
-              <button
-                type="button"
-                className="sapo-btn"
-                style={{ backgroundColor: "#ef4444" }}
-                onClick={() => handleAction(selectedItem.id, selectedItem.moduleType, 'reject', `${selectedItem.moduleLabel} - ${selectedItem.employeeName || selectedItem.fullName}`)}
-              >
-                Từ chối
-              </button>
-            </>
-          )}
-
-          <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        {selectedItem && activeTab !== "all" && (
+          <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "5px" }}>
             <button
               type="button"
               className="sapo-btn"
-              onClick={() => router.refresh()}
+              onClick={() => handleAction(selectedItem.id, selectedItem.moduleType, 'approve', `${selectedItem.moduleLabel} - ${selectedItem.employeeName || selectedItem.fullName}`)}
             >
-              Làm mới
+              Phê duyệt
+            </button>
+            <button
+              type="button"
+              className="sapo-btn"
+              style={{ backgroundColor: "#ef4444" }}
+              onClick={() => handleAction(selectedItem.id, selectedItem.moduleType, 'reject', `${selectedItem.moduleLabel} - ${selectedItem.employeeName || selectedItem.fullName}`)}
+            >
+              Từ chối
             </button>
           </div>
-        </div>
+        )}
 
         <div className="base-table-wrapper" style={{ overflow: "visible" }}>
           <table className="base-table" style={{ overflow: "visible" }}>
@@ -599,11 +595,8 @@ export default function ApprovalTabs({
             <tbody>
               {currentList.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: "4rem", color: "#64748b" }}>
-                    <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>{activeTab !== "all" ? "🎉" : "📋"}</div>
-                    <div style={{ fontSize: "1.1rem", fontWeight: "600" }}>
-                      {activeTab !== "all" ? "Tất cả hồ sơ đã được xử lý xong!" : "Chưa có hồ sơ nào được phê duyệt"}
-                    </div>
+                  <td colSpan={7} style={{ textAlign: "center", padding: "10px", color: "#64748b", fontWeight: 600 }}>
+                    Hiện không có dữ liệu cần phê duyệt
                   </td>
                 </tr>
               ) : (

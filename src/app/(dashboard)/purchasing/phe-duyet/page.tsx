@@ -65,69 +65,149 @@ export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbed
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .base-table-wrapper {
+          background: white !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 6px !important;
+          overflow-x: auto !important;
+          margin-top: 10px !important;
+          min-height: unset !important;
+        }
+        .base-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          font-family: "Segoe UI", sans-serif !important;
+          font-size: 13px !important;
+        }
+        .base-table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
+          text-align: center !important;
+          height: 35px !important;
+          padding: 6px 12px !important;
+        }
+        .base-table td {
+          padding: 6px 12px !important;
+          vertical-align: middle !important;
+          color: #000 !important;
+          font-weight: 600 !important;
+          border-bottom: 1px solid #e2e8f0 !important;
+        }
+        .base-table tbody tr.row-hoverable:hover {
+          background-color: #f0f7ff !important;
+        }
+        .base-table tbody tr.row-selected {
+          background-color: #eff6ff !important;
+        }
+        .horizontal-action-dropdown {
+          background: white !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 6px !important;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+          padding: 4px !important;
+          position: absolute !important;
+          z-index: 50 !important;
+          display: flex !important;
+          gap: 4px !important;
+        }
+        .icon-action-btn {
+          border: 1px solid #cbd5e1 !important;
+          background: white !important;
+          border-radius: 4px !important;
+          padding: 4px !important;
+          cursor: pointer !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+        .icon-action-btn:hover {
+          background: #f1f5f9 !important;
+        }
+        .action-btn {
+          border: 1px solid #cbd5e1 !important;
+          background: white !important;
+          border-radius: 4px !important;
+          padding: 4px 8px !important;
+          cursor: pointer !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+        .action-btn:hover {
+          background: #f1f5f9 !important;
+        }
+        .sapo-btn {
+          background: #003466 !important;
+          color: white !important;
+          border: none !important;
+          padding: 6px 12px !important;
+          font-size: 13px !important;
+          font-weight: 500 !important;
+          border-radius: 4px !important;
+          cursor: pointer !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          height: 32px !important;
+          font-family: "Segoe UI", sans-serif !important;
+          transition: background-color 0.2s !important;
+        }
+        .sapo-btn:hover {
+          background: #002447 !important;
+        }
+        .sapo-btn.btn-outline {
+          background: white !important;
+          color: #003466 !important;
+          border: 1px solid #003466 !important;
+        }
+        .sapo-btn.btn-outline:hover {
+          background: #f0f7ff !important;
+        }
+        `
+      }} />
       {!isEmbedded && (
         <div className="breadcrumb-banner">
           PHÊ DUYỆT MUA HÀNG
         </div>
       )}
-      <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: isEmbedded ? "0" : "0 10px", width: "100%", minHeight: isEmbedded ? "auto" : "calc(100vh - 140px)", height: "auto" }}>
-        {!isEmbedded && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <p style={{ color: "#64748b", margin: 0 }}>Xét duyệt các yêu cầu mua hàng từ các chi nhánh</p>
-            </div>
-            <button className="btn btn-outline" onClick={() => fetchData()} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 500 }}>
-              Làm mới
-            </button>
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: "2rem", borderBottom: "1px solid #e2e8f0" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0", width: "100%", minHeight: isEmbedded ? "auto" : "calc(100vh - 140px)", height: "auto" }}>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "nowrap", overflowX: "auto", padding: "4px 2px" }}>
           <button 
             onClick={() => setActiveTab("pending")}
-            style={{ 
-              padding: "0.75rem 0", 
-              borderBottom: activeTab === "pending" ? "3px solid #2563eb" : "3px solid transparent",
-              color: activeTab === "pending" ? "#2563eb" : "#64748b",
-              fontWeight: 500,
-              background: "none",
-              borderLeft: "none",
-              borderRight: "none",
-              borderTop: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem"
-            }}
+            className={`sapo-btn ${activeTab === "pending" ? "" : "btn-outline"}`}
+            style={{ height: "32px", padding: "0 12px", borderRadius: "6px", fontWeight: 500 }}
           >
             Chờ phê duyệt ({pendingItems.length})
           </button>
           <button 
             onClick={() => setActiveTab("processed")}
-            style={{ 
-              padding: "0.75rem 0", 
-              borderBottom: activeTab === "processed" ? "3px solid #2563eb" : "3px solid transparent",
-              color: activeTab === "processed" ? "#2563eb" : "#64748b",
-              fontWeight: 500,
-              background: "none",
-              borderLeft: "none",
-              borderRight: "none",
-              borderTop: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem"
-            }}
+            className={`sapo-btn ${activeTab === "processed" ? "" : "btn-outline"}`}
+            style={{ height: "32px", padding: "0 12px", borderRadius: "6px", fontWeight: 500 }}
           >
             Đã xử lý ({processedItems.length})
           </button>
+
+          {!isEmbedded && (
+            <button 
+              className="sapo-btn btn-outline" 
+              onClick={() => fetchData()} 
+              style={{ height: "32px", padding: "0 12px", borderRadius: "6px", fontWeight: 500 }}
+            >
+              Làm mới
+            </button>
+          )}
         </div>
 
       <div style={{ display: "grid", gridTemplateColumns: selectedPO ? "1fr 450px" : "1fr", gap: "1.5rem" }}>
         {/* Table Column */}
-        <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
-          <div className="table-container" style={{ margin: 0, borderRadius: 0 }}>
-            <table className="table">
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div className="base-table-wrapper" style={{ margin: 0, overflow: "visible" }}>
+            <table className="base-table" style={{ overflow: "visible" }}>
               <thead>
                 <tr>
                   <th style={{ textAlign: "center", width: "160px" }}>Thao tác</th>
@@ -140,16 +220,18 @@ export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbed
               </thead>
               <tbody>
                 {currentItems.length === 0 ? (
-                  <tr><td colSpan={6} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>Không có đơn mua hàng nào {activeTab === "pending" ? "đang chờ" : "đã xử lý"}</td></tr>
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "10px", color: "#64748b", fontWeight: 600 }}>
+                      Hiện không có dữ liệu cần phê duyệt
+                    </td>
+                  </tr>
                 ) : (
                   currentItems.map(item => (
                     <tr 
                       key={item.id} 
                       onClick={() => setSelectedPO(item)}
-                      style={{ 
-                        cursor: "pointer", 
-                        background: selectedPO?.id === item.id ? "#f0f7ff" : "transparent"
-                      }}
+                      className={`row-hoverable ${selectedPO?.id === item.id ? "row-selected" : ""}`}
+                      style={{ cursor: "pointer" }}
                     >
                       <td style={{ textAlign: "center", position: "relative" }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: "flex", justifyContent: "center" }}>
@@ -202,7 +284,9 @@ export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbed
                           </div>
                         )}
                       </td>
-                      <td style={{ fontWeight: 600, color: "#2563eb" }}>{item.poCode}</td>
+                      <td>
+                        <span style={{ fontWeight: 700, color: "#2563eb" }}>{item.poCode}</span>
+                      </td>
                       <td>{item.creator}</td>
                       <td>{item.branch}</td>
                       <td>{new Date(item.requestedDate).toLocaleDateString("vi-VN")}</td>

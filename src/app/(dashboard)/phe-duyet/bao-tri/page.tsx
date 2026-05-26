@@ -34,8 +34,6 @@ export default async function BaoTriApprovalPage() {
   }
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <MaintenanceApprovalPage isEmbedded={false} />
-    </div>
+    <MaintenanceApprovalPage isEmbedded={false} />
   );
 }

@@ -14,7 +14,8 @@ async function main() {
     "THU_KHO", "TK_KHO_VAT_TU", "TK_KHO_THANH_PHAM",
     "QUAN_TRI", "QT_TAI_KHOAN", "QT_MUC_QUYEN", "QT_PHAN_QUYEN",
     "AN_NINH", "AN_DANG_KY", "AN_DANH_SACH", "AN_KIEM_TRA",
-    "PHE_DUYET", "PD_NHAN_SU", "PD_HOP_DONG_LD", "PD_HOP_DONG_BH", "PD_LUONG_THUONG", "PD_THANH_TOAN", "PD_MUA_HANG", "PD_BAO_TRI"
+    "PHE_DUYET", "PD_NHAN_SU", "PD_HOP_DONG_LD", "PD_HOP_DONG_BH", "PD_LUONG_THUONG", "PD_THANH_TOAN", "PD_MUA_HANG", "PD_BAO_TRI",
+    "KE_TOAN", "KT_THANH_TOAN"
   ];
 
   let adminPermission = await prisma.permission.findUnique({ where: { code: "ADMIN_FULL" } });

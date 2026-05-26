@@ -68,13 +68,11 @@ export default async function NhanSuApprovalPage() {
   };
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <ApprovalTabs 
-        pending={hrData.pending}
-        approved={hrData.approved}
-        isEmbedded={false}
-        showNhanSuOnly={true}
-      />
-    </div>
+    <ApprovalTabs 
+      pending={hrData.pending}
+      approved={hrData.approved}
+      isEmbedded={false}
+      showNhanSuOnly={true}
+    />
   );
 }

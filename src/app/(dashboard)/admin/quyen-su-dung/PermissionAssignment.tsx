@@ -131,6 +131,13 @@ const MODULES = [
       { key: "PD_MUA_HANG", label: "Mua hàng" },
       { key: "PD_BAO_TRI", label: "Bảo trì" },
     ]
+  },
+  {
+    key: "KE_TOAN",
+    label: "💵 Kế toán",
+    children: [
+      { key: "KT_THANH_TOAN", label: "Thanh toán" },
+    ]
   }
 ];
 

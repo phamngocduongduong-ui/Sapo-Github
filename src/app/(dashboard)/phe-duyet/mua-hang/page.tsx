@@ -34,8 +34,6 @@ export default async function MuaHangApprovalPage() {
   }
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <PurchasingApprovalPage isEmbedded={false} />
-    </div>
+    <PurchasingApprovalPage isEmbedded={false} />
   );
 }

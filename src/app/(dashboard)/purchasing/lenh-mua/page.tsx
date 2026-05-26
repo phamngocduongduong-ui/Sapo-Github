@@ -780,13 +780,13 @@ export default function PurchaseOrderPage() {
       </div>
 
       {/* Tabs Layout */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", marginTop: "10px", overflowX: "auto", paddingBottom: "0.5rem" }}>
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", marginTop: "10px", overflowX: "auto", padding: "4px 2px 0.5rem 2px" }}>
         <button 
           onClick={() => handleTabChange("pending")}
           className={`sapo-btn ${activeTab === "pending" ? "" : "btn-outline"}`}
           style={{ height: "32px", padding: "0 15px", borderRadius: "6px" }}
         >
-          📝 Đề nghị mua chờ đặt hàng ({
+          Đề nghị mua chờ đặt hàng ({
             items.filter(i => i.status === "Tạo mới" || i.status === "Chờ phê duyệt").length + 
             proposals.filter(p => p.status === "Đã phê duyệt").length
           })
@@ -796,7 +796,7 @@ export default function PurchaseOrderPage() {
           className={`sapo-btn ${activeTab === "ordered" ? "" : "btn-outline"}`}
           style={{ height: "32px", padding: "0 15px", borderRadius: "6px" }}
         >
-          ✅ Đề nghị mua đã đặt hàng ({
+          Đề nghị mua đã đặt hàng ({
             items.filter(i => i.status !== "Tạo mới" && i.status !== "Chờ phê duyệt").length
           })
         </button>
@@ -902,7 +902,7 @@ export default function PurchaseOrderPage() {
                       className="sapo-btn sapo-btn-success"
                       onClick={() => handleConvertProposal(selectedItem)}
                     >
-                      <Plus size={14} /> Đặt hàng
+                      Đặt hàng
                     </button>
                     <button
                       type="button"
@@ -1637,7 +1637,7 @@ export default function PurchaseOrderPage() {
                         className="sapo-btn" 
                         onClick={handleAddDetail}
                       >
-                        <Plus size={14} /> Thêm mặt hàng
+                        Thêm mặt hàng
                       </button>
                     )}
                     {proposalToConvert && (

@@ -484,7 +484,7 @@ export default function ReportClient() {
           font-weight: 700;
           display: block;
           border-radius: 0 !important;
-          margin-top: -10px;
+          margin-top: 0px;
           margin-bottom: 0;
           margin-left: -10px;
           margin-right: -10px;

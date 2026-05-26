@@ -27,7 +27,8 @@ export default async function NhaCungCapPage() {
     address: s.address || "",
     debtPolicy: s.debtPolicy || "",
     debtDays: s.debtDays || 0,
-    status: s.status || "Hoạt động"
+    status: s.status || "Hoạt động",
+    bankAccountInfo: s.bankAccountInfo || ""
   }));
 
   return (

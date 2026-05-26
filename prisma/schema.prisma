@@ -529,18 +529,19 @@ model salarylevel {
 }
 
 model supplier {
-  id         String   @id @default(cuid())
-  code       String   @unique(map: "Supplier_code_key")
-  name       String
-  taxCode    String?
-  phone      String?
-  email      String?
-  address    String?
-  debtPolicy String?
-  debtDays   Int      @default(0)
-  status     String?  @default("Hoạt động")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String   @id @default(cuid())
+  code            String   @unique(map: "Supplier_code_key")
+  name            String
+  taxCode         String?
+  phone           String?
+  email           String?
+  address         String?
+  debtPolicy      String?
+  debtDays        Int      @default(0)
+  status          String?  @default("Hoạt động")
+  bankAccountInfo String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model transferpromotion {
@@ -862,5 +863,38 @@ model maintenanceproposalitem {
   proposal     maintenanceproposal @relation(fields: [proposalId], references: [id], onDelete: Cascade, map: "MaintenanceProposalItem_proposalId_fkey")
 
   @@index([proposalId], map: "MaintenanceProposalItem_proposalId_fkey")
+}
+
+model paymentproposal {
+  id             String                @id @default(cuid())
+  proposalNumber String                @unique(map: "PaymentProposal_proposalNumber_key")
+  date           DateTime              @default(now())
+  proposer       String
+  supplierCode   String?
+  supplierName   String?
+  accountInfo    String?
+  purpose        String?
+  status         String                @default("Tạo mới")
+  note           String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  items          paymentproposalitem[]
+}
+
+model paymentproposalitem {
+  id          String          @id @default(cuid())
+  proposalId  String
+  content     String
+  unit        String?
+  quantity    Float           @default(0)
+  price       Float           @default(0)
+  amount      Float           @default(0)
+  rate        Float           @default(0)
+  total       Float           @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  proposal    paymentproposal @relation(fields: [proposalId], references: [id], onDelete: Cascade, map: "PaymentProposalItem_proposalId_fkey")
+
+  @@index([proposalId], map: "PaymentProposalItem_proposalId_fkey")
 }
 

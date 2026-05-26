@@ -28,6 +28,7 @@ type Supplier = {
   debtPolicy: string | null;
   debtDays?: number;
   status: string | null;
+  bankAccountInfo?: string | null;
 };
 
 export default function SupplierTable({
@@ -179,6 +180,7 @@ export default function SupplierTable({
     "Email": "email",
     "Địa chỉ": "address",
     "Chính sách công nợ": "debtPolicy",
+    "Thông tin tài khoản": "bankAccountInfo",
     "Trạng thái": "status"
   };
 
@@ -280,7 +282,7 @@ export default function SupplierTable({
           min-width: 0;
           font-family: "Segoe UI", -apple-system, sans-serif;
           font-size: 13px;
-          padding: 10px 0px 10px 0px;
+          padding: 0px 0px 10px 0px !important;
         }
         .employee-layout input,
         .employee-layout select,
@@ -304,7 +306,7 @@ export default function SupplierTable({
           margin-top: 0;
           margin-left: -10px;
           margin-right: -10px;
-          margin-bottom: 5px;
+          margin-bottom: 10px !important;
         }
         .panel-full {
           flex: 1 1 100%;
@@ -315,7 +317,7 @@ export default function SupplierTable({
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin: 5px 0px 10px 0px;
+          margin: 0px 0px 10px 0px !important;
           gap: 0.5rem;
           flex-wrap: wrap;
         }
@@ -870,6 +872,17 @@ export default function SupplierTable({
                       placeholder="Số nhà, tên đường, quận/huyện, tỉnh/thành phố..."
                       style={{ height: "60px", resize: "none", textTransform: "uppercase" }}
                       defaultValue={editingSupplier?.address ?? ""}
+                      readOnly={isViewOnly}
+                    />
+                  </div>
+                  <div className="form-group-base full-width" style={{ marginTop: "10px" }}>
+                    <label>Thông tin tài khoản ngân hàng</label>
+                    <input
+                      type="text"
+                      name="bankAccountInfo"
+                      className="input-base"
+                      placeholder="Nhập thông tin tài khoản (Ví dụ: Techcombank - 1903...)"
+                      defaultValue={editingSupplier?.bankAccountInfo ?? ""}
                       readOnly={isViewOnly}
                     />
                   </div>

@@ -143,6 +143,15 @@ const allMenuGroups = [
     ]
   },
   {
+    id: "accounting",
+    key: "KE_TOAN",
+    label: "Kế toán",
+    icon: <DollarSign size={18} color="#0d9488" />,
+    items: [
+      { href: "/accounting/thanh-toan", label: "Thanh toán", key: "KT_THANH_TOAN", icon: <DollarSign size={14} color="#0d9488" /> }
+    ]
+  },
+  {
     id: "warehouse",
     key: "THU_KHO",
     label: "Thủ kho",

@@ -189,10 +189,10 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
           font-weight: 700;
           display: block;
           border-radius: 0 !important;
-          margin-top: -10px !important;
+          margin-top: 0px !important;
           margin-left: -10px !important;
           margin-right: -10px !important;
-          margin-bottom: 20px !important;
+          margin-bottom: 10px !important;
           width: calc(100% + 20px) !important;
           box-sizing: border-box !important;
         }
@@ -230,24 +230,31 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
           flex-wrap: wrap;
         }
         .sapo-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          background-color: #003466;
-          color: white;
-          padding: 6px 15px 6px 15px;
-          border-radius: 4px;
-          font-weight: 400;
+          background: #003466 !important;
+          color: white !important;
+          border: none !important;
+          padding: 6px 15px 6px 15px !important;
           font-size: 13px !important;
-          cursor: pointer;
-          transition: background-color 0.2s, transform 0.1s;
-          border: none;
+          font-weight: 500 !important;
+          border-radius: 4px !important;
+          cursor: pointer !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          height: 32px !important;
+          font-family: "Segoe UI", sans-serif !important;
+          transition: background-color 0.2s !important;
         }
         .sapo-btn:hover {
-          background-color: #002244;
+          background: #002447 !important;
         }
-        .sapo-btn:active {
-          transform: scale(0.98);
+        .sapo-btn.btn-outline {
+          background: white !important;
+          color: #003466 !important;
+          border: 1px solid #003466 !important;
+        }
+        .sapo-btn.btn-outline:hover {
+          background: #f0f7ff !important;
         }
         .sapo-btn-secondary {
           background-color: #475569;
@@ -326,6 +333,7 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
           overflow-y: hidden !important;
           overflow-x: auto !important;
           padding-bottom: 0px !important;
+          margin-top: 10px !important;
         }
         .base-table {
           height: auto !important;
@@ -625,11 +633,11 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: isEmbedded ? "0" : "0 10px" }}>
-        <div className="tab-nav-base" style={{ margin: 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0" }}>
+        <div style={{ margin: 0, display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "nowrap", overflowX: "auto", padding: "4px 2px" }}>
           <button
             type="button"
-            className={`tab-btn-base ${activeTab === 1 ? "active" : ""}`}
+            className={`sapo-btn ${activeTab === 1 ? "" : "btn-outline"}`}
             onClick={() => {
               setActiveTab(1);
               setSelectedProposalId(null);
@@ -640,7 +648,7 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
           </button>
           <button
             type="button"
-            className={`tab-btn-base ${activeTab === 2 ? "active" : ""}`}
+            className={`sapo-btn ${activeTab === 2 ? "" : "btn-outline"}`}
             onClick={() => {
               setActiveTab(2);
               setSelectedProposalId(null);
@@ -649,112 +657,72 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
           >
             Đã duyệt ({proposals.filter(p => p.status === "Đã phê duyệt" && (!filterBranch || p.branch === filterBranch)).length})
           </button>
+
+          {!isEmbedded && (
+            <button
+              type="button"
+              className="sapo-btn btn-outline"
+              onClick={fetchData}
+              style={{ height: "32px", padding: "0 12px", borderRadius: "6px", fontWeight: 500 }}
+            >
+              Làm mới
+            </button>
+          )}
         </div>
 
-      {/* Mobile filter toggle box */}
-      <div 
-        className="mobile-filter-header"
-        onClick={() => setFilterOpen(!filterOpen)}
-      >
-        <span className="mobile-filter-title">Tìm kiếm</span>
-        <ChevronDown size={18} className={`mobile-filter-arrow ${filterOpen ? "open" : ""}`} />
-      </div>
 
-      {/* Filters Grid */}
-      <div className={`base-filters ${filterOpen ? "mobile-show" : "mobile-hide"}`} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginTop: "10px", marginBottom: "10px" }}>
-        <div>
-          <label className="filter-label">Tìm kiếm</label>
-          <input 
-            type="text" 
-            className="form-control" 
-            style={{ width: "100%" }}
-            placeholder="Tìm theo số đề nghị, người đề..."
-            value={filterSearch}
-            onChange={(e) => setFilterSearch(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="filter-label">Chi nhánh</label>
-          <select 
-            className="form-control" 
-            style={{ width: "100%" }} 
-            value={filterBranch} 
-            onChange={(e) => setFilterBranch(e.target.value)}
-          >
-            <option value="">-- Tất cả chi nhánh --</option>
-            {uniqueBranches.map(b => b && <option key={b} value={b}>{b}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label className="filter-label">Tháng đề nghị</label>
-          <input 
-            type="month" 
-            className="form-control" 
-            style={{ width: "100%" }} 
-            value={filterMonth} 
-            onChange={(e) => setFilterMonth(e.target.value)} 
-          />
-        </div>
-      </div>
 
       {/* Main Action Toolbar above table */}
       <div className="maintenance-layout" style={{ paddingTop: "0px" }}>
         <div className="panel-full">
-          <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "0px" }}>
-            <button className="btn btn-outline sapo-btn" onClick={fetchData} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 500 }}>
-              Làm mới
-            </button>
+          {selectedProposalObj && (
+            <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "0px" }}>
+              <button
+                type="button"
+                className="sapo-btn"
+                onClick={() => openViewModal(selectedProposalObj)}
+              >
+                Xem
+              </button>
 
-            {selectedProposalObj && (
-              <>
-                <button
-                  type="button"
-                  className="sapo-btn"
-                  onClick={() => openViewModal(selectedProposalObj)}
-                >
-                  Xem
-                </button>
-
-                {selectedProposalObj.status === "Chờ duyệt" && activeTab === 1 && (
-                  <>
-                    <button
-                      type="button"
-                      className="sapo-btn sapo-btn-success"
-                      onClick={() => handleApprove(selectedProposalObj.id, selectedProposalObj.proposalCode)}
-                    >
-                      Duyệt
-                    </button>
-                    <button
-                      type="button"
-                      className="sapo-btn sapo-btn-danger"
-                      onClick={() => handleReject(selectedProposalObj.id, selectedProposalObj.proposalCode)}
-                    >
-                      Từ chối
-                    </button>
-                  </>
-                )}
-
-                {selectedProposalObj.status === "Đã phê duyệt" && activeTab === 2 && (
+              {selectedProposalObj.status === "Chờ duyệt" && activeTab === 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="sapo-btn sapo-btn-success"
+                    onClick={() => handleApprove(selectedProposalObj.id, selectedProposalObj.proposalCode)}
+                  >
+                    Duyệt
+                  </button>
                   <button
                     type="button"
                     className="sapo-btn sapo-btn-danger"
-                    onClick={() => handleCancelApprove(selectedProposalObj.id, selectedProposalObj.proposalCode)}
+                    onClick={() => handleReject(selectedProposalObj.id, selectedProposalObj.proposalCode)}
                   >
-                    Hủy phê duyệt
+                    Từ chối
                   </button>
-                )}
+                </>
+              )}
 
+              {selectedProposalObj.status === "Đã phê duyệt" && activeTab === 2 && (
                 <button
                   type="button"
-                  className="sapo-btn"
-                  onClick={() => setHistoryRecordId(selectedProposalObj.id)}
+                  className="sapo-btn sapo-btn-danger"
+                  onClick={() => handleCancelApprove(selectedProposalObj.id, selectedProposalObj.proposalCode)}
                 >
-                  Lịch sử
+                  Hủy phê duyệt
                 </button>
-              </>
-            )}
-          </div>
+              )}
+
+              <button
+                type="button"
+                className="sapo-btn"
+                onClick={() => setHistoryRecordId(selectedProposalObj.id)}
+              >
+                Lịch sử
+              </button>
+            </div>
+          )}
 
           {/* Proposals Table */}
           <div className="base-table-wrapper" style={filteredProposals.length === 0 ? { height: "auto" } : undefined}>
@@ -775,8 +743,8 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
               <tbody>
                 {filteredProposals.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>
-                      Không tìm thấy đề nghị mua nào
+                    <td colSpan={9} style={{ textAlign: "center", padding: "10px", color: "#64748b", fontWeight: 600 }}>
+                      Hiện không có dữ liệu cần phê duyệt
                     </td>
                   </tr>
                 ) : (

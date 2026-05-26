@@ -48,13 +48,11 @@ export default async function SalesContractApprovalPage() {
   };
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <ApprovalTabs 
-        pending={hrData.pending}
-        approved={hrData.approved}
-        isEmbedded={false}
-        showHopDongBanHangOnly={true}
-      />
-    </div>
+    <ApprovalTabs 
+      pending={hrData.pending}
+      approved={hrData.approved}
+      isEmbedded={false}
+      showHopDongBanHangOnly={true}
+    />
   );
 }

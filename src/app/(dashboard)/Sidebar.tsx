@@ -10,7 +10,7 @@ import {
   Locate, User, FileText, GitPullRequest, CheckCircle2, Clock, Map, Calculator, 
   TrendingUp, BarChart, FileCheck, Calendar, FilePlus, ArrowRightLeft, BarChart3, 
   ClipboardList, Archive, PackageCheck, UserCircle, Key, Shield, ClipboardEdit, List,
-  ChevronDown
+  ChevronDown, DollarSign
 } from "lucide-react";
 
 const allMenuGroups = [
@@ -41,10 +41,16 @@ const allMenuGroups = [
   {
     id: "approver",
     key: "PHE_DUYET",
-    label: "Người phê duyệt",
+    label: "PHÊ DUYỆT",
     icon: <CheckCircle2 size={18} color="#0072bc" />,
     items: [
-      { href: "/phe-duyet", label: "Trung tâm phê duyệt", key: "PHE_DUYET", icon: <CheckCircle2 size={14} color="#0072bc" /> }
+      { href: "/phe-duyet/nhan-su", label: "Phê duyệt nhân sự", key: "PD_NHAN_SU", icon: <Users size={14} color="#0072bc" /> },
+      { href: "/phe-duyet/hop-dong-lao-dong", label: "Hợp đồng lao động", key: "PD_HOP_DONG_LD", icon: <FileText size={14} color="#0072bc" /> },
+      { href: "/phe-duyet/hop-dong-ban-hang", label: "Hợp đồng bán hàng", key: "PD_HOP_DONG_BH", icon: <ShoppingBag size={14} color="#0072bc" /> },
+      { href: "/phe-duyet/luong-thuong", label: "Bảng lương/thưởng", key: "PD_LUONG_THUONG", icon: <CreditCard size={14} color="#0072bc" /> },
+      { href: "/phe-duyet/thanh-toan", label: "Thanh toán", key: "PD_THANH_TOAN", icon: <DollarSign size={14} color="#0072bc" /> },
+      { href: "/phe-duyet/mua-hang", label: "Mua hàng", key: "PD_MUA_HANG", icon: <ShoppingCart size={14} color="#0072bc" /> },
+      { href: "/phe-duyet/bao-tri", label: "Bảo trì", key: "PD_BAO_TRI", icon: <Settings size={14} color="#0072bc" /> },
     ]
   },
   {

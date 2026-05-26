@@ -170,6 +170,10 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       await (prisma as any).purchaseorder.update({ where: { id }, data });
       revalidatePath("/purchasing/lenh-mua");
       break;
+    case "Contract":
+      await (prisma as any).contract.update({ where: { id }, data });
+      revalidatePath("/sales/hop-dong");
+      break;
   }
 
   revalidatePath("/nhan-su/phe-duyet");

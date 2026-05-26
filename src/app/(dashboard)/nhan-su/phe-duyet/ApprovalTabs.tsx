@@ -9,11 +9,33 @@ interface ApprovalTabsProps {
   pending: any;
   approved: any;
   isEmbedded?: boolean;
+  showNhanSuOnly?: boolean;
+  showHopDongLaoDongOnly?: boolean;
+  showHopDongBanHangOnly?: boolean;
+  showLuongThuongOnly?: boolean;
+  showThanhToanOnly?: boolean;
 }
 
-export default function ApprovalTabs({ pending, approved, isEmbedded = false }: ApprovalTabsProps) {
+export default function ApprovalTabs({
+  pending,
+  approved,
+  isEmbedded = false,
+  showNhanSuOnly = false,
+  showHopDongLaoDongOnly = false,
+  showHopDongBanHangOnly = false,
+  showLuongThuongOnly = false,
+  showThanhToanOnly = false
+}: ApprovalTabsProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"contract" | "leave" | "resignation" | "transfer" | "salary" | "all" >("contract");
+  const isLegacy = !showNhanSuOnly && !showHopDongLaoDongOnly && !showHopDongBanHangOnly && !showLuongThuongOnly && !showThanhToanOnly;
+
+  const [activeTab, setActiveTab] = useState<"contract" | "leave" | "resignation" | "transfer" | "salary" | "sales_contract" | "payroll" | "purchase_order" | "all">(
+    showNhanSuOnly ? "leave" : 
+    showHopDongLaoDongOnly ? "contract" : 
+    showHopDongBanHangOnly ? "sales_contract" :
+    showLuongThuongOnly ? "payroll" :
+    showThanhToanOnly ? "purchase_order" : "contract"
+  );
   const [isPending, startTransition] = useTransition();
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -43,15 +65,31 @@ export default function ApprovalTabs({ pending, approved, isEmbedded = false }: 
   // Helper to flatten and label data
   const flattenData = (data: any) => {
     const list: any[] = [];
-    if (data.contracts) data.contracts.forEach((item: any) => list.push({ ...item, moduleLabel: "Hợp đồng", moduleType: "LaborContract" }));
-    if (data.leaves) data.leaves.forEach((item: any) => list.push({ ...item, moduleLabel: "Nghỉ phép", moduleType: "LeaveRequest" }));
-    if (data.salaryChanges) data.salaryChanges.forEach((item: any) => list.push({ ...item, moduleLabel: "Tăng, giảm lương", moduleType: "SalaryChange" }));
-    if (data.transfers) data.transfers.forEach((item: any) => list.push({ ...item, moduleLabel: "Thuyên chuyển, bổ nhiệm", moduleType: "TransferPromotion" }));
-    if (data.resignations) data.resignations.forEach((item: any) => list.push({ ...item, moduleLabel: "Nghỉ việc", moduleType: "Resignation" }));
-    if (data.payrolls) data.payrolls.forEach((item: any) => list.push({ ...item, moduleLabel: "Bảng lương", moduleType: "Payroll" }));
-    if (data.purchaseOrders) data.purchaseOrders.forEach((item: any) => list.push({ ...item, moduleLabel: "Đơn mua hàng", moduleType: "PurchaseOrder" }));
 
-    return list.sort((a, b) => new Date(b.createdAt || b.requestDate || b.planDate).getTime() - new Date(a.createdAt || a.requestDate || a.planDate).getTime());
+    if (showHopDongLaoDongOnly || isLegacy) {
+      if (data.contracts) data.contracts.forEach((item: any) => list.push({ ...item, moduleLabel: "HĐ Lao động", moduleType: "LaborContract" }));
+    }
+    if (showNhanSuOnly || isLegacy) {
+      if (data.leaves) data.leaves.forEach((item: any) => list.push({ ...item, moduleLabel: "Nghỉ phép", moduleType: "LeaveRequest" }));
+      if (data.salaryChanges) data.salaryChanges.forEach((item: any) => list.push({ ...item, moduleLabel: "Tăng, giảm lương", moduleType: "SalaryChange" }));
+      if (data.transfers) data.transfers.forEach((item: any) => list.push({ ...item, moduleLabel: "Thuyên chuyển, bổ nhiệm", moduleType: "TransferPromotion" }));
+      if (data.resignations) data.resignations.forEach((item: any) => list.push({ ...item, moduleLabel: "Nghỉ việc", moduleType: "Resignation" }));
+    }
+    if (showHopDongBanHangOnly) {
+      if (data.salesContracts) data.salesContracts.forEach((item: any) => list.push({ ...item, moduleLabel: "HĐ Bán hàng", moduleType: "Contract" }));
+    }
+    if (showLuongThuongOnly || isLegacy) {
+      if (data.payrolls) data.payrolls.forEach((item: any) => list.push({ ...item, moduleLabel: "Bảng lương", moduleType: "Payroll" }));
+    }
+    if (showThanhToanOnly || isLegacy) {
+      if (data.purchaseOrders) data.purchaseOrders.forEach((item: any) => list.push({ ...item, moduleLabel: "Đơn mua hàng", moduleType: "PurchaseOrder" }));
+    }
+
+    return list.sort((a, b) => {
+      const aDate = new Date(a.createdAt || a.contractDate || a.requestDate || a.planDate || 0).getTime();
+      const bDate = new Date(b.createdAt || b.contractDate || b.requestDate || b.planDate || 0).getTime();
+      return bDate - aDate;
+    });
   };
 
   const getFilteredList = () => {
@@ -66,6 +104,12 @@ export default function ApprovalTabs({ pending, approved, isEmbedded = false }: 
         return flattenData({ transfers: pending.transfers || [] });
       case "salary":
         return flattenData({ salaryChanges: pending.salaryChanges || [] });
+      case "sales_contract":
+        return flattenData({ salesContracts: pending.salesContracts || [] });
+      case "payroll":
+        return flattenData({ payrolls: pending.payrolls || [] });
+      case "purchase_order":
+        return flattenData({ purchaseOrders: pending.purchaseOrders || [] });
       case "all":
         return flattenData(approved);
       default:
@@ -113,6 +157,7 @@ export default function ApprovalTabs({ pending, approved, isEmbedded = false }: 
       case "Resignation": return `Lý do: ${item.reason}`;
       case "Payroll": return `Tháng ${item.month}/${item.year}`;
       case "PurchaseOrder": return `Mục đích: ${item.purpose}`;
+      case "Contract": return `Bên mua: ${item.buyer} - NV: ${item.salesEmployee || "—"}`;
       default: return "";
     }
   };
@@ -244,6 +289,54 @@ export default function ApprovalTabs({ pending, approved, isEmbedded = false }: 
             </table>
           </div>
         );
+      case "Contract":
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "800px" }}>
+            <div style={{ fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", color: "#003466" }}>THÔNG TIN HỢP ĐỒNG BÁN HÀNG</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1rem" }}>
+              <div><span style={{ color: "#64748b" }}>Số HĐ:</span> <strong>{item.contractNumber}</strong></div>
+              <div><span style={{ color: "#64748b" }}>Ngày ký:</span> <strong>{new Date(item.contractDate).toLocaleDateString("vi-VN")}</strong></div>
+              <div><span style={{ color: "#64748b" }}>Bên bán:</span> <strong>{item.seller}</strong></div>
+              <div><span style={{ color: "#64748b" }}>Bên mua:</span> <strong>{item.buyer}</strong></div>
+              <div><span style={{ color: "#64748b" }}>Nhân viên phụ trách:</span> <strong>{item.salesEmployee || "—"}</strong></div>
+              <div><span style={{ color: "#64748b" }}>Phương thức thanh toán:</span> <strong>{item.paymentMethod || "—"}</strong></div>
+              {item.deliveryDate && <div><span style={{ color: "#64748b" }}>Ngày giao hàng:</span> <strong>{item.deliveryDate}</strong></div>}
+              {item.expiryDate && <div><span style={{ color: "#64748b" }}>Ngày hết hạn:</span> <strong>{new Date(item.expiryDate).toLocaleDateString("vi-VN")}</strong></div>}
+              <div style={{ gridColumn: "span 2" }}><span style={{ color: "#64748b" }}>Ghi chú:</span> <strong>{item.note || "—"}</strong></div>
+            </div>
+            
+            <div style={{ fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", marginTop: "0.5rem", color: "#003466" }}>DANH SÁCH SẢN PHẨM / DỊCH VỤ</div>
+            <table className="base-table" style={{ fontSize: "12px", border: "1px solid #cbd5e1" }}>
+              <thead>
+                <tr style={{ background: "#f8fafc" }}>
+                  <th style={{ color: "#003466", padding: "4px" }}>Mã SP</th>
+                  <th style={{ color: "#003466", padding: "4px" }}>Tên sản phẩm</th>
+                  <th style={{ color: "#003466", padding: "4px" }}>Đơn vị</th>
+                  <th style={{ color: "#003466", padding: "4px" }}>Số lượng</th>
+                  <th style={{ color: "#003466", padding: "4px" }}>Đơn giá</th>
+                  <th style={{ color: "#003466", padding: "4px" }}>Thành tiền</th>
+                </tr>
+              </thead>
+              <tbody>
+                {item.contractitem?.map((d: any) => (
+                  <tr key={d.id}>
+                    <td style={{ padding: "4px" }}>{d.productCode || "—"}</td>
+                    <td style={{ padding: "4px" }}>{d.productName}</td>
+                    <td style={{ padding: "4px" }}>{d.unit || "—"}</td>
+                    <td style={{ padding: "4px", textAlign: "right" }}>{d.quantity?.toLocaleString("vi-VN")}</td>
+                    <td style={{ padding: "4px", textAlign: "right" }}>{d.price?.toLocaleString("vi-VN")}đ</td>
+                    <td style={{ padding: "4px", textAlign: "right" }}>{d.amount?.toLocaleString("vi-VN")}đ</td>
+                  </tr>
+                ))}
+                {(!item.contractitem || item.contractitem.length === 0) && (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "4px", color: "#64748b" }}>Không có chi tiết sản phẩm</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        );
       default:
         return null;
     }
@@ -357,7 +450,11 @@ export default function ApprovalTabs({ pending, approved, isEmbedded = false }: 
 
       {!isEmbedded && (
         <div className="breadcrumb-banner">
-          PHÊ DUYỆT HỒ SƠ
+          {showNhanSuOnly ? "PHÊ DUYỆT NHÂN SỰ" : 
+           showHopDongLaoDongOnly ? "PHÊ DUYỆT HỢP ĐỒNG LAO ĐỘNG" :
+           showHopDongBanHangOnly ? "PHÊ DUYỆT HỢP ĐỒNG BÁN HÀNG" :
+           showLuongThuongOnly ? "PHÊ DUYỆT BẢNG LƯƠNG/THƯỞNG" :
+           showThanhToanOnly ? "PHÊ DUYỆT THANH TOÁN" : "PHÊ DUYỆT HỒ SƠ"}
         </div>
       )}
 
@@ -365,41 +462,78 @@ export default function ApprovalTabs({ pending, approved, isEmbedded = false }: 
         
         {/* Module Tabs */}
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "nowrap", alignItems: "center", overflowX: "auto" }}>
-          <button
-            onClick={() => setActiveTab("contract")}
-            className={`sapo-btn ${activeTab === "contract" ? "" : "btn-outline"}`}
-            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
-          >
-            📄 Hợp đồng <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.contracts?.length || 0})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("leave")}
-            className={`sapo-btn ${activeTab === "leave" ? "" : "btn-outline"}`}
-            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
-          >
-            🏖️ Nghỉ phép <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.leaves?.length || 0})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("resignation")}
-            className={`sapo-btn ${activeTab === "resignation" ? "" : "btn-outline"}`}
-            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
-          >
-            🚪 Nghỉ việc <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.resignations?.length || 0})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("transfer")}
-            className={`sapo-btn ${activeTab === "transfer" ? "" : "btn-outline"}`}
-            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
-          >
-            🔄 Thuyên chuyển, bổ nhiệm <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.transfers?.length || 0})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("salary")}
-            className={`sapo-btn ${activeTab === "salary" ? "" : "btn-outline"}`}
-            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
-          >
-            💰 Tăng, giảm lương <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.salaryChanges?.length || 0})</span>
-          </button>
+          {(showHopDongLaoDongOnly || isLegacy) && (
+            <button
+              onClick={() => setActiveTab("contract")}
+              className={`sapo-btn ${activeTab === "contract" ? "" : "btn-outline"}`}
+              style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
+            >
+              📄 HĐ Lao động <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.contracts?.length || 0})</span>
+            </button>
+          )}
+
+          {(showNhanSuOnly || isLegacy) && (
+            <>
+              <button
+                onClick={() => setActiveTab("leave")}
+                className={`sapo-btn ${activeTab === "leave" ? "" : "btn-outline"}`}
+                style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
+              >
+                🏖️ Nghỉ phép <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.leaves?.length || 0})</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("resignation")}
+                className={`sapo-btn ${activeTab === "resignation" ? "" : "btn-outline"}`}
+                style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
+              >
+                🚪 Nghỉ việc <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.resignations?.length || 0})</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("transfer")}
+                className={`sapo-btn ${activeTab === "transfer" ? "" : "btn-outline"}`}
+                style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
+              >
+                🔄 Thuyên chuyển, bổ nhiệm <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.transfers?.length || 0})</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("salary")}
+                className={`sapo-btn ${activeTab === "salary" ? "" : "btn-outline"}`}
+                style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
+              >
+                💰 Tăng, giảm lương <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.salaryChanges?.length || 0})</span>
+              </button>
+            </>
+          )}
+
+          {showHopDongBanHangOnly && (
+            <button
+              onClick={() => setActiveTab("sales_contract")}
+              className={`sapo-btn ${activeTab === "sales_contract" ? "" : "btn-outline"}`}
+              style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
+            >
+              💼 HĐ Bán hàng <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.salesContracts?.length || 0})</span>
+            </button>
+          )}
+
+          {showLuongThuongOnly && (
+            <button
+              onClick={() => setActiveTab("payroll")}
+              className={`sapo-btn ${activeTab === "payroll" ? "" : "btn-outline"}`}
+              style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
+            >
+              💳 Lương/thưởng <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.payrolls?.length || 0})</span>
+            </button>
+          )}
+
+          {showThanhToanOnly && (
+            <button
+              onClick={() => setActiveTab("purchase_order")}
+              className={`sapo-btn ${activeTab === "purchase_order" ? "" : "btn-outline"}`}
+              style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
+            >
+              💵 Thanh toán <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.purchaseOrders?.length || 0})</span>
+            </button>
+          )}
           
           <div style={{ flex: 1 }} />
           

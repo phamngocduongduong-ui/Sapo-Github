@@ -121,11 +121,15 @@ const MODULES = [
   },
   {
     key: "PHE_DUYET",
-    label: "✅ Người phê duyệt",
+    label: "✅ PHÊ DUYỆT",
     children: [
-      { key: "PD_NHAN_SU", label: "Phê duyệt Nhân sự" },
-      { key: "PD_MUA_HANG", label: "Phê duyệt Mua hàng" },
-      { key: "PD_BAO_TRI", label: "Phê duyệt Bảo trì" },
+      { key: "PD_NHAN_SU", label: "Phê duyệt nhân sự" },
+      { key: "PD_HOP_DONG_LD", label: "Hợp đồng lao động" },
+      { key: "PD_HOP_DONG_BH", label: "Hợp đồng bán hàng" },
+      { key: "PD_LUONG_THUONG", label: "Bảng lương/thưởng" },
+      { key: "PD_THANH_TOAN", label: "Thanh toán" },
+      { key: "PD_MUA_HANG", label: "Mua hàng" },
+      { key: "PD_BAO_TRI", label: "Bảo trì" },
     ]
   }
 ];

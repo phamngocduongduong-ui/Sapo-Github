@@ -118,6 +118,15 @@ const MODULES = [
       { key: "AN_DANH_SACH", label: "Danh sách" },
       { key: "AN_KIEM_TRA", label: "Kiểm tra" },
     ]
+  },
+  {
+    key: "PHE_DUYET",
+    label: "✅ Người phê duyệt",
+    children: [
+      { key: "PD_NHAN_SU", label: "Phê duyệt Nhân sự" },
+      { key: "PD_MUA_HANG", label: "Phê duyệt Mua hàng" },
+      { key: "PD_BAO_TRI", label: "Phê duyệt Bảo trì" },
+    ]
   }
 ];
 

@@ -37,7 +37,8 @@ export async function createPermission(formData: FormData) {
     "BAO_TRI", "BT_DE_NGHI_MUA", "BT_PHE_DUYET",
     "THU_KHO", "TK_KHO_VAT_TU", "TK_KHO_THANH_PHAM",
     "QUAN_TRI", "QT_TAI_KHOAN", "QT_MUC_QUYEN", "QT_PHAN_QUYEN",
-    "AN_NINH", "AN_DANG_KY", "AN_DANH_SACH", "AN_KIEM_TRA"
+    "AN_NINH", "AN_DANG_KY", "AN_DANH_SACH", "AN_KIEM_TRA",
+    "PHE_DUYET", "PD_NHAN_SU", "PD_MUA_HANG", "PD_BAO_TRI"
   ];
 
   await prisma.$transaction([

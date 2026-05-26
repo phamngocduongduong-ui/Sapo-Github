@@ -8,9 +8,10 @@ import { RotateCcw } from "lucide-react";
 interface ApprovalTabsProps {
   pending: any;
   approved: any;
+  isEmbedded?: boolean;
 }
 
-export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
+export default function ApprovalTabs({ pending, approved, isEmbedded = false }: ApprovalTabsProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"contract" | "leave" | "resignation" | "transfer" | "salary" | "all" >("contract");
   const [isPending, startTransition] = useTransition();
@@ -354,9 +355,11 @@ export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
         }
       ` }} />
 
-      <div className="breadcrumb-banner">
-        PHÊ DUYỆT HỒ SƠ
-      </div>
+      {!isEmbedded && (
+        <div className="breadcrumb-banner">
+          PHÊ DUYỆT HỒ SƠ
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0px" }}>
         

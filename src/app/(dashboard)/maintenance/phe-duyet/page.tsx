@@ -10,7 +10,7 @@ import {
 import HistoryModal from "../../HistoryModal";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 
-export default function MaintenanceApprovalPage() {
+export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const [proposals, setProposals] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<any | null>(null);
@@ -616,9 +616,11 @@ export default function MaintenanceApprovalPage() {
         }
       ` }} />
 
-      <div className="breadcrumb-banner">
-        PHÊ DUYỆT ĐỀ NGHỊ MUA BẢO TRÌ
-      </div>
+      {!isEmbedded && (
+        <div className="breadcrumb-banner">
+          PHÊ DUYỆT ĐỀ NGHỊ MUA BẢO TRÌ
+        </div>
+      )}
 
       <div className="tab-nav-base">
         <button

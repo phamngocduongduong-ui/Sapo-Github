@@ -34,7 +34,10 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
                 </ul>
                 <p>Chúc bạn kỳ nghỉ vui vẻ và an toàn!</p>
                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                <p style="font-size: 12px; color: #64748b;">Hệ thống Sapo EMS • Phòng Nhân sự</p>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">
+                  Hệ thống Sapo EMS • Phòng Nhân sự<br />
+                  <span style="font-size: 11px; color: #94a3b8; font-style: italic;">Đây là thư tự động gửi từ hệ thống. Vui lòng không trả lời lại email này.</span>
+                </p>
               </div>
             `
           });
@@ -68,7 +71,10 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
                 </ul>
                 <p>Cảm ơn những đóng góp và nỗ lực cống hiến của bạn cho công ty!</p>
                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                <p style="font-size: 12px; color: #64748b;">Hệ thống Sapo EMS • Phòng Nhân sự</p>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">
+                  Hệ thống Sapo EMS • Phòng Nhân sự<br />
+                  <span style="font-size: 11px; color: #94a3b8; font-style: italic;">Đây là thư tự động gửi từ hệ thống. Vui lòng không trả lời lại email này.</span>
+                </p>
               </div>
             `
           });
@@ -108,7 +114,10 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
                 </ul>
                 <p>Chúc bạn gặt hái được nhiều thành công mới ở vai trò mới!</p>
                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                <p style="font-size: 12px; color: #64748b;">Hệ thống Sapo EMS • Phòng Nhân sự</p>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">
+                  Hệ thống Sapo EMS • Phòng Nhân sự<br />
+                  <span style="font-size: 11px; color: #94a3b8; font-style: italic;">Đây là thư tự động gửi từ hệ thống. Vui lòng không trả lời lại email này.</span>
+                </p>
               </div>
             `
           });
@@ -142,7 +151,10 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
                 <p>Bạn vui lòng liên hệ bộ phận nhân sự và trưởng bộ phận để hoàn tất việc bàn giao tài sản cũng như công việc liên quan trước ngày làm việc cuối cùng.</p>
                 <p>Chúc bạn may mắn và thành công trên con đường sắp tới!</p>
                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                <p style="font-size: 12px; color: #64748b;">Hệ thống Sapo EMS • Ban Giám đốc</p>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">
+                  Hệ thống Sapo EMS • Ban Giám đốc<br />
+                  <span style="font-size: 11px; color: #94a3b8; font-style: italic;">Đây là thư tự động gửi từ hệ thống. Vui lòng không trả lời lại email này.</span>
+                </p>
               </div>
             `
           });

@@ -39,6 +39,15 @@ const allMenuGroups = [
     ]
   },
   {
+    id: "approver",
+    key: "PHE_DUYET",
+    label: "Người phê duyệt",
+    icon: <CheckCircle2 size={18} color="#0072bc" />,
+    items: [
+      { href: "/phe-duyet", label: "Trung tâm phê duyệt", key: "PHE_DUYET", icon: <CheckCircle2 size={14} color="#0072bc" /> }
+    ]
+  },
+  {
     id: "catalog",
     key: "DANH_MUC",
     label: "Danh mục",

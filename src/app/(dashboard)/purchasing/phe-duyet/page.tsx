@@ -10,7 +10,7 @@ import { getPheDuyetPurchaseOrders, updatePOStatus } from "../lenh-mua/actions";
 import HistoryModal from "../../HistoryModal";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 
-export default function PurchasingApprovalPage() {
+export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const [items, setItems] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"pending" | "processed">("pending");
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
@@ -64,16 +64,18 @@ export default function PurchasingApprovalPage() {
   const currentItems = activeTab === "pending" ? pendingItems : processedItems;
 
   return (
-    <div style={{ padding: "1.5rem", width: "100%", minHeight: "calc(100vh - 140px)", height: "auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <h1 className="page-title" style={{ margin: 0 }}>✅ Phê duyệt Đơn mua hàng</h1>
-          <p style={{ color: "#64748b", marginTop: "0.25rem" }}>Xét duyệt các yêu cầu mua hàng từ các chi nhánh</p>
+    <div style={isEmbedded ? { width: "100%", height: "auto", display: "flex", flexDirection: "column", gap: "1.5rem" } : { padding: "1.5rem", width: "100%", minHeight: "calc(100vh - 140px)", height: "auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {!isEmbedded && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <h1 className="page-title" style={{ margin: 0 }}>✅ Phê duyệt Đơn mua hàng</h1>
+            <p style={{ color: "#64748b", marginTop: "0.25rem" }}>Xét duyệt các yêu cầu mua hàng từ các chi nhánh</p>
+          </div>
+          <button className="btn btn-outline" onClick={() => fetchData()} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <RefreshCw size={18} /> Làm mới
+          </button>
         </div>
-        <button className="btn btn-outline" onClick={() => fetchData()} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <RefreshCw size={18} /> Làm mới
-        </button>
-      </div>
+      )}
 
       <div style={{ display: "flex", gap: "2rem", borderBottom: "1px solid #e2e8f0" }}>
         <button 

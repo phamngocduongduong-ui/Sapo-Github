@@ -5,15 +5,15 @@ export default function KiemTraPage() {
   return (
     <div style={{
       display: "flex",
+      flexDirection: "column",
       alignItems: "center",
-      justifyContent: "center",
-      height: "100vh",
+      minHeight: "100vh",
       overflowY: "auto",
       WebkitOverflowScrolling: "touch",
       backgroundColor: "#f8fafc",
-      padding: "20px"
+      padding: "10px 20px 20px 20px"
     }}>
-      <div style={{ width: "100%", maxWidth: "1200px" }}>
+      <div style={{ width: "100%" }}>
         <Suspense fallback={
           <div className="check-loading-state" style={{ textAlign: "center", padding: "2rem" }}>
             <div className="loading-pulse"></div>

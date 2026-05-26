@@ -79,6 +79,8 @@ export default function LaborContractTable({
   const [activeTab, setActiveTab] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
+  const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
+  const selectedContract = contracts.find(c => c.id === selectedContractId) || null;
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -409,243 +411,511 @@ export default function LaborContractTable({
   const uniqueBranches = ["Tất cả", ...new Set(contracts.map(c => c.branch).filter(Boolean) as string[])];
 
   return (
-    <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "1rem" }}>
-        <h3 style={{ margin: 0 }}>Danh sách Hợp đồng lao động</h3>
-        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-          <button className="btn btn-outline" onClick={handleDownloadTemplate}>
-            <FileSpreadsheet size={18} style={{ marginRight: "5px" }} /> File mẫu
-          </button>
-          <label className="btn btn-outline" style={{ cursor: "pointer" }}>
-            <Upload size={18} style={{ marginRight: "5px" }} /> Nhập Excel
-            <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
-          </label>
-          <button className="btn btn-outline" onClick={handleExportExcel}>
-            <Download size={18} style={{ marginRight: "5px" }} /> Xuất Excel
-          </button>
-          <button className="btn btn-outline" onClick={() => router.refresh()}>
-            <RotateCcw size={18} style={{ marginRight: "6px" }} /> Làm mới
-          </button>
-          <button className={`btn ${showFilters ? 'btn-primary' : 'btn-outline'}`} onClick={() => setShowFilters(!showFilters)}>
-            <Filter size={18} style={{ marginRight: "6px" }} /> {showFilters ? "Ẩn lọc" : "Lọc"}
-          </button>
-          <button className="btn btn-primary" onClick={() => { setEditingContract(null); setShowModal(true); }}>
-            <Plus size={18} style={{ marginRight: "6px" }} /> Thêm mới
-          </button>
-        </div>
+    <div className="labor-contract-page-container">
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .labor-contract-page-container {
+          width: 100%;
+          min-width: 0;
+        }
+        .labor-contract-layout {
+          display: flex;
+          gap: 1.5rem;
+          width: 100%;
+          min-width: 0;
+          font-family: "Segoe UI", -apple-system, sans-serif;
+          font-size: 13px;
+          padding: 10px 0px 10px 0px;
+        }
+        .labor-contract-layout input,
+        .labor-contract-layout select,
+        .labor-contract-layout textarea,
+        .labor-contract-layout button,
+        .labor-contract-layout table,
+        .labor-contract-layout td,
+        .labor-contract-layout th,
+        .labor-contract-layout label,
+        .labor-contract-layout .badge,
+        .labor-contract-page-container .breadcrumb-banner {
+          font-size: 13px !important;
+        }
+        .breadcrumb-banner {
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          display: block;
+          border-radius: 0 !important;
+          margin-top: 0;
+          margin-left: -10px;
+          margin-right: -10px;
+        }
+        .panel-full {
+          flex: 1 1 100%;
+          width: 100%;
+          min-width: 0;
+        }
+        .search-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 5px 0px 10px 0px;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+        .sapo-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          border-radius: 4px;
+          font-weight: 400;
+          font-size: 13px !important;
+          cursor: pointer;
+          transition: background-color 0.2s, transform 0.1s;
+          border: none;
+        }
+        .sapo-btn:hover {
+          background-color: #002244;
+        }
+        .sapo-btn:active {
+          transform: scale(0.98);
+        }
+        .row-hoverable:hover {
+          background-color: #f8fafc;
+        }
+        .row-selected {
+          background-color: #eff6ff !important;
+        }
+        .base-table-wrapper {
+          max-height: 485px !important;
+          height: auto !important;
+          overflow-y: auto !important;
+          padding-bottom: 60px !important;
+        }
+        .base-table {
+          height: auto !important;
+          width: 100% !important;
+          table-layout: auto !important;
+        }
+        .base-table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
+          text-align: center !important;
+          height: 35px !important;
+          padding-top: 6px !important;
+          padding-bottom: 6px !important;
+        }
+        .base-table td {
+          padding: 2px 0.75rem !important;
+          vertical-align: middle !important;
+          color: #000 !important;
+          font-weight: 600 !important;
+        }
+        .base-table tbody tr {
+          height: 45px !important;
+        }
+        .nowrap, .base-table .nowrap {
+          white-space: nowrap !important;
+        }
+        .base-filters {
+          background: #f8fafc !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 6px !important;
+          padding: 10px !important;
+        }
+        .form-control {
+          padding: 6px 10px !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 4px !important;
+          outline: none !important;
+          background: white !important;
+        }
+        .filter-label {
+          display: block;
+          margin-bottom: 0.4rem;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #64748b;
+          text-transform: uppercase;
+        }
+        .input {
+          width: 100%;
+          padding: 0.5rem;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+        .input:focus {
+          border-color: var(--primary-color);
+        }
+        .drawer-header {
+          padding: 0.65rem 1.25rem !important;
+        }
+        .drawer-body {
+          padding: 0.75rem 1.25rem !important;
+          gap: 0.65rem !important;
+        }
+        .drawer-form {
+          gap: 0.65rem !important;
+        }
+        .drawer-footer {
+          padding: 0.75rem 1.25rem !important;
+        }
+      `}} />
+
+      {/* Header Toolbar */}
+      <div className="breadcrumb-banner">
+        DANH SÁCH HỢP ĐỒNG LAO ĐỘNG
       </div>
 
-      {/* Filters */}
-      {showFilters && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem", marginBottom: "1.5rem", background: "#f8fafc", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-        <div>
-          <label className="filter-label">Tìm kiếm</label>
-          <input type="text" className="input" placeholder="Tên NV, Số HĐ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-        </div>
-        <div>
-          <label className="filter-label">Chi nhánh</label>
-          <select className="input" value={filters.branch} onChange={(e) => setFilters({...filters, branch: e.target.value})}>
-            {uniqueBranches.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="filter-label">Bộ phận</label>
-          <select className="input" value={filters.department} onChange={(e) => setFilters({...filters, department: e.target.value})}>
-            <option value="Tất cả">Tất cả</option>
-            {departments.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="filter-label">Chức vụ</label>
-          <select className="input" value={filters.position} onChange={(e) => setFilters({...filters, position: e.target.value})}>
-            <option value="Tất cả">Tất cả</option>
-            {positions.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
-          </select>
-        </div>
-      </div>
-    )}
+      <div className="labor-contract-layout">
+        <div className="panel-full">
+          <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center" }}>
+            <button
+              type="button"
+              className="sapo-btn"
+              onClick={() => {
+                setEditingContract(null);
+                setShowModal(true);
+              }}
+            >
+              Thêm mới
+            </button>
 
-      <div className="table-container" style={{ overflowX: "auto" }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>STT</th>
-              <th>Số hợp đồng</th>
-              <th>Nhân viên</th>
-              <th>Chi nhánh</th>
-              <th>Trạng thái</th>
-              <th>Loại hợp đồng</th>
-              <th>Ngày hợp đồng</th>
-              <th>Ngày kết thúc</th>
-              <th style={{ width: "280px", textAlign: "center" }}>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedContracts.map((c, idx) => {
-              const globalIdx = (currentPage - 1) * itemsPerPage + idx + 1;
-              const st = STATUS_MAP[c.status] ?? { label: c.status, badge: "badge-warning" };
-              const isExpanded = expandedId === c.id;
-              
-              return (
-                <React.Fragment key={c.id}>
-                  <tr 
-                    style={{ cursor: "pointer", background: isExpanded ? "#f8fafc" : "inherit" }}
-                    onClick={() => setExpandedId(isExpanded ? null : c.id)}
+            {selectedContract && (
+              <>
+                {(isAdmin || selectedContract.status === "Tạo mới" || selectedContract.status === "Đã hủy") && (
+                  <button
+                    type="button"
+                    className="sapo-btn"
+                    onClick={() => handleEdit(selectedContract)}
                   >
-                    <td>{globalIdx}</td>
-                    <td style={{ fontWeight: 600 }}>{c.contractNumber}</td>
-                    <td style={{ fontWeight: 500 }}>{c.employeeName}</td>
-                    <td>{c.branch || "—"}</td>
-                    <td><span className={`badge ${st.badge}`}>{st.label}</span></td>
-                    <td>{c.contractType}</td>
-                    <td>{new Date(c.contractDate).toLocaleDateString("vi-VN")}</td>
-                    <td>{c.endDate ? new Date(c.endDate).toLocaleDateString("vi-VN") : "Vô thời hạn"}</td>
-                    <td style={{ textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
-                        {isAdmin || (c.status !== "Đã phê duyệt") ? (
-                          <>
-                            {(isAdmin || c.status === "Tạo mới" || c.status === "Đã hủy") && (
-                              <button onClick={() => handleEdit(c)} className="btn btn-sm btn-outline">Sửa</button>
-                            )}
-                            
-                            {c.status === "Tạo mới" && (
-                              <button onClick={() => handleStatusUpdate(c.id, "Chờ phê duyệt")} className="btn btn-sm btn-primary">Gửi</button>
-                            )}
-                            
-                            {c.status === "Chờ phê duyệt" && (
-                              <button onClick={() => handleStatusUpdate(c.id, "Tạo mới")} className="btn btn-sm btn-warning">Thu hồi</button>
-                            )}
+                    Sửa
+                  </button>
+                )}
 
-                            {c.status === "Chờ phê duyệt" && isAdmin && (
-                              <>
-                                <button onClick={() => handleStatusUpdate(c.id, "Đã phê duyệt")} className="btn btn-sm btn-primary">Duyệt</button>
-                                <button onClick={() => handleStatusUpdate(c.id, "Từ chối")} className="btn btn-sm btn-danger">Từ chối</button>
-                              </>
-                            )}
-  
-                            {c.status === "Tạo mới" && (
-                              <button onClick={() => handleStatusUpdate(c.id, "Đã hủy")} className="btn btn-sm btn-danger">Hủy</button>
-                            )}
+                {selectedContract.status === "Tạo mới" && (
+                  <button
+                    type="button"
+                    className="sapo-btn"
+                    onClick={() => handleStatusUpdate(selectedContract.id, "Chờ phê duyệt")}
+                  >
+                    Gửi
+                  </button>
+                )}
 
-                            {c.status === "Đã phê duyệt" && isAdmin && (
-                              <span style={{ fontSize: "0.8rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px", marginLeft: "4px" }}>
-                                <Check size={14} /> Admin
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span style={{ fontSize: "0.8rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
-                            <Check size={14} /> Hoàn tất
+                {selectedContract.status === "Chờ phê duyệt" && (
+                  <button
+                    type="button"
+                    className="sapo-btn"
+                    onClick={() => handleStatusUpdate(selectedContract.id, "Tạo mới")}
+                  >
+                    Thu hồi
+                  </button>
+                )}
+
+                {selectedContract.status === "Chờ phê duyệt" && isAdmin && (
+                  <>
+                    <button
+                      type="button"
+                      className="sapo-btn"
+                      onClick={() => handleStatusUpdate(selectedContract.id, "Đã phê duyệt")}
+                    >
+                      Duyệt
+                    </button>
+                    <button
+                      type="button"
+                      className="sapo-btn"
+                      onClick={() => handleStatusUpdate(selectedContract.id, "Từ chối")}
+                    >
+                      Từ chối
+                    </button>
+                  </>
+                )}
+
+                {selectedContract.status === "Tạo mới" && (
+                  <button
+                    type="button"
+                    className="sapo-btn"
+                    onClick={() => handleStatusUpdate(selectedContract.id, "Đã hủy")}
+                  >
+                    Hủy
+                  </button>
+                )}
+              </>
+            )}
+
+            <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <button
+                type="button"
+                className="sapo-btn"
+                onClick={(e) => { e.stopPropagation(); setShowFilters(!showFilters); }}
+              >
+                Lọc
+              </button>
+
+              <button className="sapo-btn" onClick={handleDownloadTemplate} title="Tải file mẫu">
+                Tải mẫu
+              </button>
+              <label className="sapo-btn" style={{ cursor: "pointer", margin: 0 }} title="Import Excel">
+                Nhập Excel
+                <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
+              </label>
+              <button className="sapo-btn" onClick={handleExportExcel} title="Xuất file Excel">
+                Xuất Excel
+              </button>
+
+
+            </div>
+          </div>
+
+          {showFilters && (
+            <div className="base-filters" style={{ marginBottom: "0.75rem" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <select
+                  className="form-control"
+                  style={{ maxWidth: "200px" }}
+                  value={filters.branch}
+                  onChange={(e) => setFilters({...filters, branch: e.target.value})}
+                >
+                  {uniqueBranches.map(b => <option key={b} value={b}>{b === "Tất cả" ? "Tất cả chi nhánh" : b}</option>)}
+                </select>
+                <select
+                  className="form-control"
+                  style={{ maxWidth: "200px" }}
+                  value={filters.department}
+                  onChange={(e) => setFilters({...filters, department: e.target.value})}
+                >
+                  <option value="Tất cả">Tất cả bộ phận</option>
+                  {departments.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+                </select>
+                <select
+                  className="form-control"
+                  style={{ maxWidth: "200px" }}
+                  value={filters.position}
+                  onChange={(e) => setFilters({...filters, position: e.target.value})}
+                >
+                  <option value="Tất cả">Tất cả chức vụ</option>
+                  {positions.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+                </select>
+                <button
+                  type="button"
+                  className="sapo-btn"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setFilters({
+                      branch: "Tất cả",
+                      department: "Tất cả",
+                      position: "Tất cả"
+                    });
+                  }}
+                  style={{ padding: "6px 12px" }}
+                >
+                  Đặt lại
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Main Table */}
+          <div className="base-table-wrapper" style={paginatedContracts.length === 0 ? { height: "auto" } : undefined}>
+            <table className="base-table">
+              <thead>
+                <tr>
+                  <th className="th-first nowrap" style={{ width: "50px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>STT</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Số hợp đồng</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Nhân viên</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Chi nhánh</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Loại hợp đồng</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Ngày hợp đồng</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Ngày kết thúc</th>
+                  <th className="th-last nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedContracts.map((c, idx) => {
+                  const globalIdx = (currentPage - 1) * itemsPerPage + idx + 1;
+                  const isSelected = selectedContractId === c.id;
+                  const isExpanded = expandedId === c.id;
+                  
+                  // Status text styling
+                  let statusColor = "#f59e0b"; // "Tạo mới"
+                  if (c.status === "Chờ phê duyệt") statusColor = "#2563eb";
+                  if (c.status === "Đã phê duyệt") statusColor = "#10b981";
+                  if (c.status === "Đã hủy" || c.status === "Từ chối") statusColor = "#ef4444";
+
+                  return (
+                    <React.Fragment key={c.id}>
+                      <tr 
+                        className={`row-hoverable ${isSelected ? "row-selected" : ""}`}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => {
+                          const nextId = selectedContractId === c.id ? null : c.id;
+                          setSelectedContractId(nextId);
+                          setExpandedId(nextId);
+                        }}
+                      >
+                        <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{globalIdx}</td>
+                        <td style={{ fontWeight: 700, color: "#000" }}>{c.contractNumber}</td>
+                        <td style={{ fontWeight: 600, color: "#000" }}>{c.employeeName}</td>
+                        <td style={{ color: "#000", fontWeight: 600 }}>{c.branch || "—"}</td>
+                        <td style={{ color: "#000", fontWeight: 600 }}>{c.contractType}</td>
+                        <td style={{ color: "#000", fontWeight: 600 }}>{new Date(c.contractDate).toLocaleDateString("vi-VN")}</td>
+                        <td style={{ color: "#000", fontWeight: 600 }}>{c.endDate ? new Date(c.endDate).toLocaleDateString("vi-VN") : "Vô thời hạn"}</td>
+                        <td className="nowrap" style={{ textAlign: "center" }}>
+                          <span style={{ color: statusColor, fontWeight: 700 }}>
+                            {c.status}
                           </span>
-                        )}
-                        <button 
-                          className="btn btn-sm btn-outline" 
-                          onClick={() => setHistoryRecordId(c.id)}
-                          title="Lịch sử thay đổi"
-                        >
-                          Lịch sử
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr>
-                      <td colSpan={9} style={{ padding: "0", background: "#f8fafc" }}>
-                        <div style={{ 
-                          padding: "0.75rem", 
-                          position: "sticky",
-                          left: 0,
-                          width: "min-content",
-                          minWidth: "100%",
-                          maxWidth: "calc(100vw - 280px)",
-                          borderBottom: "2px solid var(--primary-color)",
-                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)",
-                        }}>
-                          <div style={{ 
-                            display: "flex", 
-                            flexWrap: "wrap", 
-                            gap: "0.75rem",
-                            maxWidth: "850px" // More compact total width
-                          }}>
-                            {/* Section 1: Salary & Allowances */}
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={8} style={{ padding: "0", background: "#f8fafc" }}>
                             <div style={{ 
-                              background: "white", 
                               padding: "0.75rem", 
-                              borderRadius: "8px", 
-                              border: "1px solid #e2e8f0",
-                              boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
-                              flex: "1 1 400px", // Reduced from 500px
-                              minWidth: "280px"
-                            }}>
-                              <h4 style={{ margin: "0 0 0.5rem 0", color: "var(--primary-color)", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.5rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.4rem" }}>
-                                💰 Lương & Phụ cấp
-                              </h4>
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.3rem 1rem" }}>
-                                {[
-                                  { label: "Bậc lương", value: c.salaryLevel || "—", bold: true },
-                                  { label: "Lương cơ bản", value: `${formatNumber(c.salaryBase)}đ` },
-                                  { label: "PC Chuyên cần", value: `${formatNumber(c.attendanceAllowance)}đ` },
-                                  { label: "PC Hiệu quả", value: `${formatNumber(c.performanceAllowance)}đ` },
-                                  { label: "PC Trách nhiệm", value: `${formatNumber(c.responsibilityAllowance)}đ` },
-                                  { label: "PC Thu hút", value: `${formatNumber(c.attractionAllowance)}đ` },
-                                  { label: "PC Vị trí", value: `${formatNumber(c.positionAllowance)}đ` },
-                                  { label: "Hỗ trợ khác", value: `${formatNumber(c.otherAllowance)}đ` }
-                                ].map((item, i) => (
-                                  <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", borderBottom: "1px solid #f8fafc", paddingBottom: "1px" }}>
-                                    <span style={{ color: "#64748b" }}>{item.label}:</span>
-                                    <span style={{ fontWeight: item.bold ? 700 : 600, color: item.bold ? "var(--primary-color)" : "inherit" }}>{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Section 2: Insurance & Note */}
-                            <div style={{ 
-                              display: "flex", 
-                              flexDirection: "column", 
-                              gap: "0.5rem",
-                              flex: "1 1 300px", // Reduced from 350px
-                              minWidth: "260px"
+                              position: "sticky",
+                              left: 0,
+                              width: "min-content",
+                              minWidth: "100%",
+                              maxWidth: "calc(100vw - 280px)",
+                              borderBottom: "2px solid var(--primary-color)",
+                              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)",
                             }}>
                               <div style={{ 
-                                background: "white", 
-                                padding: "0.75rem", 
-                                borderRadius: "8px", 
-                                border: "1px solid #e2e8f0",
-                                boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
+                                display: "flex", 
+                                flexWrap: "wrap", 
+                                gap: "0.75rem",
+                                maxWidth: "850px"
                               }}>
-                                <h4 style={{ margin: "0 0 0.5rem 0", color: "var(--success-color)", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.5rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.4rem" }}>
-                                  🛡️ Bảo hiểm xã hội
-                                </h4>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                  <span style={{ color: "#64748b", fontSize: "0.75rem" }}>Mức đóng BHXH:</span>
-                                  <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--success-color)" }}>{formatNumber(c.socialInsurance)}đ</span>
+                                {/* Section 1: Salary & Allowances */}
+                                <div style={{ 
+                                  background: "white", 
+                                  padding: "0.75rem", 
+                                  borderRadius: "8px", 
+                                  border: "1px solid #e2e8f0",
+                                  boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+                                  flex: "1 1 400px",
+                                  minWidth: "280px"
+                                }}>
+                                  <h4 style={{ margin: "0 0 0.5rem 0", color: "var(--primary-color)", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.5rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.4rem" }}>
+                                    💰 Lương & Phụ cấp
+                                  </h4>
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.3rem 1rem" }}>
+                                    {[
+                                      { label: "Bậc lương", value: c.salaryLevel || "—", bold: true },
+                                      { label: "Lương cơ bản", value: `${formatNumber(c.salaryBase)}đ` },
+                                      { label: "PC Chuyên cần", value: `${formatNumber(c.attendanceAllowance)}đ` },
+                                      { label: "PC Hiệu quả", value: `${formatNumber(c.performanceAllowance)}đ` },
+                                      { label: "PC Trách nhiệm", value: `${formatNumber(c.responsibilityAllowance)}đ` },
+                                      { label: "PC Thu hút", value: `${formatNumber(c.attractionAllowance)}đ` },
+                                      { label: "PC Vị trí", value: `${formatNumber(c.positionAllowance)}đ` },
+                                      { label: "Hỗ trợ khác", value: `${formatNumber(c.otherAllowance)}đ` }
+                                    ].map((item, i) => (
+                                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", borderBottom: "1px solid #f8fafc", paddingBottom: "1px" }}>
+                                        <span style={{ color: "#64748b" }}>{item.label}:</span>
+                                        <span style={{ fontWeight: item.bold ? 700 : 600, color: item.bold ? "var(--primary-color)" : "inherit" }}>{item.value}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Section 2: Insurance & Note */}
+                                <div style={{ 
+                                  display: "flex", 
+                                  flexDirection: "column", 
+                                  gap: "0.5rem",
+                                  flex: "1 1 300px",
+                                  minWidth: "260px"
+                                }}>
+                                  <div style={{ 
+                                    background: "white", 
+                                    padding: "0.75rem", 
+                                    borderRadius: "8px", 
+                                    border: "1px solid #e2e8f0",
+                                    boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
+                                  }}>
+                                    <h4 style={{ margin: "0 0 0.5rem 0", color: "var(--success-color)", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.5rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.4rem" }}>
+                                      🛡️ Bảo hiểm xã hội
+                                    </h4>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                      <span style={{ color: "#64748b", fontSize: "0.75rem" }}>Mức đóng BHXH:</span>
+                                      <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--success-color)" }}>{formatNumber(c.socialInsurance)}đ</span>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ 
+                                    background: "white", 
+                                    padding: "0.6rem 0.75rem", 
+                                    borderRadius: "8px", 
+                                    border: "1px solid #e2e8f0",
+                                    flex: 1
+                                  }}>
+                                    <span style={{ color: "#64748b", fontSize: "0.75rem", fontWeight: 600 }}>📝 Ghi chú:</span>
+                                    <p style={{ margin: "0.1rem 0 0 0", fontSize: "0.75rem", color: "#475569", lineHeight: "1.2" }}>
+                                      {c.note || "Không có ghi chú bổ sung."}
+                                    </p>
+                                  </div>
                                 </div>
                               </div>
-
-                              <div style={{ 
-                                background: "white", 
-                                padding: "0.6rem 0.75rem", 
-                                borderRadius: "8px", 
-                                border: "1px solid #e2e8f0",
-                                flex: 1
-                              }}>
-                                <span style={{ color: "#64748b", fontSize: "0.75rem", fontWeight: 600 }}>📝 Ghi chú:</span>
-                                <p style={{ margin: "0.1rem 0 0 0", fontSize: "0.75rem", color: "#475569", lineHeight: "1.2" }}>
-                                  {c.note || "Không có ghi chú bổ sung."}
-                                </p>
-                              </div>
                             </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+                {paginatedContracts.length === 0 && (
+                  <tr style={{ height: "45px" }}>
+                    <td colSpan={8} style={{ textAlign: "center", color: "#64748b", verticalAlign: "middle", height: "45px" }}>
+                      Chưa có dữ liệu
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Modern Pagination */}
+          {totalPages > 1 && (
+            <div className="base-pagination">
+              <div className="pagination-info">
+                Hiển thị <strong>{paginatedContracts.length}</strong> / {filteredContracts.length} hợp đồng
+              </div>
+              <div className="pagination-controls">
+                <button
+                  className="page-btn"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                >
+                  Trước
+                </button>
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(i + 1)}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  className="page-btn"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {historyRecordId && (
@@ -656,333 +926,293 @@ export default function LaborContractTable({
         />
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", marginTop: "1.5rem" }}>
-          <button 
-            className="btn btn-sm btn-outline" 
-            disabled={currentPage === 1} 
-            onClick={() => setCurrentPage(prev => prev - 1)}
-          >
-            Trước
-          </button>
-          {[...Array(totalPages)].map((_, i) => (
-            <button 
-              key={i} 
-              className={`btn btn-sm ${currentPage === i + 1 ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => setCurrentPage(i + 1)}
-            >
-              {i + 1}
-            </button>
-          ))}
-          <button 
-            className="btn btn-sm btn-outline" 
-            disabled={currentPage === totalPages} 
-            onClick={() => setCurrentPage(prev => prev + 1)}
-          >
-            Sau
-          </button>
-        </div>
-      )}
-
-
-        {showModal && (
-          <div className="modal-overlay">
-            <div className="modal-content" style={{ maxWidth: "800px", borderRadius: "12px", border: "none" }}>
-              <div className="modal-header" style={{ borderBottom: "1px solid #f1f5f9", padding: "1.25rem 1.5rem", display: "block" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      {editingContract ? "✏️ Cập nhật Hợp đồng" : "📄 Khởi tạo Hợp đồng mới"}
-                    </h3>
-                    <div style={{ marginTop: "0.6rem", fontSize: "0.95rem", color: "#1e293b" }}>
-                       Số hợp đồng: <strong style={{ color: "var(--primary-color)" }}>{editingContract ? editingContract.contractNumber : (generatedContractNo || "(Sẽ tự động tạo)")}</strong>
-                    </div>
-                    <p style={{ margin: "0.4rem 0 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-                      Người tạo: <strong>{editingContract?.creator || currentUserName}</strong> | Ngày khởi tạo: <strong>{editingContract?.createdDate ? new Date(editingContract.createdDate).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN")}</strong>
-                    </p>
-                  </div>
-                  <button onClick={handleClose} className="btn-icon" style={{ background: "#f8fafc", borderRadius: "50%", width: "32px", height: "32px" }}>✕</button>
-                </div>
+      {/* Modern Side Drawer for Add/Edit */}
+      {showModal && (
+        <div className="drawer-overlay" onClick={handleClose}>
+          <div className="drawer-content animate-drawer-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "700px" }}>
+            <div className="drawer-header">
+              <div className="header-titles">
+                <h3>{editingContract ? "✏️ Cập nhật Hợp đồng" : "📄 Khởi tạo Hợp đồng mới"}</h3>
+                <p className="header-sub" style={{ marginTop: "0.4rem", fontSize: "0.85rem", color: "#64748b" }}>
+                  Số hợp đồng: <strong style={{ color: "var(--primary-color)" }}>{editingContract ? editingContract.contractNumber : (generatedContractNo || "(Sẽ tự động tạo)")}</strong>
+                  {` | Người tạo: `}<strong>{editingContract?.creator || currentUserName}</strong>{` | Ngày: `}<strong>{editingContract?.createdDate ? new Date(editingContract.createdDate).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN")}</strong>
+                </p>
               </div>
-              
-              <div style={{ display: "flex", background: "#f8fafc", padding: "0 1rem", borderBottom: "1px solid #f1f5f9" }}>
-                {[
-                  { id: 1, label: "Thông tin hợp đồng" },
-                  { id: 2, label: "Thông tin lương và phụ cấp" },
-                  { id: 3, label: "Thông tin BHXH" }
-                ].map(tab => (
-                  <button 
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)} 
-                    style={{ 
-                      padding: "1rem 1.25rem", 
-                      borderBottom: activeTab === tab.id ? "3px solid var(--primary-color)" : "3px solid transparent", 
-                      color: activeTab === tab.id ? "var(--primary-color)" : "#64748b", 
-                      fontWeight: 600,
-                      fontSize: "0.9rem",
-                      transition: "all 0.2s"
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-  
-              <form onSubmit={handleSubmit}>
-                <div className="modal-body" style={{ minHeight: "350px", padding: "1.5rem" }}>
-                  {error && <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#fee2e2", color: "#b91c1c", borderRadius: "0.5rem", fontSize: "0.9rem" }}>{error}</div>}
+              <button onClick={handleClose} className="drawer-close-btn">&times;</button>
+            </div>
+            
+            <div style={{ display: "flex", background: "#f8fafc", padding: "0 1rem", borderBottom: "1px solid #f1f5f9" }}>
+              {[
+                { id: 1, label: "Thông tin hợp đồng" },
+                { id: 2, label: "Thông tin lương và phụ cấp" },
+                { id: 3, label: "Thông tin BHXH" }
+              ].map(tab => (
+                <button 
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)} 
+                  style={{ 
+                    padding: "1rem 1.25rem", 
+                    borderBottom: activeTab === tab.id ? "3px solid var(--primary-color)" : "3px solid transparent", 
+                    color: activeTab === tab.id ? "var(--primary-color)" : "#64748b", 
+                    fontWeight: 600,
+                    fontSize: "0.9rem",
+                    transition: "all 0.2s",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer"
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleSubmit} id="labor-contract-form" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+              <div className="drawer-body" style={{ flex: 1, overflowY: "auto", padding: "1.5rem" }}>
+                {error && <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#fee2e2", color: "#b91c1c", borderRadius: "0.5rem", fontSize: "0.9rem" }}>{error}</div>}
+                
+                {/* Tab 1: Thông tin hợp đồng */}
+                <div style={{ display: activeTab === 1 ? "block" : "none" }} className="drawer-form">
                   
-                  {/* Tab 1: Thông tin hợp đồng */}
-                  <div style={{ display: activeTab === 1 ? "block" : "none" }}>
-                    
-                    {/* Dòng 1: Số hợp đồng, Ngày hợp đồng */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.25rem" }}>
-                      <div className="form-group">
-                        <label>Số hợp đồng *</label>
-                        <input 
-                          type="text" 
-                          name="contractNumber" 
-                          className="form-control" 
-                          value={contractNumberVal}
-                          readOnly
-                          style={{ background: "#f1f5f9", cursor: "not-allowed" }}
-                          placeholder="Tự động tạo..."
-                          required 
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Ngày hợp đồng *</label>
-                        <input 
-                          type="date" 
-                          name="contractDate" 
-                          className="form-control" 
-                          required 
-                          value={contractDateVal}
-                          onChange={(e) => setContractDateVal(e.target.value)}
-                        />
-                      </div>
+                  {/* Dòng 1: Số hợp đồng, Ngày hợp đồng */}
+                  <div className="form-row" style={{ marginBottom: "1rem" }}>
+                    <div className="form-group-base">
+                      <label>Số hợp đồng <span style={{ color: "red" }}>*</span></label>
+                      <input 
+                        type="text" 
+                        name="contractNumber" 
+                        className="input-base readonly" 
+                        value={contractNumberVal}
+                        readOnly
+                        placeholder="Tự động tạo..."
+                        required 
+                      />
                     </div>
-
-                    {/* Dòng 2: Tên nhân viên, chức vụ, bộ phận */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.25rem", marginBottom: "1.25rem" }}>
-                      <div className="form-group">
-                        <label>Nhân viên *</label>
-                        <select 
-                          name="employeeName" 
-                          className="form-control" 
-                          required 
-                          defaultValue={editingContract?.employeeName ?? ""}
-                          onChange={(e) => {
-                            handleEmployeeChange(e.target.value);
-                            setSelectedEmployeeForCode(e.target.value);
-                          }}
-                        >
-                          <option value="" disabled>-- Chọn nhân viên --</option>
-                          {employees.map(e => <option key={e.fullName} value={e.fullName}>{e.fullName}</option>)}
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label>Chức vụ *</label>
-                        <select name="position" className="form-control" required value={posValue} onChange={(e) => setPosValue(e.target.value)}>
-                          <option value="" disabled>-- Chọn chức vụ --</option>
-                          {positions.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label>Bộ phận *</label>
-                        <select name="department" className="form-control" required value={deptValue} onChange={(e) => setDeptValue(e.target.value)}>
-                          <option value="" disabled>-- Chọn bộ phận --</option>
-                          {departments.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
-                        </select>
-                      </div>
+                    <div className="form-group-base">
+                      <label>Ngày hợp đồng <span style={{ color: "red" }}>*</span></label>
+                      <input 
+                        type="date" 
+                        name="contractDate" 
+                        className="input-base" 
+                        required 
+                        value={contractDateVal}
+                        onChange={(e) => setContractDateVal(e.target.value)}
+                      />
                     </div>
-
-                    {/* Dòng 3: Loại hợp đồng, Loại thời hạn */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.25rem" }}>
-                      <div className="form-group">
-                        <label>Loại hợp đồng *</label>
-                        <select name="contractType" className="form-control" required defaultValue={editingContract?.contractType ?? ""}>
-                          <option value="" disabled>-- Chọn loại hợp đồng --</option>
-                          {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label>Loại thời hạn *</label>
-                        <select 
-                          className="form-control" 
-                          value={durationType} 
-                          onChange={(e) => setDurationType(e.target.value)}
-                        >
-                          <option value="Có thời hạn">Có thời hạn</option>
-                          <option value="Vô thời hạn">Vô thời hạn</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Dòng 4: ngày bắt đầu, Thời gian, Dự kiến kết thúc */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.25rem", marginBottom: "1.25rem" }}>
-                      <div className="form-group">
-                        <label>Ngày bắt đầu *</label>
-                        <input 
-                          type="date" 
-                          name="startDate" 
-                          className="form-control" 
-                          required 
-                          value={startDateVal}
-                          onChange={(e) => setStartDateVal(e.target.value)}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Thời gian (Tháng)</label>
-                        <input 
-                          type="number" 
-                          name="durationMonths" 
-                          className="form-control" 
-                          placeholder="Nhập số tháng"
-                          value={durationMonths}
-                          onChange={(e) => setDurationMonths(e.target.value === "" ? "" : parseInt(e.target.value))}
-                          disabled={durationType === "Vô thời hạn"}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Dự kiến kết thúc</label>
-                        <input 
-                          type="date" 
-                          name="endDate" 
-                          className="form-control" 
-                          style={{ background: "#f1f5f9" }}
-                          value={endDateVal}
-                          readOnly
-                        />
-                      </div>
-                    </div>
-
-                    {/* Dòng 5: Ghi chú */}
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>Ghi chú</label>
-                      <textarea name="note" className="form-control" rows={2} defaultValue={editingContract?.note ?? ""} placeholder="Nhập ghi chú thêm..."></textarea>
-                    </div>
-
-                    {/* Các trường ẩn để gửi lên server */}
-                    <input type="hidden" name="creator" value={editingContract?.creator || currentUserName} />
-                    <input type="hidden" name="createdDate" value={editingContract?.createdDate ? new Date(editingContract.createdDate).toISOString() : new Date().toISOString()} />
                   </div>
-  
-                  {/* Tab 2: Thông tin lương và phụ cấp */}
-                  <div style={{ display: activeTab === 2 ? "block" : "none" }}>
-                    <div className="form-group" style={{ marginBottom: "1.5rem" }}>
-                      <label>Bậc lương *</label>
-                      <select name="salaryLevel" className="form-control" required value={salaryData.level} onChange={handleSalaryLevelChange}>
-                        <option value="">-- Chọn bậc lương --</option>
-                        {salaryLevels.map(l => {
-                          const total = l.baseSalary + l.performanceBonus + l.attendanceBonus;
-                          return (
-                            <option key={l.id} value={l.levelCode}>
-                              {l.levelCode} - Tổng: {formatNumber(total)}đ
-                            </option>
-                          );
-                        })}
+
+                  {/* Dòng 2: Tên nhân viên, chức vụ, bộ phận */}
+                  <div className="form-row" style={{ gridTemplateColumns: "1fr 1fr 1fr", marginBottom: "1rem" }}>
+                    <div className="form-group-base">
+                      <label>Nhân viên <span style={{ color: "red" }}>*</span></label>
+                      <select 
+                        name="employeeName" 
+                        className="input-base" 
+                        required 
+                        defaultValue={editingContract?.employeeName ?? ""}
+                        onChange={(e) => {
+                          handleEmployeeChange(e.target.value);
+                          setSelectedEmployeeForCode(e.target.value);
+                        }}
+                      >
+                        <option value="" disabled>-- Chọn nhân viên --</option>
+                        {employees.map(e => <option key={e.fullName} value={e.fullName}>{e.fullName}</option>)}
                       </select>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-                      <div className="form-group">
-                        <label>Lương cơ bản (Tự động)</label>
-                        <input type="text" name="salaryBase" className="form-control" style={{ background: "#f8fafc", fontWeight: 600 }} value={formatNumber(salaryData.base)} readOnly />
-                      </div>
-                      <div className="form-group">
-                        <label>Phụ cấp chuyên cần (Tự động)</label>
-                        <input type="text" name="attendanceAllowance" className="form-control" style={{ background: "#f8fafc" }} value={formatNumber(salaryData.attendance)} readOnly />
-                      </div>
-                      <div className="form-group">
-                        <label>Phụ cấp hiệu quả (Tự động)</label>
-                        <input type="text" name="performanceAllowance" className="form-control" style={{ background: "#f8fafc" }} value={formatNumber(salaryData.performance)} readOnly />
-                      </div>
-                      <div className="form-group">
-                        <label>Phụ cấp trách nhiệm (Tự động)</label>
-                        <input type="text" name="responsibilityAllowance" className="form-control" style={{ background: "#f8fafc" }} value={formatNumber(salaryData.responsibility)} readOnly />
-                      </div>
-                      <div className="form-group">
-                        <label>Phụ cấp thu hút</label>
-                        <input 
-                          type="text" 
-                          name="attractionAllowance" 
-                          className="form-control" 
-                          value={formatNumber(manualSalary.attraction)} 
-                          onChange={(e) => setManualSalary(prev => ({ ...prev, attraction: parseInt(e.target.value.replace(/\./g, "")) || 0 }))}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Phụ cấp vị trí</label>
-                        <input 
-                          type="text" 
-                          name="positionAllowance" 
-                          className="form-control" 
-                          value={formatNumber(manualSalary.position)} 
-                          onChange={(e) => setManualSalary(prev => ({ ...prev, position: parseInt(e.target.value.replace(/\./g, "")) || 0 }))}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Hỗ trợ khác</label>
-                        <input 
-                          type="text" 
-                          name="otherAllowance" 
-                          className="form-control" 
-                          value={formatNumber(manualSalary.other)} 
-                          onChange={(e) => setManualSalary(prev => ({ ...prev, other: parseInt(e.target.value.replace(/\./g, "")) || 0 }))}
-                        />
-                      </div>
+                    <div className="form-group-base">
+                      <label>Chức vụ <span style={{ color: "red" }}>*</span></label>
+                      <select name="position" className="input-base" required value={posValue} onChange={(e) => setPosValue(e.target.value)}>
+                        <option value="" disabled>-- Chọn chức vụ --</option>
+                        {positions.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group-base">
+                      <label>Bộ phận <span style={{ color: "red" }}>*</span></label>
+                      <select name="department" className="input-base" required value={deptValue} onChange={(e) => setDeptValue(e.target.value)}>
+                        <option value="" disabled>-- Chọn bộ phận --</option>
+                        {departments.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+                      </select>
                     </div>
                   </div>
-   
-                  {/* Tab 3: BHXH */}
-                  <div style={{ display: activeTab === 3 ? "block" : "none" }}>
-                    <div className="card" style={{ maxWidth: "500px", padding: "2rem", margin: "1rem auto", background: "#f8fafc", border: "1px dashed #cbd5e1" }}>
-                      <div className="form-group">
-                        <label style={{ fontSize: "1rem", fontWeight: 600 }}>Số tiền đóng BHXH</label>
-                        <input 
-                          type="text" 
-                          name="socialInsurance" 
-                          className="form-control" 
-                          style={{ height: "45px", fontSize: "1.1rem" }} 
-                          value={formatNumber(manualSalary.social)} 
-                          onChange={(e) => setManualSalary(prev => ({ ...prev, social: parseInt(e.target.value.replace(/\./g, "")) || 0 }))}
-                        />
-                        <p style={{ marginTop: "1rem", fontSize: "0.85rem", color: "#64748b", lineHeight: 1.6 }}>
-                          * Nhập số tiền cụ thể làm căn cứ đóng Bảo hiểm xã hội cho nhân viên. <br/>
-                          * Dữ liệu này sẽ được dùng để trích đóng hàng tháng trong bảng lương.
-                        </p>
-                      </div>
+
+                  {/* Dòng 3: Loại hợp đồng, Loại thời hạn */}
+                  <div className="form-row" style={{ marginBottom: "1rem" }}>
+                    <div className="form-group-base">
+                      <label>Loại hợp đồng <span style={{ color: "red" }}>*</span></label>
+                      <select name="contractType" className="input-base" required defaultValue={editingContract?.contractType ?? ""}>
+                        <option value="" disabled>-- Chọn loại hợp đồng --</option>
+                        {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group-base">
+                      <label>Loại thời hạn <span style={{ color: "red" }}>*</span></label>
+                      <select 
+                        className="input-base" 
+                        value={durationType} 
+                        onChange={(e) => setDurationType(e.target.value)}
+                      >
+                        <option value="Có thời hạn">Có thời hạn</option>
+                        <option value="Vô thời hạn">Vô thời hạn</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Dòng 4: ngày bắt đầu, Thời gian, Dự kiến kết thúc */}
+                  <div className="form-row" style={{ gridTemplateColumns: "1fr 1fr 1fr", marginBottom: "1rem" }}>
+                    <div className="form-group-base">
+                      <label>Ngày bắt đầu <span style={{ color: "red" }}>*</span></label>
+                      <input 
+                        type="date" 
+                        name="startDate" 
+                        className="input-base" 
+                        required 
+                        value={startDateVal}
+                        onChange={(e) => setStartDateVal(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group-base">
+                      <label>Thời gian (Tháng)</label>
+                      <input 
+                        type="number" 
+                        name="durationMonths" 
+                        className="input-base" 
+                        placeholder="Nhập số tháng"
+                        value={durationMonths}
+                        onChange={(e) => setDurationMonths(e.target.value === "" ? "" : parseInt(e.target.value))}
+                        disabled={durationType === "Vô thời hạn"}
+                      />
+                    </div>
+                    <div className="form-group-base">
+                      <label>Dự kiến kết thúc</label>
+                      <input 
+                        type="date" 
+                        name="endDate" 
+                        className="input-base readonly" 
+                        value={endDateVal}
+                        readOnly
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dòng 5: Ghi chú */}
+                  <div className="form-group-base" style={{ marginBottom: 0 }}>
+                    <label>Ghi chú</label>
+                    <textarea name="note" className="input-base" rows={2} defaultValue={editingContract?.note ?? ""} placeholder="Nhập ghi chú thêm..."></textarea>
+                  </div>
+
+                  {/* Các trường ẩn để gửi lên server */}
+                  <input type="hidden" name="creator" value={editingContract?.creator || currentUserName} />
+                  <input type="hidden" name="createdDate" value={editingContract?.createdDate ? new Date(editingContract.createdDate).toISOString() : new Date().toISOString()} />
+                </div>
+
+                {/* Tab 2: Thông tin lương và phụ cấp */}
+                <div style={{ display: activeTab === 2 ? "block" : "none" }} className="drawer-form">
+                  <div className="form-group-base" style={{ marginBottom: "1rem" }}>
+                    <label>Bậc lương <span style={{ color: "red" }}>*</span></label>
+                    <select name="salaryLevel" className="input-base" required value={salaryData.level} onChange={handleSalaryLevelChange}>
+                      <option value="">-- Chọn bậc lương --</option>
+                      {salaryLevels.map(l => {
+                        const total = l.baseSalary + l.performanceBonus + l.attendanceBonus;
+                        return (
+                          <option key={l.id} value={l.levelCode}>
+                            {l.levelCode} - Tổng: {formatNumber(total)}đ
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  <div className="form-row" style={{ gap: "0.75rem" }}>
+                    <div className="form-group-base">
+                      <label>Lương cơ bản (Tự động)</label>
+                      <input type="text" name="salaryBase" className="input-base readonly" style={{ fontWeight: 600 }} value={formatNumber(salaryData.base)} readOnly />
+                    </div>
+                    <div className="form-group-base">
+                      <label>Phụ cấp chuyên cần (Tự động)</label>
+                      <input type="text" name="attendanceAllowance" className="input-base readonly" value={formatNumber(salaryData.attendance)} readOnly />
+                    </div>
+                    <div className="form-group-base">
+                      <label>Phụ cấp hiệu quả (Tự động)</label>
+                      <input type="text" name="performanceAllowance" className="input-base readonly" value={formatNumber(salaryData.performance)} readOnly />
+                    </div>
+                    <div className="form-group-base">
+                      <label>Phụ cấp trách nhiệm (Tự động)</label>
+                      <input type="text" name="responsibilityAllowance" className="input-base readonly" value={formatNumber(salaryData.responsibility)} readOnly />
+                    </div>
+                    <div className="form-group-base">
+                      <label>Phụ cấp thu hút</label>
+                      <input 
+                        type="text" 
+                        name="attractionAllowance" 
+                        className="input-base" 
+                        value={formatNumber(manualSalary.attraction)} 
+                        onChange={(e) => setManualSalary(prev => ({ ...prev, attraction: parseInt(e.target.value.replace(/\./g, "")) || 0 }))}
+                      />
+                    </div>
+                    <div className="form-group-base">
+                      <label>Phụ cấp vị trí</label>
+                      <input 
+                        type="text" 
+                        name="positionAllowance" 
+                        className="input-base" 
+                        value={formatNumber(manualSalary.position)} 
+                        onChange={(e) => setManualSalary(prev => ({ ...prev, position: parseInt(e.target.value.replace(/\./g, "")) || 0 }))}
+                      />
+                    </div>
+                    <div className="form-group-base">
+                      <label>Hỗ trợ khác</label>
+                      <input 
+                        type="text" 
+                        name="otherAllowance" 
+                        className="input-base" 
+                        value={formatNumber(manualSalary.other)} 
+                        onChange={(e) => setManualSalary(prev => ({ ...prev, other: parseInt(e.target.value.replace(/\./g, "")) || 0 }))}
+                      />
                     </div>
                   </div>
                 </div>
-  
-                <div className="modal-footer" style={{ borderTop: "1px solid #f1f5f9", padding: "1.25rem 1.5rem" }}>
-                  <button type="button" className="btn btn-outline" onClick={handleClose}>Đóng lại</button>
-                  <div style={{ display: "flex", gap: "0.75rem" }}>
-                    {activeTab > 1 && (
-                      <button type="button" className="btn btn-outline" onClick={() => setActiveTab(prev => prev - 1)}>← Quay lại</button>
-                    )}
-                    {activeTab < 3 ? (
-                      <button type="button" className="btn btn-primary" onClick={() => setActiveTab(prev => prev + 1)}>Tiếp tục →</button>
-                    ) : (
-                      <button type="submit" className="btn btn-primary" disabled={isPending} style={{ minWidth: "120px" }}>
-                        {isPending ? "Đang xử lý..." : "💾 Lưu hợp đồng"}
-                      </button>
-                    )}
+
+                {/* Tab 3: BHXH */}
+                <div style={{ display: activeTab === 3 ? "block" : "none" }} className="drawer-form">
+                  <div className="card" style={{ maxWidth: "500px", padding: "2rem", margin: "1rem auto", background: "#f8fafc", border: "1px dashed #cbd5e1" }}>
+                    <div className="form-group-base">
+                      <label style={{ fontSize: "14px", fontWeight: 600, color: "#1e293b", marginBottom: "0.5rem" }}>Số tiền đóng BHXH</label>
+                      <input 
+                        type="text" 
+                        name="socialInsurance" 
+                        className="input-base" 
+                        style={{ height: "45px", fontSize: "18px", fontWeight: 700, color: "#10b981", textAlign: "center" }} 
+                        value={formatNumber(manualSalary.social)} 
+                        onChange={(e) => setManualSalary(prev => ({ ...prev, social: parseInt(e.target.value.replace(/\./g, "")) || 0 }))}
+                      />
+                      <p style={{ marginTop: "1rem", fontSize: "12px", color: "#64748b", lineHeight: 1.6, fontWeight: 400 }}>
+                        * Nhập số tiền cụ thể làm căn cứ đóng Bảo hiểm xã hội cho nhân viên. <br/>
+                        * Dữ liệu này sẽ được dùng để trích đóng hàng tháng trong bảng lương.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </form>
-            </div>
+              </div>
+
+              <div className="drawer-footer" style={{ borderTop: "1px solid #f1f5f9", padding: "1.25rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <button type="button" className="btn btn-outline" onClick={handleClose}>Đóng lại</button>
+                <div style={{ display: "flex", gap: "0.75rem" }}>
+                  {activeTab > 1 && (
+                    <button type="button" className="btn btn-outline" onClick={() => setActiveTab(prev => prev - 1)}>← Quay lại</button>
+                  )}
+                  {activeTab < 3 ? (
+                    <button type="button" className="btn btn-primary" onClick={() => setActiveTab(prev => prev + 1)}>Tiếp tục →</button>
+                  ) : (
+                    <button type="submit" className="btn btn-primary" disabled={isPending} style={{ minWidth: "120px" }}>
+                      {isPending ? "Đang xử lý..." : "Lưu hợp đồng"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </form>
           </div>
-        )}
-      <style>{`
-        .filter-label { display: block; margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; }
-        .input { width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; outline: none; transition: border-color 0.2s; }
-        .input:focus { border-color: var(--primary-color); }
-        .btn-icon { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; font-size: 1.1rem; }
-        .btn-icon:hover { background: rgba(0,0,0,0.05); }
-      `}</style>
-    </>
+        </div>
+      )}
+    </div>
   );
 }

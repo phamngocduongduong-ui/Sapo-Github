@@ -1,0 +1,1556 @@
+﻿diff --git a/src/app/(dashboard)/sales/don-hang/OrderTable.tsx b/src/app/(dashboard)/sales/don-hang/OrderTable.tsx
+index 616b18c..a72cdb4 100644
+--- a/src/app/(dashboard)/sales/don-hang/OrderTable.tsx
++++ b/src/app/(dashboard)/sales/don-hang/OrderTable.tsx
+@@ -1,14 +1,44 @@
+ "use client";
+ 
+-import { useState, useTransition, useRef, useEffect, useMemo } from "react";
++import { useState, useTransition, useRef, useEffect, useMemo, Fragment } from "react";
+ import { useRouter } from "next/navigation";
+ import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
+-import { Check, RotateCcw, MoreHorizontal, Pencil, History, CheckCircle, PowerOff, Mail, Clock, Eye } from "lucide-react";
++import { Check, RotateCcw, MoreHorizontal, Pencil, History, CheckCircle, PowerOff, Mail, Clock, Eye, Trash2 } from "lucide-react";
+ import { createOrder, updateOrder, deleteOrder, approveOrder, updateOrderStatus } from "./actions";
+ import HistoryModal from "../../HistoryModal";
+ import { formatNumber } from "@/lib/format";
+ 
+-export default function OrderTable({ initialOrders, customers, branches, salesEmployees, currentUser }: { initialOrders: any[], customers: string[], branches: string[], salesEmployees: string[], currentUser: string }) {
++const getYearMonthString = (dateInput: any) => {
++  if (!dateInput) return "";
++  const d = new Date(dateInput);
++  if (isNaN(d.getTime())) return "";
++  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
++};
++
++const formatYearMonth = (dateInput: any) => {
++  if (!dateInput) return "ΓÇö";
++  const d = new Date(dateInput);
++  if (isNaN(d.getTime())) return "ΓÇö";
++  return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
++};
++
++export default function OrderTable({
++  initialOrders,
++  customers,
++  branches,
++  salesEmployees,
++  currentUser,
++  contracts = [],
++  customersFull = []
++}: {
++  initialOrders: any[],
++  customers: string[],
++  branches: string[],
++  salesEmployees: string[],
++  currentUser: string,
++  contracts?: any[],
++  customersFull?: any[]
++}) {
+   const router = useRouter();
+   const [orders, setOrders] = useState<any[]>(initialOrders);
+   const [showModal, setShowModal] = useState(false);
+@@ -16,8 +46,13 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+   const [isViewMode, setIsViewMode] = useState(false);
+   const [editingOrder, setEditingOrder] = useState<any | null>(null);
+   const [items, setItems] = useState<any[]>([{ productName: "", packaging: "", quantity: 1, hasPallet: false, hasCornerGuard: false, note: "" }]);
+-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+   
++  // State selected order
++  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
++  const selectedOrder = useMemo(() => {
++    return orders.find(o => o.id === selectedOrderId) || null;
++  }, [orders, selectedOrderId]);
++
+   // State bß╗Ö lß╗ìc
+   const [filterCustomer, setFilterCustomer] = useState("");
+   const [filterStatus, setFilterStatus] = useState("");
+@@ -31,6 +66,123 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+   const [confirmUpdate, setConfirmUpdate] = useState<{ id: string, status: string, info: string } | null>(null);
+   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
+ 
++  // Form controlled states
++  const [formOrderCode, setFormOrderCode] = useState("");
++  const [formCustomerCode, setFormCustomerCode] = useState("");
++  const [formEmployeeName, setFormEmployeeName] = useState("");
++  const [formBranch, setFormBranch] = useState("");
++  const [formRequestDeliveryDate, setFormRequestDeliveryDate] = useState("");
++  const [formThermometer, setFormThermometer] = useState(false);
++  const [formNote, setFormNote] = useState("");
++
++  // Contract selection states
++  const [showContractModal, setShowContractModal] = useState(false);
++  const [contractSearchQuery, setContractSearchQuery] = useState("");
++  const [selectedContractNumber, setSelectedContractNumber] = useState<string | null>(null);
++
++  const selectedContractObj = selectedContractNumber 
++    ? (contracts || []).find(c => c.contractNumber === selectedContractNumber) 
++    : null;
++
++  // Helper function to extract abbreviation
++  const getCustomerAbbreviation = (buyerName: string) => {
++    const cust = customersFull.find(c => c.name.toLowerCase() === buyerName.toLowerCase());
++    return cust?.abbreviation || "";
++  };
++
++  // Helper function to parse contract delivery date
++  const parseDeliveryDate = (deliveryDateStr: string | null, contractDate: any) => {
++    if (!deliveryDateStr) return getYearMonthString(contractDate);
++    if (/^\d{4}-\d{2}$/.test(deliveryDateStr)) {
++      return deliveryDateStr;
++    }
++    const match = deliveryDateStr.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
++    if (match) {
++      return `${match[1]}-${match[2]}`;
++    }
++    const d = new Date(deliveryDateStr);
++    if (!isNaN(d.getTime())) {
++      return getYearMonthString(d);
++    }
++    return getYearMonthString(contractDate);
++  };
++
++  const filteredContracts = useMemo(() => {
++    if (!contractSearchQuery) return contracts;
++    const query = contractSearchQuery.toLowerCase().trim();
++    return contracts.filter(c => {
++      const cust = customersFull.find(cust => cust.name.toLowerCase() === c.buyer.toLowerCase());
++      const abbreviation = cust?.abbreviation?.toLowerCase() || "";
++      const name = cust?.name?.toLowerCase() || c.buyer.toLowerCase();
++      
++      return (
++        c.contractNumber.toLowerCase().includes(query) ||
++        name.includes(query) ||
++        abbreviation.includes(query)
++      );
++    });
++  }, [contracts, contractSearchQuery, customersFull]);
++
++  function handleSelectContract(contract: any) {
++    const cust = customersFull.find(
++      c => c.name.toLowerCase() === contract.buyer.toLowerCase() ||
++           c.abbreviation?.toLowerCase() === contract.buyer.toLowerCase()
++    );
++    if (cust) {
++      setFormCustomerCode(cust.code);
++    }
++    
++    if (contract.salesEmployee) {
++      setFormEmployeeName(contract.salesEmployee);
++    }
++    
++    setFormThermometer(contract.thermometer);
++    
++    if (contract.deliveryDate) {
++      setFormRequestDeliveryDate(parseDeliveryDate(contract.deliveryDate, contract.contractDate));
++    } else {
++      setFormRequestDeliveryDate(getYearMonthString(contract.contractDate));
++    }
++    
++    const contractNote = `Hß╗úp ─æß╗ông: ${contract.contractNumber}`;
++    let cleanNote = formNote || "";
++    const match = cleanNote.match(/Hß╗úp ─æß╗ông:\s*(.*?)(?:\s+-\s+|$)/);
++    if (match) {
++      cleanNote = cleanNote.replace(match[0], "").trim();
++    }
++    
++    if (cleanNote) {
++      setFormNote(`${contractNote} - ${cleanNote}`);
++    } else {
++      setFormNote(contractNote);
++    }
++
++    // Auto-generate orderCode
++    const contractOrders = orders.filter(o => 
++      o.note && o.note.includes(`Hß╗úp ─æß╗ông: ${contract.contractNumber}`)
++    );
++    const nextSeq = contractOrders.length + 1;
++    const seqStr = String(nextSeq).padStart(2, '0');
++    const contractSuffix = contract.contractNumber.slice(-7);
++    const generatedOrderCode = `PO${contractSuffix}.${seqStr}`;
++    setFormOrderCode(generatedOrderCode);
++    
++    setSelectedContractNumber(contract.contractNumber);
++    setShowContractModal(false);
++  }
++
++
++  function handleDelete(id: string, code: string) {
++    if (confirm(`Bß║ín c├│ chß║»c chß║»n muß╗æn x├│a ─æ╞ín h├áng sß╗æ ${code} kh├┤ng?`)) {
++      startTransition(async () => {
++        try {
++          await deleteOrder(id);
++          setSelectedOrderId(null);
++        } catch (err: any) { alert(err.message); }
++      });
++    }
++  }
++
+   // Close menu when clicking outside
+   useEffect(() => {
+     const handleClick = () => setOpenMenuId(null);
+@@ -52,10 +204,6 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+     });
+   }, [orders, filterCustomer, filterStatus, filterEmployee, filterMonth]);
+ 
+-  const toggleExpand = (id: string) => {
+-    setExpandedOrderId(prev => prev === id ? null : id);
+-  };
+-
+   const uniqueCustomersInOrders = useMemo(() => {
+     return Array.from(new Set(orders.map(o => o.customerCode)));
+   }, [orders]);
+@@ -67,6 +215,16 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+     setItems([{ productName: "", packaging: "", quantity: 1, hasPallet: false, hasCornerGuard: false, note: "" }]);
+     setActiveTab(1);
+     setError(null);
++
++    // Reset form states
++    setFormOrderCode("");
++    setFormCustomerCode("");
++    setFormEmployeeName("");
++    setFormBranch("");
++    setFormRequestDeliveryDate("");
++    setFormThermometer(false);
++    setFormNote("");
++    setSelectedContractNumber(null);
+   }
+ 
+   function handleEdit(order: any) {
+@@ -75,6 +233,23 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+     setItems(order.orderitem.length > 0 ? [...order.orderitem] : [{ productName: "", packaging: "", quantity: 1, hasPallet: false, hasCornerGuard: false, note: "" }]);
+     setActiveTab(1);
+     setShowModal(true);
++
++    // Initialize form states
++    setFormOrderCode(order.orderCode);
++    setFormCustomerCode(order.customerCode);
++    setFormEmployeeName(order.employeeName);
++    setFormBranch(order.branch ?? "");
++    setFormRequestDeliveryDate(order.requestDeliveryDate ? getYearMonthString(order.requestDeliveryDate) : "");
++    setFormThermometer(order.thermometer);
++    setFormNote(order.note ?? "");
++    
++    // Parse contract number from note if it exists
++    const match = order.note?.match(/Hß╗úp ─æß╗ông:\s*(.*?)(?:\s+-\s+|$)/);
++    if (match) {
++      setSelectedContractNumber(match[1]);
++    } else {
++      setSelectedContractNumber(null);
++    }
+   }
+ 
+   function handleView(order: any) {
+@@ -83,6 +258,23 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+     setItems(order.orderitem.length > 0 ? [...order.orderitem] : []);
+     setActiveTab(2); // Mß║╖c ─æß╗ïnh mß╗ƒ Tab 2 khi xem
+     setShowModal(true);
++
++    // Initialize form states
++    setFormOrderCode(order.orderCode);
++    setFormCustomerCode(order.customerCode);
++    setFormEmployeeName(order.employeeName);
++    setFormBranch(order.branch ?? "");
++    setFormRequestDeliveryDate(order.requestDeliveryDate ? getYearMonthString(order.requestDeliveryDate) : "");
++    setFormThermometer(order.thermometer);
++    setFormNote(order.note ?? "");
++    
++    // Parse contract number from note if it exists
++    const match = order.note?.match(/Hß╗úp ─æß╗ông:\s*(.*?)(?:\s+-\s+|$)/);
++    if (match) {
++      setSelectedContractNumber(match[1]);
++    } else {
++      setSelectedContractNumber(null);
++    }
+   }
+ 
+   function handleStatusChange(id: string, newStatus: string, info?: string) {
+@@ -95,7 +287,7 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+     setConfirmUpdate(null);
+     startTransition(async () => {
+       try {
+-        if (newStatus === "Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt") {
++        if (newStatus === "Chß╗¥ tiß║┐p nhß║¡n") {
+           await approveOrder(id);
+         } else {
+           await updateOrderStatus(id, newStatus);
+@@ -134,184 +326,615 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+     });
+   }
+ 
++  const getTabButtonStyle = (tabNum: number) => ({
++    padding: "8px 16px",
++    border: "none",
++    background: "none",
++    cursor: "pointer",
++    borderBottom: activeTab === tabNum ? "2px solid #0066cc" : "2px solid transparent",
++    fontWeight: activeTab === tabNum ? 700 : 500,
++    color: activeTab === tabNum ? "#0066cc" : "#4b5563",
++    fontSize: "14px",
++    transition: "all 0.15s ease",
++    marginBottom: "-2px",
++  });
++
+   return (
+-    <>
+-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem", padding: "1rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
++    <div className="contract-page-container">
++      <style dangerouslySetInnerHTML={{
++        __html: `
++        .contract-page-container {
++          width: 100%;
++          min-width: 0;
++        }
++        .contract-layout {
++          display: flex;
++          gap: 1.5rem;
++          width: 100%;
++          min-width: 0;
++          font-family: "Segoe UI", -apple-system, sans-serif;
++          font-size: 13px;
++          padding: 10px 0px 10px 0px;
++        }
++        .contract-layout input,
++        .contract-layout select,
++        .contract-layout textarea,
++        .contract-layout button,
++        .contract-layout table,
++        .contract-layout td,
++        .contract-layout th,
++        .contract-layout label,
++        .contract-layout .badge,
++        .contract-layout .blue-panel-header,
++        .contract-page-container .breadcrumb-banner {
++          font-size: 13px !important;
++        }
++        .breadcrumb-banner {
++          background-color: #003466;
++          color: white;
++          padding: 6px 15px 6px 15px;
++          font-weight: 700;
++          display: block;
++          border-radius: 0 !important;
++          margin-top: 0;
++          margin-left: -10px;
++          margin-right: -10px;
++        }
++        .panel-full {
++          flex: 1 1 100%;
++          width: 100%;
++          min-width: 0;
++        }
++        .blue-panel {
++          border: 1px solid #cbd5e1;
++          border-radius: 6px;
++          background: #ffffff;
++          overflow: hidden;
++          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
++        }
++        .blue-panel-header {
++          background-color: #003466;
++          color: #ffffff;
++          padding: 6px 15px 6px 15px;
++          font-weight: 700;
++          font-size: 0.95rem;
++          text-transform: uppercase;
++          letter-spacing: 0.5px;
++          border-bottom: 2px solid #ff5c00;
++        }
++        .blue-panel-body {
++          padding: 10px;
++        }
++        .search-container {
++          display: flex;
++          justify-content: space-between;
++          align-items: center;
++          margin: 5px 0px 10px 0px;
++          gap: 1rem;
++          flex-wrap: wrap;
++        }
++        .sapo-btn {
++          display: inline-flex;
++          align-items: center;
++          gap: 0.4rem;
++          background-color: #003466;
++          color: white;
++          padding: 6px 15px 6px 15px;
++          border-radius: 4px;
++          font-weight: 400;
++          font-size: 13px !important;
++          cursor: pointer;
++          transition: background-color 0.2s, transform 0.1s;
++          border: none;
++        }
++        .sapo-btn:hover {
++          background-color: #002244;
++        }
++        .sapo-btn:active {
++          transform: scale(0.98);
++        }
++        .sapo-btn-secondary {
++          background-color: #475569;
++        }
++        .sapo-btn-secondary:hover {
++          background-color: #334155;
++        }
++        .sapo-btn-success {
++          background-color: #22c55e;
++        }
++        .sapo-btn-success:hover {
++          background-color: #16a34a;
++        }
++        .sapo-btn-warning {
++          background-color: #f59e0b;
++        }
++        .sapo-btn-warning:hover {
++          background-color: #d97706;
++        }
++        .sapo-btn-danger {
++          background-color: #ef4444;
++        }
++        .sapo-btn-danger:hover {
++          background-color: #dc2626;
++        }
++        .sapo-btn-info {
++          background-color: #2563eb;
++        }
++        .sapo-btn-info:hover {
++          background-color: #1d4ed8;
++        }
++        .sapo-btn-teal {
++          background-color: #0d9488;
++        }
++        .sapo-btn-teal:hover {
++          background-color: #0f766e;
++        }
++        .sapo-btn-sm {
++          padding: 4px 8px !important;
++          font-size: 12px !important;
++          border-radius: 4px !important;
++          font-weight: 400 !important;
++        }
++        .sapo-btn-sm svg {
++          width: 14px !important;
++          height: 14px !important;
++        }
++        .row-hoverable:hover {
++          background-color: #f8fafc;
++        }
++        .row-selected {
++          background-color: #eff6ff !important;
++        }
++
++        .base-toolbar {
++          display: flex !important;
++          justify-content: space-between !important;
++          align-items: center !important;
++          margin-bottom: 0.75rem !important;
++          padding: 0 !important;
++          gap: 1rem !important;
++          flex-wrap: nowrap !important;
++          width: 100% !important;
++          font-family: "Segoe UI", sans-serif !important;
++        }
++        .toolbar-left {
++          display: flex !important;
++          align-items: center !important;
++          gap: 1rem !important;
++        }
++        .toolbar-right {
++          display: flex !important;
++          align-items: center !important;
++          gap: 0.75rem !important;
++        }
++        .btn-group-base {
++          display: flex !important;
++          gap: 0.75rem !important;
++        }
++        .page-title-base {
++          font-size: 1.25rem !important;
++          font-weight: 700 !important;
++          color: #000000 !important;
++          display: flex !important;
++          align-items: center !important;
++          gap: 0.5rem !important;
++          margin: 0 !important;
++        }
++        .badge-count {
++          background: #e2e8f0 !important;
++          color: #000000 !important;
++          font-size: 0.75rem !important;
++          font-weight: 700 !important;
++          padding: 2px 8px !important;
++          border-radius: 999px !important;
++          margin-left: 0.25rem !important;
++        }
++        .base-table-wrapper {
++          height: auto !important;
++          min-height: unset !important;
++          overflow-y: hidden !important;
++          overflow-x: auto !important;
++          padding-bottom: 0px !important;
++        }
++        .base-table {
++          height: auto !important;
++          width: 100% !important;
++          min-width: 1200px !important;
++          table-layout: auto !important;
++        }
++        .base-table th {
++          text-transform: uppercase !important;
++          font-weight: 700 !important;
++          color: #003466 !important;
++          background: #f1f5f9 !important;
++          border-bottom: 2px solid #ff5c00 !important;
++          text-align: center !important;
++          height: 35px !important;
++          padding-top: 6px !important;
++          padding-bottom: 6px !important;
++        }
++        .base-table td {
++          padding: 6px 0.75rem !important;
++          vertical-align: middle !important;
++          white-space: normal !important;
++          word-break: break-word !important;
++        }
++        .base-table tbody tr {
++          height: 45px !important;
++        }
++        .nowrap, .base-table .nowrap {
++          white-space: nowrap !important;
++        }
++        .search-box-base {
++          position: relative !important;
++          display: flex !important;
++          align-items: center !important;
++        }
++        .search-box-base input {
++          width: 220px !important;
++          padding: 6px 10px 6px 30px !important;
++          border: 1px solid #cbd5e1 !important;
++          border-radius: 4px !important;
++          outline: none !important;
++          font-weight: 500 !important;
++        }
++        .search-box-base .search-icon {
++          position: absolute !important;
++          left: 10px !important;
++          color: #94a3b8 !important;
++        }
++        .base-filters {
++          background: #f8fafc !important;
++          border: 1px solid #cbd5e1 !important;
++          border-radius: 6px !important;
++          padding: 10px !important;
++        }
++        .form-control {
++          padding: 6px 10px !important;
++          border: 1px solid #cbd5e1 !important;
++          border-radius: 4px !important;
++          outline: none !important;
++          background: white !important;
++        }
++        .custom-modal-overlay {
++          position: fixed;
++          background: rgba(15, 23, 42, 0.6) !important;
++          backdrop-filter: blur(4px) !important;
++          display: flex;
++          align-items: center;
++          justify-content: center;
++          z-index: 9999 !important;
++          left: 0 !important;
++          top: 0 !important;
++          right: 0 !important;
++          bottom: 0 !important;
++        }
++        .filter-label { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; font-weight: 700; color: #003466; text-transform: uppercase; }
++        .custom-modal-overlay .filter-label {
++          text-transform: uppercase !important;
++          color: #003466 !important;
++          font-weight: 700 !important;
++          margin-bottom: 0.35rem !important;
++          font-size: 0.85rem !important;
++        }
++        .custom-modal-overlay .scrollable-body::-webkit-scrollbar {
++          display: none !important;
++        }
++        .custom-modal-overlay .scrollable-body {
++          -ms-overflow-style: none !important;
++          scrollbar-width: none !important;
++        }
++        .select-contract-btn {
++          background-color: #003466 !important;
++          color: #ffffff !important;
++          font-size: 12px !important;
++          font-weight: 700 !important;
++          padding: 6px 12px !important;
++          border-radius: 6px !important;
++          border: none !important;
++          cursor: pointer !important;
++        }
++        .select-contract-btn:hover {
++          background-color: #003466 !important;
++          color: #ffffff !important;
++          opacity: 1 !important;
++        }
++        .custom-modal-overlay .modal-footer-btn-secondary {
++          background-color: #003466 !important;
++          color: white !important;
++          font-weight: 500 !important;
++          border-radius: 6px !important;
++          padding: 8px 20px !important;
++          font-size: 14px !important;
++          border: none !important;
++          cursor: pointer !important;
++        }
++        .custom-modal-overlay .modal-footer-btn-secondary:hover {
++          background-color: #003466 !important;
++        }
++        .custom-modal-overlay .modal-footer-btn-success {
++          background-color: #003466 !important;
++          color: white !important;
++          font-weight: 500 !important;
++          border-radius: 6px !important;
++          padding: 8px 20px !important;
++          font-size: 14px !important;
++          border: none !important;
++          cursor: pointer !important;
++        }
++        .custom-modal-overlay .modal-footer-btn-success:hover {
++          background-color: #003466 !important;
++        }
++        
++        .custom-modal-overlay .input {
++          border-radius: 8px !important;
++          border: 1px solid #cbd5e1 !important;
++          padding: 5px 12px !important;
++          height: 32px !important;
++          transition: border-color 0.2s, box-shadow 0.2s !important;
++        }
++        .custom-modal-overlay .input:focus {
++          border-color: #ff5c00 !important;
++          box-shadow: 0 0 0 2px rgba(255, 92, 0, 0.1) !important;
++        }
++        .custom-modal-overlay select.input {
++          border-radius: 8px !important;
++          border: 1px solid #cbd5e1 !important;
++          padding: 5px 12px !important;
++          height: 32px !important;
++          transition: border-color 0.2s, box-shadow 0.2s !important;
++        }
++        .custom-modal-overlay select.input:focus {
++          border-color: #ff5c00 !important;
++          box-shadow: 0 0 0 2px rgba(255, 92, 0, 0.1) !important;
++        }
++        .custom-modal-overlay .input-sm {
++          border-radius: 6px !important;
++          border: 1px solid #cbd5e1 !important;
++          padding: 5px 10px !important;
++          transition: border-color 0.2s, box-shadow 0.2s !important;
++        }
++        .custom-modal-overlay .input-sm:focus {
++          border-color: #ff5c00 !important;
++          box-shadow: 0 0 0 2px rgba(255, 92, 0, 0.1) !important;
++        }
++        .custom-modal-overlay textarea.input-sm {
++          border-radius: 6px !important;
++          border: 1px solid #cbd5e1 !important;
++        }
++        .input-sm { width: 100%; padding: 5px 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.85rem; outline: none; }
++        .input-sm:focus { border-color: #3498db; }
++        .input-sm:disabled { background: #f8fafc; cursor: not-allowed; border: none; }
++        .action-btn { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
++        .action-btn:hover { background: #f1f5f9; }
++        input::-webkit-outer-spin-button,
++        input::-webkit-inner-spin-button {
++          -webkit-appearance: none;
++          margin: 0;
++        }
++        input[type=number] {
++          -moz-appearance: textfield;
++        }
++        .search-item-hover:hover {
++          background-color: #f1f5f9 !important;
++        }
++
++        .base-table .status-pill {
++          background: transparent !important;
++          border: none !important;
++          padding: 0 !important;
++          font-weight: 600 !important;
++          font-size: 13px !important;
++          border-radius: 0 !important;
++        }
++        .base-table .status-pill.status-active {
++          color: #166534 !important;
++        }
++        .base-table .status-pill.status-new {
++          color: #4f46e5 !important;
++        }
++        .base-table .status-pill.status-pending {
++          color: #d97706 !important;
++        }
++        .base-table .status-pill.status-inactive {
++          color: #dc2626 !important;
++        }
++        `
++      }} />
++
++      <div className="breadcrumb-banner">
++        PH├éN Hß╗å ─É╞áN H├ÇNG
++      </div>
++
++      <div className="base-filters" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginTop: "10px", marginBottom: "10px" }}>
+         <div>
+           <label className="filter-label">M├ú kh├ích h├áng</label>
+-          <select className="input" value={filterCustomer} onChange={(e) => setFilterCustomer(e.target.value)}>
++          <select className="form-control" style={{ width: "100%" }} value={filterCustomer} onChange={(e) => setFilterCustomer(e.target.value)}>
+             <option value="">-- Tß║Ñt cß║ú kh├ích h├áng --</option>
+             {uniqueCustomersInOrders.map(c => <option key={c} value={c}>{c}</option>)}
+           </select>
+         </div>
+         <div>
+           <label className="filter-label">Trß║íng th├íi</label>
+-          <select className="input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
++          <select className="form-control" style={{ width: "100%" }} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+             <option value="">-- Tß║Ñt cß║ú trß║íng th├íi --</option>
+             <option value="Tß║ío mß╗¢i">Tß║ío mß╗¢i</option>
++            <option value="Chß╗¥ tiß║┐p nhß║¡n">Chß╗¥ tiß║┐p nhß║¡n</option>
+             <option value="Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt">Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt</option>
+-            <option value="─É├ú c├│ kß║┐ hoß║ích sß║ún xuß║Ñt">─É├ú c├│ kß║┐ hoß║ích sß║ún xuß║Ñt</option>
+-            <option value="─É├ú c├│ kß║┐ hoß║ích giao h├áng">─É├ú c├│ kß║┐ hoß║ích giao h├áng</option>
++            <option value="Chß╗¥ giao h├áng">Chß╗¥ giao h├áng</option>
+             <option value="─É├ú giao h├áng">─É├ú giao h├áng</option>
+           </select>
+         </div>
+         <div>
+           <label className="filter-label">Nh├ón vi├¬n</label>
+-          <select className="input" value={filterEmployee} onChange={(e) => setFilterEmployee(e.target.value)}>
++          <select className="form-control" style={{ width: "100%" }} value={filterEmployee} onChange={(e) => setFilterEmployee(e.target.value)}>
+             <option value="">-- Tß║Ñt cß║ú nh├ón vi├¬n --</option>
+             {salesEmployees.map(e => <option key={e} value={e}>{e}</option>)}
+           </select>
+         </div>
+         <div>
+           <label className="filter-label">Th├íng</label>
+-          <input type="month" className="input" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} />
++          <input type="month" className="form-control" style={{ width: "100%" }} value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} />
+         </div>
+       </div>
+ 
+-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+-        <h3 style={{ margin: 0 }}>≡ƒôï Danh s├ích ─É╞ín h├áng</h3>
+-        <div style={{ display: "flex", gap: "0.75rem" }}>
+-          <button className="btn btn-outline" onClick={() => router.refresh()}>
+-            <RotateCcw size={18} style={{ marginRight: "6px" }} /> L├ám mß╗¢i
+-          </button>
+-          <button className="btn btn-primary" onClick={() => { setIsViewMode(false); setShowModal(true); }}>+ Th├¬m mß╗¢i ─æ╞ín h├áng</button>
+-        </div>
+-      </div>
++      <div className="contract-layout" style={{ paddingTop: "0px" }}>
++        <div className="panel-full">
++          {/* Action Toolbar */}
++          <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "0px" }}>
++            <button
++              type="button"
++              className="sapo-btn"
++              onClick={() => {
++                setIsViewMode(false);
++                setShowModal(true);
++                // Initialize form states for new order
++                setFormOrderCode("");
++                setFormCustomerCode("");
++                setFormEmployeeName(currentUser);
++                setFormBranch("");
++                setFormRequestDeliveryDate("");
++                setFormThermometer(false);
++                setFormNote("");
++                setSelectedContractNumber(null);
++              }}
++            >
++              Th├¬m mß╗¢i
++            </button>
++            <button
++              type="button"
++              className="sapo-btn sapo-btn-secondary"
++              onClick={() => router.refresh()}
++            >
++              L├ám mß╗¢i
++            </button>
+ 
+-      <div className="table-container">
+-        <table className="table">
+-          <thead>
+-            <tr>
+-              <th style={{ width: "50px", textAlign: "center" }}>STT</th>
+-              <th>M├ú ─ÉH</th>
+-              <th>M├ú KH</th>
+-              <th>Nh├ón vi├¬n</th>
+-              <th>Ng├áy thß╗▒c hiß╗çn</th>
+-              <th>Chi nh├ính</th>
+-              <th>Ng├áy giao h├áng</th>
+-              <th>Trß║íng th├íi</th>
+-              <th>Ng├áy xuß║Ñt</th>
+-              <th>Nhiß╗çt kß║┐</th>
+-              <th style={{ width: "160px", textAlign: "center" }}>Thao t├íc</th>
+-            </tr>
+-          </thead>
+-          <tbody>
+-            {filteredOrders.map((order, idx) => (
++            {selectedOrder && (
+               <>
+-                <tr 
+-                  key={order.id} 
+-                  onClick={() => toggleExpand(order.id)}
+-                  onDoubleClick={() => handleView(order)} 
+-                  title="Nhß║Ñp 1 lß║ºn ─æß╗â xem nhanh h├áng h├│a, nhß║Ñp ─æ├║p ─æß╗â xem chi tiß║┐t" 
+-                  style={{ cursor: "pointer", background: expandedOrderId === order.id ? "#f0f7ff" : "inherit" }}
++                <button
++                  type="button"
++                  className="sapo-btn"
++                  onClick={() => handleView(selectedOrder)}
+                 >
+-                  <td style={{ textAlign: "center" }}>{idx + 1}</td>
+-                  <td style={{ fontWeight: 600 }}>{order.orderCode}</td>
+-                  <td>{order.customerCode}</td>
+-                  <td>{order.employeeName}</td>
+-                  <td>{new Date(order.orderDate).toLocaleDateString("vi-VN")}</td>
+-                  <td>{order.branch}</td>
+-                  <td>{order.requestDeliveryDate ? new Date(order.requestDeliveryDate).toLocaleDateString("vi-VN") : "ΓÇö"}</td>
+-                  <td>
+-                    {order.status === "─É├ú giao h├áng" ? (
+-                      <span style={{ fontSize: "0.85rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+-                        <Check size={14} /> Ho├án tß║Ñt
+-                      </span>
+-                    ) : (
+-                      <span className={`badge ${
+-                        order.status === "Tß║ío mß╗¢i" ? "badge-info" : 
+-                        order.status === "─É├ú hß╗ºy" ? "badge-danger" : "badge-warning"
+-                      }`}>
++                  Xem
++                </button>
++                <button
++                  type="button"
++                  className="sapo-btn"
++                  onClick={() => setHistoryRecordId(selectedOrder.id)}
++                >
++                  Lß╗ïch sß╗¡
++                </button>
++
++                {selectedOrder.status === "Tß║ío mß╗¢i" && (
++                  <button
++                    type="button"
++                    className="sapo-btn"
++                    onClick={() => handleEdit(selectedOrder)}
++                  >
++                    Sß╗¡a
++                  </button>
++                )}
++                {selectedOrder.status === "Tß║ío mß╗¢i" && (
++                  <button
++                    type="button"
++                    className="sapo-btn sapo-btn-success"
++                    onClick={() => handleStatusChange(selectedOrder.id, "Chß╗¥ tiß║┐p nhß║¡n", `─æ╞ín ${selectedOrder.orderCode}`)}
++                  >
++                    Ph├¬ duyß╗çt ─æ╞ín
++                  </button>
++                )}
++                {selectedOrder.status === "Chß╗¥ tiß║┐p nhß║¡n" && (
++                  <button
++                    type="button"
++                    className="sapo-btn sapo-btn-warning"
++                    onClick={() => handleStatusChange(selectedOrder.id, "Tß║ío mß╗¢i", `─æ╞ín ${selectedOrder.orderCode}`)}
++                  >
++                    Thu hß╗ôi ─æ╞ín
++                  </button>
++                )}
++                {selectedOrder.status === "Tß║ío mß╗¢i" && (
++                  <button
++                    type="button"
++                    className="sapo-btn sapo-btn-danger"
++                    onClick={() => handleDelete(selectedOrder.id, selectedOrder.orderCode)}
++                  >
++                    X├│a
++                  </button>
++                )}
++              </>
++            )}
++
++            {selectedOrder && (
++              <div style={{ marginLeft: "auto", fontSize: "0.85rem", fontWeight: 700, color: "#003466", background: "#f8fafc", padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
++                ─É╞ín h├áng: <span style={{ color: "#ff5c00" }}>{selectedOrder.orderCode}</span>
++              </div>
++            )}
++          </div>
++
++          {/* Orders Table */}
++          <div className="base-table-wrapper" style={filteredOrders.length === 0 ? { height: "auto" } : undefined}>
++            <table className="base-table">
++              <thead>
++                <tr>
++                  <th className="th-first nowrap" style={{ width: "50px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>STT</th>
++                  <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>M├ú ─ÉH</th>
++                  <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>M├ú KH</th>
++                  <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Nh├ón vi├¬n</th>
++                  <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Ng├áy tß║ío</th>
++                  <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Chi nh├ính</th>
++                  <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Ng├áy xuß║Ñt dß╗▒ kiß║┐n</th>
++                  <th className="th-last nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Trß║íng th├íi</th>
++                </tr>
++              </thead>
++              <tbody>
++                {filteredOrders.map((order, idx) => (
++                  <tr
++                    key={order.id}
++                    onClick={() => {
++                      const isSelected = selectedOrderId === order.id;
++                      setSelectedOrderId(isSelected ? null : order.id);
++                    }}
++                    onDoubleClick={() => handleView(order)}
++                    title="Nhß║Ñp 1 lß║ºn ─æß╗â chß╗ìn, nhß║Ñp ─æ├║p ─æß╗â xem chi tiß║┐t"
++                    className={`row-hoverable ${selectedOrderId === order.id ? "row-selected" : ""}`}
++                    style={{ cursor: "pointer" }}
++                  >
++                    <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{idx + 1}</td>
++                    <td className="nowrap" style={{ fontWeight: 600, textAlign: "center" }}>{order.orderCode}</td>
++                    <td className="nowrap" style={{ textAlign: "center" }}>{order.customerCode}</td>
++                    <td className="nowrap" style={{ textAlign: "center" }}>{order.employeeName}</td>
++                    <td className="nowrap" style={{ textAlign: "center" }}>{new Date(order.orderDate).toLocaleDateString("vi-VN")}</td>
++                    <td className="nowrap" style={{ textAlign: "center" }}>{order.branch}</td>
++                    <td className="nowrap" style={{ textAlign: "center" }}>{order.shipDate ? new Date(order.shipDate).toLocaleDateString("vi-VN") : "ΓÇö"}</td>
++                    <td className="nowrap" style={{ textAlign: "center" }}>
++                      <span
++                        className={`status-pill ${
++                          order.status === "─É├ú giao h├áng"
++                            ? "status-active"
++                            : order.status === "Tß║ío mß╗¢i"
++                            ? "status-new"
++                            : order.status === "─É├ú hß╗ºy"
++                            ? "status-inactive"
++                            : "status-pending"
++                        }`}
++                      >
+                         {order.status}
+                       </span>
+-                    )}
+-                  </td>
+-                  <td>{order.shipDate ? new Date(order.shipDate).toLocaleDateString("vi-VN") : "ΓÇö"}</td>
+-                  <td style={{ textAlign: "center" }}>{order.thermometer ? "Γ£à C├│" : "Γ¥î Kh├┤ng"}</td>
+-                  <td style={{ textAlign: "right", position: "relative" }}>
+-                    <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+-                      <button 
+-                        className="action-btn"
+-                        onClick={(e) => {
+-                          e.stopPropagation();
+-                          setOpenMenuId(openMenuId === order.id ? null : order.id);
+-                        }}
+-                      >
+-                        <MoreHorizontal size={18} />
+-                      </button>
+-
+-                      {openMenuId === order.id && (
+-                        <div className="action-dropdown" onClick={(e) => e.stopPropagation()}>
+-                          <div className="dropdown-item" onClick={() => { handleView(order); setOpenMenuId(null); }}>
+-                            <Eye size={14} /> Xem chi tiß║┐t
+-                          </div>
+-                          {order.status === "Tß║ío mß╗¢i" && (
+-                            <div className="dropdown-item" onClick={() => { handleEdit(order); setOpenMenuId(null); }}>
+-                              <Pencil size={14} /> Chß╗ënh sß╗¡a
+-                            </div>
+-                          )}
+-                          <div className="dropdown-item" onClick={() => { setHistoryRecordId(order.id); setOpenMenuId(null); }}>
+-                            <History size={14} /> Lß╗ïch sß╗¡
+-                          </div>
+-                          
+-                          {order.status === "Tß║ío mß╗¢i" && (
+-                            <div className="dropdown-item success" onClick={() => handleStatusChange(order.id, "Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt", `─æ╞ín ${order.orderCode}`)}>
+-                              <CheckCircle size={14} /> Ph├¬ duyß╗çt ─æ╞ín
+-                            </div>
+-                          )}
+-
+-                          {order.status === "Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt" && (
+-                            <div className="dropdown-item warning" onClick={() => handleStatusChange(order.id, "Tß║ío mß╗¢i", `─æ╞ín ${order.orderCode}`)}>
+-                              <RotateCcw size={14} /> Thu hß╗ôi ─æ╞ín
+-                            </div>
+-                          )}
+-                        </div>
+-                      )}
+-                    </div>
+-                  </td>
+-                </tr>
+-                {expandedOrderId === order.id && (
++                    </td>
++                  </tr>
++                ))}
++                {filteredOrders.length === 0 && (
+                   <tr>
+-                    <td colSpan={11} style={{ padding: "0.75rem 1.5rem", background: "#f8fafc" }}>
+-                      <div style={{ padding: "1rem", background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)" }}>
+-                        <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#475569", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+-                          ≡ƒôª Chi tiß║┐t h├áng h├│a (─É╞ín: {order.orderCode})
+-                        </h4>
+-                        <table className="table" style={{ fontSize: "0.8rem", marginBottom: 0 }}>
+-                          <thead>
+-                            <tr style={{ background: "#f1f5f9" }}>
+-                              <th>T├¬n h├áng h├│a</th>
+-                              <th>Quy c├ích</th>
+-                              <th>Sß╗æ l╞░ß╗úng</th>
+-                              <th style={{ textAlign: "center" }}>Pallet</th>
+-                              <th style={{ textAlign: "center" }}>Nß║╣p g├│c</th>
+-                              <th>Ghi ch├║</th>
+-                            </tr>
+-                          </thead>
+-                          <tbody>
+-                            {order.orderitem.map((item: any, i: number) => (
+-                              <tr key={i}>
+-                                <td style={{ fontWeight: 500 }}>{item.productName}</td>
+-                                <td>{item.packaging}</td>
+-                                <td style={{ fontWeight: 600, color: "#2563eb" }}>{formatNumber(item.quantity)}</td>
+-                                <td style={{ textAlign: "center" }}>{item.hasPallet ? "Γ£à" : "ΓÇö"}</td>
+-                                <td style={{ textAlign: "center" }}>{item.hasCornerGuard ? "Γ£à" : "ΓÇö"}</td>
+-                                <td style={{ color: "#64748b", fontStyle: "italic" }}>{item.note || "ΓÇö"}</td>
+-                              </tr>
+-                            ))}
+-                            {order.orderitem.length === 0 && (
+-                              <tr><td colSpan={6} style={{ textAlign: "center", color: "#94a3b8" }}>Kh├┤ng c├│ chi tiß║┐t h├áng h├│a.</td></tr>
+-                            )}
+-                          </tbody>
+-                        </table>
+-                      </div>
++                    <td colSpan={8} style={{ textAlign: "center", padding: "2rem", color: "#000", fontWeight: 600 }}>
++                      Ch╞░a c├│ ─æ╞ín h├áng n├áo ph├╣ hß╗úp.
+                     </td>
+                   </tr>
+                 )}
+-              </>
+-            ))}
+-          </tbody>
+-        </table>
++              </tbody>
++            </table>
++          </div>
++        </div>
+       </div>
+ 
+       {historyRecordId && (
+@@ -323,106 +946,275 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+       )}
+ 
+       {showModal && (
+-        <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+-          <div className="card" style={{ width: "100%", maxWidth: "1000px", margin: "1rem", maxHeight: "95vh", overflowY: "auto" }}>
+-            <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "1rem" }}>{isViewMode ? "≡ƒöì Xem ─æ╞ín h├áng" : editingOrder ? "Γ£Å∩╕Å Sß╗¡a ─æ╞ín h├áng" : "≡ƒôª Th├¬m mß╗¢i ─æ╞ín h├áng"}</h3>
++        <div className="custom-modal-overlay">
++          <div
++            style={{
++              width: "95%",
++              maxWidth: "800px",
++              maxHeight: "90%",
++              height: activeTab === 1 ? "auto" : "580px",
++              margin: "auto",
++              display: "flex",
++              flexDirection: "column",
++              padding: 0,
++              background: "#ffffff",
++              borderRadius: "16px",
++              border: "1px solid #cbd5e1",
++              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
++              overflow: "hidden"
++            }}
++          >
++            {/* Sticky Header */}
++            <h3 style={{ borderBottom: "1px solid #e2e8f0", padding: "16px 24px", margin: 0, background: "#fff", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", fontSize: "1.25rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
++              {isViewMode ? (
++                <>
++                  <span>≡ƒöì Chi tiß║┐t ─æ╞ín h├áng:</span>
++                  <span style={{ color: "#ff5c00" }}>{editingOrder?.orderCode}</span>
++                </>
++              ) : editingOrder ? (
++                <>
++                  <span>Γ£Å∩╕Å Chß╗ënh sß╗¡a ─æ╞ín h├áng:</span>
++                  <span style={{ color: "#ff5c00" }}>{editingOrder?.orderCode}</span>
++                </>
++              ) : (
++                <span>≡ƒôª Th├¬m mß╗¢i ─æ╞ín h├áng</span>
++              )}
++            </h3>
+             
+-            <div style={{ display: "flex", gap: "1rem", borderBottom: "2px solid #eee", marginBottom: "1.5rem" }}>
+-              <button type="button" onClick={() => setActiveTab(1)} style={{ padding: "0.75rem 1rem", border: "none", background: "none", cursor: "pointer", borderBottom: activeTab === 1 ? "3px solid #3498db" : "none", fontWeight: activeTab === 1 ? 600 : 400, color: activeTab === 1 ? "#3498db" : "#888" }}>1. Th├┤ng tin chung</button>
+-              <button type="button" onClick={() => setActiveTab(2)} style={{ padding: "0.75rem 1rem", border: "none", background: "none", cursor: "pointer", borderBottom: activeTab === 2 ? "3px solid #3498db" : "none", fontWeight: activeTab === 2 ? 600 : 400, color: activeTab === 2 ? "#3498db" : "#888" }}>2. Chi tiß║┐t h├áng h├│a</button>
++            {/* Sticky Modal Tabs Navigation */}
++            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #e2e8f0", padding: "0 1.5rem", background: "#f8fafc" }}>
++              <div style={{ display: "flex", gap: "0.15rem" }}>
++                <button
++                  type="button"
++                  onClick={() => setActiveTab(1)}
++                  style={getTabButtonStyle(1)}
++                >
++                  1. Th├┤ng tin chung
++                </button>
++                <button
++                  type="button"
++                  onClick={() => setActiveTab(2)}
++                  style={getTabButtonStyle(2)}
++                >
++                  2. Chi tiß║┐t h├áng h├│a
++                </button>
++              </div>
++
++              {/* N├║t Chß╗ìn hß╗úp ─æß╗ông */}
++              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
++                {selectedContractNumber && (
++                  <span style={{ fontSize: "13px", fontWeight: "700", color: "#ff5c00" }}>
++                    Hß╗úp ─æß╗ông: {selectedContractNumber} {selectedContractObj ? `(SL nhiß╗çt kß║┐: ${selectedContractObj.thermometerQty})` : ""}
++                  </span>
++                )}
++                {!isViewMode && (
++                  <button
++                    type="button"
++                    className="select-contract-btn"
++                    onClick={() => {
++                      setContractSearchQuery("");
++                      setShowContractModal(true);
++                    }}
++                  >
++                    Chß╗ìn hß╗úp ─æß╗ông
++                  </button>
++                )}
++              </div>
+             </div>
+ 
+-            {error && <div style={{ color: "#e74c3c", marginBottom: "1rem" }}>ΓÜá∩╕Å {error}</div>}
+-            
+-            <form onSubmit={handleSubmit}>
+-              <div style={{ display: activeTab === 1 ? "grid" : "none", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.25rem" }}>
+-                <div><label className="filter-label">M├ú ─æ╞ín h├áng</label><input type="text" name="orderCode" className="input" defaultValue={editingOrder?.orderCode} disabled={!!editingOrder || isViewMode} required /></div>
+-                <div>
+-                  <label className="filter-label">M├ú kh├ích h├áng</label>
+-                  <select name="customerCode" className="input" disabled={isViewMode} required defaultValue={editingOrder?.customerCode ?? ""}>
+-                    <option value="">-- Chß╗ìn kh├ích h├áng --</option>
+-                    {customers.map(c => <option key={c} value={c}>{c}</option>)}
+-                  </select>
+-                </div>
+-                <div><label className="filter-label">Nh├ón vi├¬n thß╗▒c hiß╗çn</label><input type="text" name="employeeName" className="input" defaultValue={editingOrder?.employeeName ?? currentUser} readOnly /></div>
+-                <div><label className="filter-label">Ng├áy thß╗▒c hiß╗çn</label><input type="text" className="input" defaultValue={editingOrder ? new Date(editingOrder.orderDate).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN")} readOnly /></div>
+-                <div>
+-                  <label className="filter-label">Chi nh├ính</label>
+-                  <select name="branch" className="input" disabled={isViewMode} defaultValue={editingOrder?.branch ?? ""}>
+-                    <option value="">-- Chß╗ìn chi nh├ính --</option>
+-                    {branches.map(b => <option key={b} value={b}>{b}</option>)}
+-                  </select>
+-                </div>
+-                <div><label className="filter-label">Ng├áy ─æß╗ü nghß╗ï giao h├áng</label><input type="date" name="requestDeliveryDate" className="input" disabled={isViewMode} defaultValue={editingOrder?.requestDeliveryDate ? new Date(editingOrder.requestDeliveryDate).toISOString().split('T')[0] : ""} /></div>
+-                <div><label className="filter-label">Dß╗▒ kiß║┐n xong SX</label><input type="date" name="productionFinishDate" className="input" disabled={isViewMode} defaultValue={editingOrder?.productionFinishDate ? new Date(editingOrder.productionFinishDate).toISOString().split('T')[0] : ""} /></div>
+-                <div><label className="filter-label">Ng├áy dß╗▒ kiß║┐n xuß║Ñt h├áng</label><input type="date" name="shipDate" className="input" disabled={isViewMode} defaultValue={editingOrder?.shipDate ? new Date(editingOrder.shipDate).toISOString().split('T')[0] : ""} /></div>
+-                <div>
+-                  <label className="filter-label">Trß║íng th├íi</label>
+-                  <select name="status" className="input" disabled={isViewMode} defaultValue={editingOrder?.status ?? "Tß║ío mß╗¢i"}>
+-                    <option value="Tß║ío mß╗¢i">Tß║ío mß╗¢i</option>
+-                    <option value="Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt">Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt</option>
+-                    <option value="─É├ú c├│ kß║┐ hoß║ích sß║ún xuß║Ñt">─É├ú c├│ kß║┐ hoß║ích sß║ún xuß║Ñt</option>
+-                    <option value="─É├ú c├│ kß║┐ hoß║ích giao h├áng">─É├ú c├│ kß║┐ hoß║ích giao h├áng</option>
+-                    <option value="─É├ú giao h├áng">─É├ú giao h├áng</option>
+-                  </select>
+-                </div>
+-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+-                  <input type="checkbox" name="thermometer" id="thermometer" disabled={isViewMode} defaultChecked={editingOrder?.thermometer} />
+-                  <label htmlFor="thermometer" style={{ margin: 0, fontSize: "0.9rem" }}>Nhiß╗çt kß║┐</label>
++            {/* Scrollable Form Body Container */}
++            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
++              <div className="scrollable-body" style={{ flex: 1, overflowY: "auto", padding: activeTab === 1 ? "12px 1.5rem 20px" : "12px 1.5rem" }}>
++                {error && <div style={{ color: "#e74c3c", marginBottom: "1rem" }}>ΓÜá∩╕Å {error}</div>}
++                
++                {/* Tab 1: General Info */}
++                <div
++                  style={{
++                    display: activeTab === 1 ? "grid" : "none",
++                    gridTemplateColumns: "180px 1.2fr 1fr",
++                    rowGap: "10px",
++                    columnGap: "1.25rem",
++                  }}
++                >
++                  <div style={{ gridColumn: "span 3", display: "flex", gap: "20px" }}>
++                    <div style={{ width: "140px", flexShrink: 0 }}>
++                      <label className="filter-label">M├ú ─æ╞ín h├áng <span style={{ color: "red" }}>(*)</span></label>
++                      <input 
++                        type="text" 
++                        name="orderCode" 
++                        className="input" 
++                        value={formOrderCode} 
++                        readOnly
++                        required 
++                        style={{ width: "100%", backgroundColor: "#f1f5f9", pointerEvents: "none" }} 
++                      />
++                    </div>
++                    <div style={{ flex: 1 }}>
++                      <label className="filter-label">M├ú kh├ích h├áng <span style={{ color: "red" }}>(*)</span></label>
++                      <input 
++                        type="text" 
++                        className="input" 
++                        placeholder="Vui l├▓ng chß╗ìn hß╗úp ─æß╗ông"
++                        value={(() => {
++                          const cust = (customersFull || []).find(c => c.code === formCustomerCode);
++                          return cust ? `${cust.code} - ${cust.name}` : "";
++                        })()} 
++                        readOnly
++                        style={{ width: "100%", backgroundColor: "#f1f5f9", pointerEvents: "none" }} 
++                      />
++                      <input type="hidden" name="customerCode" value={formCustomerCode} />
++                    </div>
++                  </div>
++                  <input type="hidden" name="employeeName" value={formEmployeeName} />
++                  <input
++                    type="hidden"
++                    name="shipDate"
++                    value={editingOrder?.shipDate ? new Date(editingOrder.shipDate).toISOString().split('T')[0] : ""}
++                  />
++                  <div>
++                    <label className="filter-label">Chi nh├ính thß╗▒c hiß╗çn <span style={{ color: "red" }}>(*)</span></label>
++                    {isViewMode ? (
++                      <input type="text" className="input" value={formBranch} disabled style={{ width: "100%" }} />
++                    ) : (
++                      <select name="branch" className="input" required value={formBranch} onChange={(e) => setFormBranch(e.target.value)} style={{ width: "100%" }}>
++                        <option value="">-- Chß╗ìn chi nh├ính --</option>
++                        {branches.map(b => <option key={b} value={b}>{b}</option>)}
++                      </select>
++                    )}
++                  </div>
++                  <div>
++                    <label className="filter-label">Thß╗¥i gian giao dß╗▒ kiß║┐n</label>
++                    <input
++                      type={isViewMode ? "text" : "month"}
++                      name="requestDeliveryDate"
++                      className="input"
++                      disabled={isViewMode}
++                      value={isViewMode
++                        ? (formRequestDeliveryDate ? formatYearMonth(formRequestDeliveryDate) : "ΓÇö")
++                        : formRequestDeliveryDate
++                      }
++                      onChange={(e) => setFormRequestDeliveryDate(e.target.value)}
++                      style={{ width: "100%" }}
++                    />
++                  </div>
++                  <div>
++                    <label className="filter-label">&nbsp;</label>
++                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", height: "32px" }}>
++                      <input
++                        type="checkbox"
++                        name="thermometer"
++                        id="thermometer"
++                        disabled={isViewMode}
++                        checked={formThermometer}
++                        onChange={(e) => setFormThermometer(e.target.checked)}
++                        style={{ width: "16px", height: "16px", margin: 0 }}
++                      />
++                      <label htmlFor="thermometer" style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#003466" }}>
++                        Nhiß╗çt kß║┐ {selectedContractObj ? `(SL: ${selectedContractObj.thermometerQty})` : ""}
++                      </label>
++                    </div>
++                  </div>
++                  {editingOrder && (
++                    <div>
++                      <label className="filter-label">Trß║íng th├íi</label>
++                      {isViewMode ? (
++                        <input type="text" className="input" defaultValue={editingOrder?.status ?? ""} disabled style={{ width: "100%" }} />
++                      ) : (
++                        <select name="status" className="input" defaultValue={editingOrder?.status ?? "Tß║ío mß╗¢i"} style={{ width: "100%" }}>
++                          <option value="Tß║ío mß╗¢i">Tß║ío mß╗¢i</option>
++                          <option value="Chß╗¥ tiß║┐p nhß║¡n">Chß╗¥ tiß║┐p nhß║¡n</option>
++                          <option value="Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt">Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt</option>
++                          <option value="Chß╗¥ giao h├áng">Chß╗¥ giao h├áng</option>
++                          <option value="─É├ú giao h├áng">─É├ú giao h├áng</option>
++                        </select>
++                      )}
++                    </div>
++                  )}
++                  <div style={{ gridColumn: editingOrder ? "span 2" : "span 3", marginBottom: 0 }}>
++                    <label className="filter-label">Ghi ch├║</label>
++                    <input
++                      type="text"
++                      name="note"
++                      className="input"
++                      disabled={isViewMode}
++                      value={formNote}
++                      onChange={(e) => setFormNote(e.target.value)}
++                      style={{ width: "100%" }}
++                    />
++                  </div>
+                 </div>
+-                <div style={{ gridColumn: "span 3" }}><label className="filter-label">Ghi ch├║</label><input type="text" name="note" className="input" disabled={isViewMode} defaultValue={editingOrder?.note ?? ""} /></div>
+-              </div>
+ 
+-              <div style={{ display: activeTab === 2 ? "block" : "none" }}>
+-                <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
+-                  <table className="table" style={{ fontSize: "0.85rem", width: "100%" }}>
+-                    <thead style={{ background: "#f8fafc" }}>
+-                      <tr>
+-                        <th style={{ width: "250px" }}>T├¬n h├áng h├│a</th>
+-                        <th style={{ width: "150px" }}>Quy c├ích</th>
+-                        <th style={{ width: "80px" }}>SL</th>
+-                        <th style={{ width: "80px", textAlign: "center" }}>Pallet</th>
+-                        <th style={{ width: "80px", textAlign: "center" }}>Nß║╣p</th>
+-                        <th>Ghi ch├║</th>
+-                        {!isViewMode && <th style={{ width: "50px" }}>#</th>}
+-                      </tr>
+-                    </thead>
+-                    <tbody>
+-                      {items.map((item, idx) => (
+-                        <tr key={idx}>
+-                          <td><input type="text" className="input-sm" value={item.productName} onChange={(e) => updateItem(idx, "productName", e.target.value)} disabled={isViewMode} required /></td>
+-                          <td><input type="text" className="input-sm" value={item.packaging} onChange={(e) => updateItem(idx, "packaging", e.target.value)} disabled={isViewMode} /></td>
+-                          <td><input type="number" className="input-sm" value={item.quantity} onChange={(e) => updateItem(idx, "quantity", e.target.value)} disabled={isViewMode} /></td>
+-                          <td style={{ textAlign: "center" }}><input type="checkbox" checked={item.hasPallet} onChange={(e) => updateItem(idx, "hasPallet", e.target.checked)} disabled={isViewMode} /></td>
+-                          <td style={{ textAlign: "center" }}><input type="checkbox" checked={item.hasCornerGuard} onChange={(e) => updateItem(idx, "hasCornerGuard", e.target.checked)} disabled={isViewMode} /></td>
+-                          <td><input type="text" className="input-sm" value={item.note} onChange={(e) => updateItem(idx, "note", e.target.value)} disabled={isViewMode} /></td>
+-                          {!isViewMode && <td><button type="button" onClick={() => removeItem(idx)} style={{ color: "#e74c3c", border: "none", background: "none", cursor: "pointer" }}>≡ƒùæ∩╕Å</button></td>}
++                {/* Tab 2: Goods list */}
++                <div style={{ display: activeTab === 2 ? "block" : "none" }}>
++                  <div style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "8px" }}>
++                    <table className="table" style={{ fontSize: "0.85rem", width: "100%", borderCollapse: "collapse" }}>
++                      <thead style={{ background: "#f8fafc" }}>
++                        <tr>
++                          <th style={{ width: "250px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px" }}>T├¬n h├áng h├│a <span style={{ color: "red" }}>(*)</span></th>
++                          <th style={{ width: "150px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px" }}>Quy c├ích</th>
++                          <th style={{ width: "100px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "right" }}>SL</th>
++                          <th style={{ width: "80px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Pallet</th>
++                          <th style={{ width: "80px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Nß║╣p g├│c</th>
++                          <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px" }}>Ghi ch├║</th>
++                          {!isViewMode && <th style={{ width: "50px", padding: "8px" }}>#</th>}
+                         </tr>
+-                      ))}
+-                    </tbody>
+-                  </table>
++                      </thead>
++                      <tbody>
++                        {items.map((item, idx) => (
++                          <tr key={idx}>
++                            <td style={{ padding: "6px" }}><input type="text" className="input-sm" value={item.productName} onChange={(e) => updateItem(idx, "productName", e.target.value)} disabled={isViewMode} required style={{ width: "100%" }} /></td>
++                            <td style={{ padding: "6px" }}><input type="text" className="input-sm" value={item.packaging} onChange={(e) => updateItem(idx, "packaging", e.target.value)} disabled={isViewMode} style={{ width: "100%" }} /></td>
++                            <td style={{ padding: "6px" }}><input type="number" className="input-sm" value={item.quantity} onChange={(e) => updateItem(idx, "quantity", parseInt(e.target.value) || 0)} disabled={isViewMode} style={{ width: "100%", textAlign: "right" }} /></td>
++                            <td style={{ textAlign: "center", padding: "6px" }}><input type="checkbox" checked={item.hasPallet} onChange={(e) => updateItem(idx, "hasPallet", e.target.checked)} disabled={isViewMode} style={{ width: "16px", height: "16px" }} /></td>
++                            <td style={{ textAlign: "center", padding: "6px" }}><input type="checkbox" checked={item.hasCornerGuard} onChange={(e) => updateItem(idx, "hasCornerGuard", e.target.checked)} disabled={isViewMode} style={{ width: "16px", height: "16px" }} /></td>
++                            <td style={{ padding: "6px" }}><input type="text" className="input-sm" value={item.note} onChange={(e) => updateItem(idx, "note", e.target.value)} disabled={isViewMode} style={{ width: "100%" }} /></td>
++                            {!isViewMode && (
++                              <td style={{ padding: "6px", textAlign: "center" }}>
++                                <button type="button" onClick={() => removeItem(idx)} style={{ color: "#e74c3c", border: "none", background: "none", cursor: "pointer", fontSize: "1.1rem" }}>
++                                  <Trash2 size={16} />
++                                </button>
++                              </td>
++                            )}
++                          </tr>
++                        ))}
++                      </tbody>
++                    </table>
++                  </div>
++                  {!isViewMode && (
++                    <button type="button" onClick={addItem} className="sapo-btn sapo-btn-secondary" style={{ marginTop: "1rem" }}>
++                      + Th├¬m h├áng h├│a
++                    </button>
++                  )}
+                 </div>
+-                {!isViewMode && <button type="button" onClick={addItem} className="btn" style={{ marginTop: "1rem", background: "#f1f5f9" }}>+ Th├¬m h├áng h├│a</button>}
+               </div>
+ 
+-              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "2rem", borderTop: "1px solid #eee", paddingTop: "1.5rem" }}>
+-                <button type="button" className="btn" onClick={handleClose}>Tho├ít</button>
++              {/* Sticky Action Footer */}
++              <div
++                style={{
++                  display: "flex",
++                  gap: "0.75rem",
++                  justifyContent: "flex-end",
++                  borderTop: "1px solid #eee",
++                  padding: "12px 24px",
++                  background: "#fff",
++                  borderBottomLeftRadius: "16px",
++                  borderBottomRightRadius: "16px",
++                }}
++              >
++                <button type="button" className="modal-footer-btn-secondary" onClick={handleClose}>
++                  {isViewMode ? "─É├│ng" : "Tho├ít"}
++                </button>
+                 {!isViewMode && (
+-                   <button type="submit" className="btn btn-primary" disabled={isPending}>{isPending ? "─Éang l╞░u..." : "≡ƒÆ╛ L╞░u ─æ╞ín h├áng"}</button>
++                  <button type="submit" className="modal-footer-btn-success" disabled={isPending}>
++                    {isPending ? "─Éang l╞░u..." : "L╞░u ─æ╞ín h├áng"}
++                  </button>
+                 )}
+               </div>
+             </form>
+           </div>
+         </div>
+       )}
+-      <style>{`
+-        .filter-label { display: block; margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; }
+-        .input-sm { width: 100%; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.85rem; outline: none; }
+-        .input-sm:focus { border-color: #3498db; }
+-        .input-sm:disabled { background: #f8fafc; cursor: not-allowed; border: none; }
+-        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 4px; border-radius: 4px; transition: background 0.2s; }
+-        .btn-icon:hover { background: rgba(0,0,0,0.05); }
+-      `}</style>
++
+       {/* Custom Confirmation Modal */}
+       {confirmUpdate && (
+         <div className="modal-overlay-base" style={{ zIndex: 9999 }}>
+@@ -441,12 +1233,12 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+               <Clock size={32} />
+             </div>
+             <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+-              {confirmUpdate.status === "Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt" ? "Ph├¬ duyß╗çt ─æ╞ín h├áng" : 
++              {confirmUpdate.status === "Chß╗¥ tiß║┐p nhß║¡n" ? "Ph├¬ duyß╗çt ─æ╞ín h├áng" : 
+                confirmUpdate.status === "Tß║ío mß╗¢i" ? "Thu hß╗ôi hß╗ô s╞í" : 
+                "X├íc nhß║¡n thay ─æß╗òi"}
+             </h3>
+             <div style={{ color: "#475569", marginBottom: "2rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+-              {confirmUpdate.status === "Chß╗¥ kß║┐ hoß║ích sß║ún xuß║Ñt" ? (
++              {confirmUpdate.status === "Chß╗¥ tiß║┐p nhß║¡n" ? (
+                 <>
+                   <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bß║ín c├│ chß║»c chß║»n ─æß╗ông ├╜ ph├¬ duyß╗çt {confirmUpdate.info} kh├┤ng?</p>
+                   <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
+@@ -471,6 +1263,144 @@ export default function OrderTable({ initialOrders, customers, branches, salesEm
+           </div>
+         </div>
+       )}
+-    </>
++
++      {/* Contract Selection Modal Overlay */}
++      {showContractModal && (
++        <div className="modal-overlay-base" style={{ zIndex: 9999 }}>
++          <div className="modal-content-base" style={{ maxWidth: "850px", width: "90%", maxHeight: "80vh", display: "flex", flexDirection: "column", padding: "1.5rem" }}>
++            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0", paddingBottom: "10px", marginBottom: "15px" }}>
++              <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#003466", margin: 0, textTransform: "uppercase" }}>CHß╗îN Hß╗óP ─Éß╗ÆNG</h3>
++              <button 
++                type="button" 
++                onClick={() => setShowContractModal(false)}
++                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: "20px" }}
++              >
++                &times;
++              </button>
++            </div>
++
++            {/* Filter Input */}
++            <div style={{ marginBottom: "15px" }}>
++              <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#003466", textTransform: "uppercase", marginBottom: "6px" }}>Lß╗ìc hß╗úp ─æß╗ông (Sß╗æ H─É / Kh├ích h├áng / T├¬n viß║┐t tß║»t)</label>
++              <div style={{ position: "relative" }}>
++                <input
++                  type="text"
++                  placeholder="Nhß║¡p sß╗æ hß╗úp ─æß╗ông, t├¬n kh├ích h├áng hoß║╖c t├¬n viß║┐t tß║»t ─æß╗â t├¼m..."
++                  value={contractSearchQuery}
++                  onChange={(e) => setContractSearchQuery(e.target.value)}
++                  style={{
++                    width: "100%",
++                    padding: "8px 12px",
++                    borderRadius: "6px",
++                    border: "1px solid #cbd5e1",
++                    fontSize: "13px",
++                    outline: "none"
++                  }}
++                  autoFocus
++                />
++              </div>
++            </div>
++
++            {/* Contract List Table */}
++            <div style={{ flex: 1, overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
++              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
++                <thead style={{ position: "sticky", top: 0, background: "#f8fafc", zIndex: 1, borderBottom: "2px solid #cbd5e1" }}>
++                  <tr>
++                    <th style={{ textAlign: "left", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1" }}>Sß╗É Hß╗óP ─Éß╗ÆNG</th>
++                    <th style={{ textAlign: "left", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1" }}>KH├üCH H├ÇNG</th>
++                    <th style={{ textAlign: "left", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1" }}>NH├éN VI├èN KINH DOANH</th>
++                    <th style={{ textAlign: "center", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1" }}>NHIß╗åT Kß║╛</th>
++                    <th style={{ textAlign: "left", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1" }}>Kß╗▓ GIAO Hß║áN</th>
++                    <th style={{ textAlign: "center", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", width: "80px" }}>H├ÇNH ─Éß╗ÿNG</th>
++                  </tr>
++                </thead>
++                <tbody>
++                  {filteredContracts.length === 0 ? (
++                    <tr>
++                      <td colSpan={6} style={{ textAlign: "center", padding: "30px", color: "#64748b" }}>
++                        Kh├┤ng t├¼m thß║Ñy hß╗úp ─æß╗ông n├áo ph├╣ hß╗úp.
++                      </td>
++                    </tr>
++                  ) : (
++                    filteredContracts.map((c: any) => {
++                      const cust = (customersFull || []).find(cust => cust.name.toLowerCase() === c.buyer.toLowerCase());
++                      const abbreviation = cust?.abbreviation ? ` (${cust.abbreviation})` : "";
++                      return (
++                        <tr 
++                          key={c.id} 
++                          style={{ borderBottom: "1px solid #f1f5f9", cursor: "pointer", transition: "background-color 0.15s" }}
++                          onClick={() => handleSelectContract(c)}
++                          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
++                          onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
++                        >
++                          <td style={{ padding: "10px 12px", fontWeight: "600", color: "#0f172a" }}>{c.contractNumber}</td>
++                          <td style={{ padding: "10px 12px", color: "#334155" }}>
++                            {c.buyer}
++                            {abbreviation && <span style={{ fontSize: "11px", color: "#64748b", display: "block", marginTop: "2px" }}>{abbreviation}</span>}
++                          </td>
++                          <td style={{ padding: "10px 12px", color: "#334155" }}>{c.salesEmployee || "ΓÇö"}</td>
++                          <td style={{ padding: "10px 12px", textAlign: "center" }}>
++                            {c.thermometer ? (
++                              <span style={{ fontSize: "11px", background: "#fef2f2", color: "#ef4444", padding: "2px 6px", borderRadius: "4px", fontWeight: "600" }}>
++                                C├ô {c.thermometerQty !== undefined && c.thermometerQty !== null ? `(${c.thermometerQty})` : ""}
++                              </span>
++                            ) : (
++                              <span style={{ fontSize: "11px", background: "#f1f5f9", color: "#64748b", padding: "2px 6px", borderRadius: "4px" }}>KH├öNG</span>
++                            )}
++                          </td>
++                          <td style={{ padding: "10px 12px", color: "#334155" }}>
++                            {c.deliveryDate ? parseDeliveryDate(c.deliveryDate, c.contractDate) : getYearMonthString(c.contractDate)}
++                          </td>
++                          <td style={{ padding: "10px 12px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
++                            <button
++                              type="button"
++                              onClick={() => handleSelectContract(c)}
++                              style={{
++                                backgroundColor: "#ff5c00",
++                                color: "#ffffff",
++                                fontSize: "12px",
++                                fontWeight: "700",
++                                padding: "4px 10px",
++                                borderRadius: "4px",
++                                border: "none",
++                                cursor: "pointer",
++                                transition: "background-color 0.2s"
++                              }}
++                              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#e04f00")}
++                              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#ff5c00")}
++                            >
++                              Chß╗ìn
++                            </button>
++                          </td>
++                        </tr>
++                      );
++                    })
++                  )}
++                </tbody>
++              </table>
++            </div>
++
++            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "15px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
++              <button
++                type="button"
++                onClick={() => setShowContractModal(false)}
++                style={{
++                  padding: "6px 16px",
++                  borderRadius: "6px",
++                  border: "1px solid #cbd5e1",
++                  backgroundColor: "#ffffff",
++                  color: "#334155",
++                  fontSize: "13px",
++                  fontWeight: "500",
++                  cursor: "pointer"
++                }}
++              >
++                ─É├│ng
++              </button>
++            </div>
++          </div>
++        </div>
++      )}
++    </div>
+   );
+ }

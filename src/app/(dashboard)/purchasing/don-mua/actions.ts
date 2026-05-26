@@ -138,7 +138,7 @@ export async function createPurchaseInvoice(data: any, details: any[], poId?: st
       oldData: { status: "Chờ mua hàng" },
       newData: { status: "Chờ giao hàng" },
       changedBy: creator,
-      changeDetail: `Đã tạo đơn mua ${invoiceCode} từ lệnh mua này`
+      changeDetail: `Đã tạo đơn mua ${invoiceCode} từ đơn mua hàng này`
     });
   }
 
@@ -193,7 +193,7 @@ export async function rejectPurchaseOrder(id: string) {
     action: "STATUS_CHANGE",
     newData: { status: "Tạo mới" },
     changedBy,
-    changeDetail: `Từ chối lệnh mua: ${updated.poCode}`
+    changeDetail: `Từ chối đơn mua hàng: ${updated.poCode}`
   });
 
   revalidatePath("/purchasing/don-mua");
@@ -271,7 +271,7 @@ export async function deletePurchaseInvoice(id: string) {
       oldData: { status: "Chờ giao hàng" },
       newData: { status: "Chờ mua hàng" },
       changedBy,
-      changeDetail: `Đã xóa đơn mua ${oldInv.invoiceCode}, lệnh mua quay về trạng thái Chờ mua hàng`
+      changeDetail: `Đã xóa đơn mua ${oldInv.invoiceCode}, đơn mua hàng quay về trạng thái Chờ mua hàng`
     });
   }
 

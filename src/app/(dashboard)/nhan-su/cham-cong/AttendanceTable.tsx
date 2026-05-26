@@ -257,17 +257,32 @@ export default function AttendanceTable({
                     </button>
 
                     {openMenuId === item.id && (
-                      <div className="action-dropdown" onClick={(e) => e.stopPropagation()}>
-                        <div className="dropdown-item" onClick={() => { setEditingItem(item); setIsModalOpen(true); setOpenMenuId(null); }}>
-                          <Pencil size={14} /> Chỉnh sửa
-                        </div>
-                        <div className="dropdown-item" onClick={() => { setHistoryRecordId(item.id); setOpenMenuId(null); }}>
-                          <History size={14} /> Lịch sử
-                        </div>
-                        <div className="divider"></div>
-                        <div className="dropdown-item danger" onClick={() => { setConfirmDeleteId(item.id); setOpenMenuId(null); }}>
-                          <Trash2 size={14} /> Xóa bản ghi
-                        </div>
+                      <div className="horizontal-action-dropdown" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="icon-action-btn"
+                          title="Chỉnh sửa"
+                          onClick={() => { setEditingItem(item); setIsModalOpen(true); setOpenMenuId(null); }}
+                        >
+                          <Pencil size={15} style={{ color: "#d97706" }} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-action-btn"
+                          title="Lịch sử"
+                          onClick={() => { setHistoryRecordId(item.id); setOpenMenuId(null); }}
+                        >
+                          <History size={15} style={{ color: "#64748b" }} />
+                        </button>
+                        <div style={{ width: "1px", height: "16px", backgroundColor: "#e2e8f0" }}></div>
+                        <button
+                          type="button"
+                          className="icon-action-btn danger"
+                          title="Xóa bản ghi"
+                          onClick={() => { setConfirmDeleteId(item.id); setOpenMenuId(null); }}
+                        >
+                          <Trash2 size={15} style={{ color: "#ef4444" }} />
+                        </button>
                       </div>
                     )}
                   </td>

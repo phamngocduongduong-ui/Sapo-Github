@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { createUser, updateUser, updateUserStatus, resetPassword, deleteUser } from "./actions";
+import { createUser, updateUser, updateUserStatus, resetPassword, deleteUser, approveDeviceChange, rejectDeviceChange, resetUserDevice } from "./actions";
 import HistoryModal from "../../HistoryModal";
 import { Clock } from "lucide-react";
 
@@ -14,6 +14,9 @@ type User = {
   status: string;
   createdAt: string;
   permission: { id: string, name: string }[];
+  deviceSecret: string | null;
+  pendingDeviceSecret: string | null;
+  deviceStatus: string;
 };
 
 
@@ -32,8 +35,10 @@ export default function UserTable({ users, activeEmployees, branches, availableP
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
-
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  const selectedUser = users.find(u => u.id === selectedUserId);
 
   function handleClose() {
     setShowModal(false);
@@ -42,6 +47,7 @@ export default function UserTable({ users, activeEmployees, branches, availableP
     setSelectedPermissions([]);
     setError(null);
     setShowPassword(false);
+    setSelectedUserId(null);
   }
 
   function handleEdit(user: any) {
@@ -105,6 +111,42 @@ export default function UserTable({ users, activeEmployees, branches, availableP
     });
   }
 
+  function handleApproveDevice(user: any) {
+    if (!confirm(`Bạn có chắc chắn muốn PHÊ DUYỆT thiết bị mới cho tài khoản "${user.username}"?`)) return;
+    startTransition(async () => {
+      try {
+        await approveDeviceChange(user.id);
+        alert("Đã duyệt thiết bị mới thành công.");
+      } catch (e: any) {
+        alert(e.message || "Có lỗi xảy ra");
+      }
+    });
+  }
+
+  function handleRejectDevice(user: any) {
+    if (!confirm(`Bạn có chắc chắn muốn TỪ CHỐI yêu cầu đổi thiết bị của tài khoản "${user.username}"?`)) return;
+    startTransition(async () => {
+      try {
+        await rejectDeviceChange(user.id);
+        alert("Đã từ chối yêu cầu đổi thiết bị.");
+      } catch (e: any) {
+        alert(e.message || "Có lỗi xảy ra");
+      }
+    });
+  }
+
+  function handleResetDevice(user: any) {
+    if (!confirm(`Bạn có chắc chắn muốn RESET liên kết thiết bị của tài khoản "${user.username}"? Nhân viên sẽ có thể đăng ký thiết bị mới ở lần chấm công tiếp theo.`)) return;
+    startTransition(async () => {
+      try {
+        await resetUserDevice(user.id);
+        alert("Đã xóa liên kết thiết bị thành công.");
+      } catch (e: any) {
+        alert(e.message || "Có lỗi xảy ra");
+      }
+    });
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -124,116 +166,577 @@ export default function UserTable({ users, activeEmployees, branches, availableP
   const filteredEmployees = activeEmployees.filter(name => !existingUserEmployees.includes(name));
 
   return (
-    <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h3 style={{ margin: 0 }}>Danh sách Tài khoản</h3>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Thêm mới tài khoản</button>
+    <div className="user-page-container">
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .user-page-container {
+          width: 100%;
+          min-width: 0;
+        }
+        .user-layout {
+          display: flex;
+          gap: 1.5rem;
+          width: 100%;
+          min-width: 0;
+          font-family: "Segoe UI", -apple-system, sans-serif;
+          font-size: 13px;
+          padding: 10px 0px 10px 0px;
+        }
+        .user-layout input,
+        .user-layout select,
+        .user-layout textarea,
+        .user-layout button,
+        .user-layout table,
+        .user-layout td,
+        .user-layout th,
+        .user-layout label,
+        .user-layout .badge,
+        .user-layout .blue-panel-header,
+        .user-page-container .breadcrumb-banner {
+          font-size: 13px !important;
+        }
+        .breadcrumb-banner {
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          display: block;
+          border-radius: 0 !important;
+          margin-top: 0;
+          margin-left: -10px;
+          margin-right: -10px;
+        }
+        .panel-full {
+          flex: 1 1 100%;
+          width: 100%;
+          min-width: 0;
+        }
+        .search-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 5px 0px 10px 0px;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+        .sapo-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          border-radius: 4px;
+          font-weight: 400;
+          font-size: 13px !important;
+          cursor: pointer;
+          transition: background-color 0.2s, transform 0.1s;
+          border: none;
+        }
+        .sapo-btn:hover {
+          background-color: #002244;
+        }
+        .sapo-btn:active {
+          transform: scale(0.98);
+        }
+        .sapo-btn:disabled {
+          background-color: #cbd5e1 !important;
+          color: #94a3b8 !important;
+          cursor: not-allowed !important;
+          transform: none !important;
+        }
+        .sapo-btn-danger {
+          background-color: #ef4444;
+        }
+        .sapo-btn-danger:hover {
+          background-color: #dc2626;
+        }
+        .sapo-btn-success {
+          background-color: #22c55e;
+        }
+        .sapo-btn-success:hover {
+          background-color: #16a34a;
+        }
+        .sapo-btn-secondary {
+          background-color: #475569;
+        }
+        .sapo-btn-secondary:hover {
+          background-color: #334155;
+        }
+        .row-hoverable:hover {
+          background-color: #f8fafc;
+        }
+        .row-selected {
+          background-color: #f0f7ff !important;
+        }
+        .row-selected td {
+          background-color: #f0f7ff !important;
+          border-top: 1px solid #b9d5f0 !important;
+          border-bottom: 1px solid #b9d5f0 !important;
+        }
+        .row-selected td:first-child {
+          border-left: 6px solid #003466 !important;
+        }
+        .row-selected td:last-child {
+          border-right: 1px solid #b9d5f0 !important;
+        }
+        .base-table-wrapper {
+          max-height: 485px !important;
+          height: auto !important;
+          overflow-y: auto !important;
+          overflow-x: auto !important;
+          padding-bottom: 60px !important;
+        }
+        .base-table {
+          height: auto !important;
+          width: 100% !important;
+          table-layout: auto !important;
+        }
+        .base-table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
+          text-align: center !important;
+          height: 35px !important;
+          padding-top: 6px !important;
+          padding-bottom: 6px !important;
+        }
+        .base-table td {
+          padding: 6px 0.75rem !important;
+          vertical-align: middle !important;
+          white-space: normal !important;
+          word-break: break-word !important;
+        }
+        .base-table tbody tr {
+          height: 45px !important;
+        }
+        .base-table .status-pill {
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          font-weight: 600 !important;
+          font-size: 13px !important;
+          border-radius: 0 !important;
+        }
+        .base-table .status-pill.status-active {
+          color: #166534 !important;
+        }
+        .base-table .status-pill.status-inactive {
+          color: #dc2626 !important;
+        }
+        .custom-modal-overlay {
+          position: fixed;
+          background: rgba(0,0,0,0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+        @media (min-width: 769px) {
+          .custom-modal-overlay {
+            left: 220px !important;
+            top: 140px !important;
+            right: 0 !important;
+            bottom: 0 !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .custom-modal-overlay {
+            left: 0 !important;
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+          }
+        }
+        .filter-label { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; font-weight: 700; color: #003466; text-transform: uppercase; }
+        
+        .custom-modal-overlay .input {
+          border-radius: 8px !important;
+          border: 1px solid #cbd5e1 !important;
+          padding: 7px 12px !important;
+          transition: border-color 0.2s, box-shadow 0.2s !important;
+          width: 100%;
+        }
+        .custom-modal-overlay .input:focus {
+          border-color: #ff5c00 !important;
+          box-shadow: 0 0 0 2px rgba(255, 92, 0, 0.1) !important;
+        }
+        .custom-modal-overlay select.input {
+          border-radius: 8px !important;
+          border: 1px solid #cbd5e1 !important;
+          padding: 7px 12px !important;
+          height: 36px !important;
+          transition: border-color 0.2s, box-shadow 0.2s !important;
+          width: 100%;
+        }
+        .custom-modal-overlay select.input:focus {
+          border-color: #ff5c00 !important;
+          box-shadow: 0 0 0 2px rgba(255, 92, 0, 0.1) !important;
+        }
+        .mobile-list {
+          display: none !important;
+        }
+        @media (max-width: 768px) {
+          .desktop-only {
+            display: none !important;
+          }
+          .mobile-list {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 10px !important;
+            padding-bottom: 80px !important;
+            margin-top: 10px !important;
+            width: 100% !important;
+          }
+          .proposal-card {
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 10px 14px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            user-select: none !important;
+          }
+          .proposal-card:hover {
+            background: #f8fafc !important;
+          }
+          .proposal-card.selected {
+            border: 1px solid #b9d5f0 !important;
+            border-left: 6px solid #003466 !important;
+            background-color: #f0f7ff !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 52, 102, 0.08) !important;
+          }
+          .card-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+          }
+          .card-header {
+            border-bottom: 1px solid #f1f5f9 !important;
+            padding-bottom: 5px !important;
+            margin-bottom: 6px !important;
+          }
+          .code-box {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+          }
+          .idx-pill {
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+          }
+          .proposal-code {
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+          }
+          .card-body {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 6px !important;
+          }
+          .info-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: flex-start !important;
+            font-size: 12px !important;
+          }
+          .info-label {
+            color: #64748b !important;
+            font-weight: 500 !important;
+          }
+          .info-val {
+            color: #000 !important;
+            font-weight: 600 !important;
+            text-align: right !important;
+          }
+          .info-val.highlight {
+            color: #ff5c00 !important;
+          }
+        }
+      `
+      }} />
+
+      <div className="breadcrumb-banner">
+        QUẢN LÝ TÀI KHOẢN
       </div>
 
-      <div className="table-container">
-        <table className="table">
-          <thead>
-            <tr>
-              <th style={{ width: "50px", textAlign: "center" }}>STT</th>
-              <th>Nhân viên</th>
-              <th>Tài khoản</th>
-              <th>Chi nhánh</th>
-              <th>Mục quyền</th>
-              <th>Trạng thái</th>
-              <th style={{ width: "450px", textAlign: "center" }}>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user, idx) => (
-              <tr key={user.id}>
-                <td style={{ textAlign: "center" }}>{idx + 1}</td>
-                <td style={{ fontWeight: 600 }}>{user.employeeName}</td>
-                <td>{user.username}</td>
-                <td style={{ fontSize: "0.85rem", maxWidth: "200px" }}>
-                  {user.username === "admin" ? (
-                    <span style={{ color: "var(--primary-color)", fontWeight: 600 }}>🌍 Toàn bộ chi nhánh</span>
+      <div className="user-layout">
+        <div className="panel-full">
+          <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center" }}>
+            <button
+              type="button"
+              className="sapo-btn"
+              onClick={() => setShowModal(true)}
+            >
+              Thêm mới
+            </button>
+
+            {selectedUser && (
+              <>
+                <button
+                  type="button"
+                  className="sapo-btn"
+                  disabled={selectedUser.username === "admin" || selectedUser.status === "INACTIVE"}
+                  onClick={() => handleEdit(selectedUser)}
+                >
+                  Sửa
+                </button>
+                <button
+                  type="button"
+                  className="sapo-btn"
+                  disabled={selectedUser.username === "admin" || selectedUser.status === "INACTIVE"}
+                  onClick={() => handleResetPw(selectedUser)}
+                >
+                  Cấp lại MK
+                </button>
+                {selectedUser.username !== "admin" && (
+                  selectedUser.status === "ACTIVE" ? (
+                    <button
+                      type="button"
+                      className="sapo-btn sapo-btn-danger"
+                      onClick={() => handleStatusToggle(selectedUser.id, selectedUser.status)}
+                    >
+                      Hủy kích hoạt
+                    </button>
                   ) : (
-                    user.branch?.split(",").join(", ") || "—"
-                  )}
-                </td>
-                <td>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
-                    {(user as any).permission?.length > 0 ? (
-                      (user as any).permission.map((p: any) => (
-                        <span key={p.id} className="badge badge-warning" style={{ fontSize: "0.7rem", padding: "2px 6px" }}>{p.name}</span>
-                      ))
-                    ) : (
-                      "—"
-                    )}
+                    <button
+                      type="button"
+                      className="sapo-btn"
+                      onClick={() => handleStatusToggle(selectedUser.id, selectedUser.status)}
+                    >
+                      Kích hoạt
+                    </button>
+                  )
+                )}
+                {selectedUser.username !== "admin" && (
+                  <button
+                    type="button"
+                    className="sapo-btn sapo-btn-danger"
+                    onClick={() => handleDelete(selectedUser)}
+                  >
+                    Xóa
+                  </button>
+                )}
+                {selectedUser.username !== "admin" && (selectedUser.deviceSecret || selectedUser.deviceStatus === "PENDING") && (
+                  <button
+                    type="button"
+                    className="sapo-btn sapo-btn-secondary"
+                    onClick={() => handleResetDevice(selectedUser)}
+                    disabled={isPending}
+                  >
+                    Reset thiết bị
+                  </button>
+                )}
+                {selectedUser.username !== "admin" && selectedUser.deviceStatus === "PENDING" && (
+                  <>
+                    <button
+                      type="button"
+                      className="sapo-btn sapo-btn-success"
+                      onClick={() => handleApproveDevice(selectedUser)}
+                      disabled={isPending}
+                    >
+                      Duyệt thiết bị mới
+                    </button>
+                    <button
+                      type="button"
+                      className="sapo-btn sapo-btn-danger"
+                      onClick={() => handleRejectDevice(selectedUser)}
+                      disabled={isPending}
+                    >
+                      Từ chối thiết bị mới
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+
+
+          </div>
+
+          <div className="base-table-wrapper desktop-only">
+            <table className="base-table">
+              <thead>
+                <tr>
+                  <th className="th-first nowrap" style={{ width: "50px", textAlign: "center" }}>STT</th>
+                  <th>Nhân viên</th>
+                  <th>Tài khoản</th>
+                  <th>Chi nhánh</th>
+                  <th>Mục quyền</th>
+                  <th>Thiết bị</th>
+                  <th className="th-last nowrap">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user, idx) => (
+                  <tr
+                    key={user.id}
+                    onClick={() => setSelectedUserId(selectedUserId === user.id ? null : user.id)}
+                    title="Nhấp để chọn tài khoản"
+                    className={`row-hoverable ${selectedUserId === user.id ? "row-selected" : ""}`}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{idx + 1}</td>
+                    <td style={{ fontWeight: 600, color: "#000", textAlign: "center" }}>{user.employeeName || "—"}</td>
+                    <td style={{ color: "#000", textAlign: "center", fontWeight: 600 }}>{user.username}</td>
+                    <td style={{ fontSize: "0.85rem", maxWidth: "250px", color: "#000", textAlign: "center" }}>
+                      {user.username === "admin" ? (
+                        <span style={{ color: "var(--primary-color)", fontWeight: 600 }}>🌍 Toàn bộ chi nhánh</span>
+                      ) : (
+                        user.branch?.split(",").join(", ") || "—"
+                      )}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "2px", justifyContent: "center" }}>
+                        {user.permission?.length > 0 ? (
+                          user.permission.map((p: any) => (
+                            <span key={p.id} className="badge badge-warning" style={{ fontSize: "0.7rem", padding: "2px 6px" }}>{p.name}</span>
+                          ))
+                        ) : (
+                          "—"
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {user.username === "admin" ? (
+                        <span style={{ color: "#94a3b8" }}>—</span>
+                      ) : !user.deviceSecret ? (
+                        <span className="badge badge-secondary" style={{ fontSize: "0.75rem", padding: "2px 6px", background: "#cbd5e1", color: "#475569" }}>Chưa liên kết</span>
+                      ) : user.deviceStatus === "PENDING" ? (
+                        <span className="badge badge-warning" style={{ fontSize: "0.75rem", padding: "2px 6px", background: "#fef3c7", color: "#d97706", fontWeight: "700" }}>Đợi duyệt đổi máy</span>
+                      ) : (
+                        <span className="badge badge-success" style={{ fontSize: "0.75rem", padding: "2px 6px", background: "#dcfce7", color: "#15803d" }}>Đã liên kết</span>
+                      )}
+                    </td>
+                    <td className="nowrap" style={{ textAlign: "center" }}>
+                      <span className={`status-pill ${user.status === "ACTIVE" ? "status-active" : "status-inactive"}`}>
+                        {user.status === "ACTIVE" ? "Đang sử dụng" : "Ngừng sử dụng"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: "center", padding: "2rem", color: "#000", fontWeight: 600 }}>
+                      Chưa có tài khoản nào.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mobile-list">
+            {users.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "2rem", color: "#94a3b8", background: "#ffffff", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
+                Chưa có tài khoản nào.
+              </div>
+            ) : (
+              users.map((user, idx) => {
+                const isSelected = selectedUserId === user.id;
+                return (
+                  <div
+                    key={user.id}
+                    onClick={() => setSelectedUserId(isSelected ? null : user.id)}
+                    className={`proposal-card ${isSelected ? "selected" : ""}`}
+                  >
+                    {/* Header: STT, Username and Status */}
+                    <div className="card-row card-header">
+                      <div className="code-box">
+                        <span className="idx-pill">#{idx + 1}</span>
+                        <span className="proposal-code">{user.username}</span>
+                      </div>
+                      <span className={`status-pill ${user.status === "ACTIVE" ? "status-active" : "status-inactive"}`} style={{ fontWeight: 600 }}>
+                        {user.status === "ACTIVE" ? "Đang sử dụng" : "Ngừng sử dụng"}
+                      </span>
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="card-body">
+                      <div className="info-row">
+                        <span className="info-label">Nhân viên:</span>
+                        <span className="info-val" style={{ fontWeight: 700 }}>{user.employeeName || "—"}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-label">Chi nhánh:</span>
+                        <span className="info-val">
+                          {user.username === "admin" ? (
+                            <span style={{ color: "#ff5c00", fontWeight: 700 }}>🌍 Toàn bộ chi nhánh</span>
+                          ) : (
+                            user.branch?.split(",").join(", ") || "—"
+                          )}
+                        </span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-label">Thiết bị:</span>
+                        <span className="info-val">
+                          {user.username === "admin" ? (
+                            "—"
+                          ) : !user.deviceSecret ? (
+                            <span className="badge badge-secondary" style={{ fontSize: "0.75rem", padding: "2px 6px", background: "#cbd5e1", color: "#475569" }}>Chưa liên kết</span>
+                          ) : user.deviceStatus === "PENDING" ? (
+                            <span className="badge badge-warning" style={{ fontSize: "0.75rem", padding: "2px 6px", background: "#fef3c7", color: "#d97706", fontWeight: "700" }}>Đợi duyệt đổi máy</span>
+                          ) : (
+                            <span className="badge badge-success" style={{ fontSize: "0.75rem", padding: "2px 6px", background: "#dcfce7", color: "#15803d" }}>Đã liên kết</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="info-row" style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
+                        <span className="info-label">Mục quyền:</span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "2px", marginTop: "2px" }}>
+                          {user.permission?.length > 0 ? (
+                            user.permission.map((p: any) => (
+                              <span key={p.id} className="badge badge-warning" style={{ fontSize: "0.7rem", padding: "2px 6px" }}>{p.name}</span>
+                            ))
+                          ) : (
+                            "—"
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </td>
-                <td>
-                   <span className={`badge ${user.status === "ACTIVE" ? "badge-success" : "badge-danger"}`}>
-                     {user.status === "ACTIVE" ? "Đang sử dụng" : "Ngừng sử dụng"}
-                   </span>
-                </td>
-                <td style={{ textAlign: "center" }}>
-                  <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center" }}>
-                    <button 
-                      onClick={() => handleEdit(user)} 
-                      className="btn btn-sm btn-outline" 
-                      disabled={user.username === "admin" || user.status === "INACTIVE"}
-                    >
-                      Sửa
-                    </button>
-                    <button 
-                      onClick={() => handleResetPw(user)} 
-                      className="btn btn-sm btn-outline" 
-                      disabled={user.username === "admin" || user.status === "INACTIVE"}
-                    >
-                      Cấp lại MK
-                    </button>
-                    {user.username !== "admin" && (
-                      user.status === "ACTIVE" 
-                        ? <button onClick={() => handleStatusToggle(user.id, user.status)} className="btn btn-sm btn-danger">Hủy kích hoạt</button>
-                        : <button onClick={() => handleStatusToggle(user.id, user.status)} className="btn btn-sm btn-success">Kích hoạt</button>
-                    )}
-                    {user.username !== "admin" && (
-                      <button 
-                        onClick={() => handleDelete(user)} 
-                        className="btn btn-sm btn-outline" 
-                        style={{ color: "#c0392b", borderColor: "#c0392b" }}
-                      >
-                        Xóa
-                      </button>
-                    )}
-                    <button 
-                      className="btn btn-sm btn-outline" 
-                      onClick={() => setHistoryRecordId(user.id)}
-                      title="Lịch sử thay đổi"
-                    >
-                      Lịch sử
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                );
+              })
+            )}
+          </div>
+        </div>
       </div>
 
-      {historyRecordId && (
-        <HistoryModal 
-          tableName="User" 
-          recordId={historyRecordId} 
-          onClose={() => setHistoryRecordId(null)} 
-        />
-      )}
+
 
       {showModal && (
-        <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div className="card" style={{ width: "100%", maxWidth: "500px", margin: "1rem" }}>
-            <h3>{editingUser ? "✏️ Sửa tài khoản" : "🛡️ Thêm tài khoản"}</h3>
-            {error && <div style={{ color: "#e74c3c", marginBottom: "1rem" }}>⚠️ {error}</div>}
+        <div className="custom-modal-overlay">
+          <div
+            style={{
+              width: "95%",
+              maxWidth: "500px",
+              maxHeight: "90%",
+              margin: "auto",
+              display: "flex",
+              flexDirection: "column",
+              padding: "24px",
+              background: "#ffffff",
+              borderRadius: "16px",
+              border: "1px solid #cbd5e1",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              overflowY: "auto"
+            }}
+          >
+            <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "12px", marginTop: 0 }}>
+              {editingUser ? "✏️ Sửa tài khoản" : "🛡️ Thêm tài khoản"}
+            </h3>
+            {error && <div style={{ color: "#e74c3c", marginBottom: "1rem", fontSize: "13px" }}>⚠️ {error}</div>}
             
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
-                <label>Nhân viên *</label>
+                <label className="filter-label">Nhân viên *</label>
                 <select name="employeeName" className="input" required defaultValue={editingUser?.employeeName ?? ""} disabled={!!editingUser}>
                   {editingUser ? (
                     <option value={editingUser.employeeName}>{editingUser.employeeName}</option>
@@ -247,12 +750,12 @@ export default function UserTable({ users, activeEmployees, branches, availableP
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div>
-                  <label>Tài khoản *</label>
+                  <label className="filter-label">Tài khoản *</label>
                   <input type="text" name="username" className="input" required defaultValue={editingUser?.username ?? ""} disabled={!!editingUser} placeholder="Nhập tài khoản" />
                 </div>
                 {!editingUser && (
                   <div>
-                    <label>Mật khẩu *</label>
+                    <label className="filter-label">Mật khẩu *</label>
                     <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                       <input 
                         type={showPassword ? "text" : "password"} 
@@ -275,24 +778,24 @@ export default function UserTable({ users, activeEmployees, branches, availableP
                   </div>
                 )}
               </div>
-                <div>
-                  <label style={{ display: "block", marginBottom: "0.5rem" }}>Mục quyền (Chọn nhiều) *</label>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", padding: "0.5rem", border: "1px solid #ddd", borderRadius: "8px" }}>
-                    {availablePermissions.map(p => (
-                      <button key={p.id} type="button" 
-                        onClick={() => togglePermission(p.id)}
-                        style={{ padding: "4px 10px", borderRadius: "15px", border: "1px solid", fontSize: "0.8rem", cursor: "pointer",
-                          background: selectedPermissions.includes(p.id) ? "#f39c12" : "none",
-                          color: selectedPermissions.includes(p.id) ? "#fff" : "#888",
-                          borderColor: selectedPermissions.includes(p.id) ? "#f39c12" : "#ddd"
-                        }}>{p.name}</button>
-                    ))}
-                    {availablePermissions.length === 0 && <span style={{ color: "#888", fontSize: "0.8rem" }}>Chưa có mục quyền nào</span>}
-                  </div>
-                </div>
               <div>
-                <label style={{ display: "block", marginBottom: "0.5rem" }}>Chi nhánh (Chọn nhiều) *</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", padding: "0.5rem", border: "1px solid #ddd", borderRadius: "8px" }}>
+                <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem" }}>Mục quyền (Chọn nhiều) *</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: "8px" }}>
+                  {availablePermissions.map(p => (
+                    <button key={p.id} type="button" 
+                      onClick={() => togglePermission(p.id)}
+                      style={{ padding: "4px 10px", borderRadius: "15px", border: "1px solid", fontSize: "0.8rem", cursor: "pointer",
+                        background: selectedPermissions.includes(p.id) ? "#f39c12" : "none",
+                        color: selectedPermissions.includes(p.id) ? "#fff" : "#888",
+                        borderColor: selectedPermissions.includes(p.id) ? "#f39c12" : "#ddd"
+                      }}>{p.name}</button>
+                  ))}
+                  {availablePermissions.length === 0 && <span style={{ color: "#888", fontSize: "0.8rem" }}>Chưa có mục quyền nào</span>}
+                </div>
+              </div>
+              <div>
+                <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem" }}>Chi nhánh (Chọn nhiều) *</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: "8px" }}>
                   {branches.map(b => (
                     <button key={b} type="button" 
                       onClick={() => toggleBranch(b)}
@@ -306,19 +809,14 @@ export default function UserTable({ users, activeEmployees, branches, availableP
                 </div>
               </div>
               <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "1rem" }}>
-                <button type="button" className="btn" onClick={handleClose}>Hủy</button>
-                <button type="submit" className="btn btn-primary" disabled={isPending}>{isPending ? "Đang lưu..." : "Lưu lại"}</button>
+                <button type="button" className="sapo-btn sapo-btn-secondary" onClick={handleClose}>Hủy</button>
+                <button type="submit" className="sapo-btn" disabled={isPending}>{isPending ? "Đang lưu..." : "Lưu lại"}</button>
               </div>
             </form>
           </div>
         </div>
       )}
-      <style>{`
-        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 4px; border-radius: 4px; transition: background 0.2s; }
-        .btn-icon:hover:not(:disabled) { background: rgba(0,0,0,0.05); }
-        .btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
-      `}</style>
-    </>
+    </div>
   );
 }
 

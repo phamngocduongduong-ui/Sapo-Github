@@ -1,8 +1,13 @@
 import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/session";
 import SecurityListView from "./SecurityListView";
 
 export default async function SecurityListPage() {
+  const session = await getSession();
+  const activeBranch = session?.activeBranch;
+
   const registrations = await (prisma as any).securityregistration.findMany({
+    where: activeBranch ? { branch: activeBranch } : {},
     orderBy: { createdAt: 'desc' }
   });
 

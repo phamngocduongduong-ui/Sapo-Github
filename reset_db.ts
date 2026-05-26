@@ -6,23 +6,26 @@ async function main() {
   console.log('--- Đang xóa toàn bộ dữ liệu ---');
 
   // Xóa các bảng giao dịch trước (có khóa ngoại)
-  await prisma.orderItem.deleteMany({});
-  await prisma.order.deleteMany({});
-  await prisma.materialPlan.deleteMany({});
+  await (prisma as any).orderitem.deleteMany({});
+  await (prisma as any).order.deleteMany({});
+  await (prisma as any).materialplan.deleteMany({});
   
-  await prisma.productionPlanItem.deleteMany({});
-  await prisma.productionPlan.deleteMany({});
+  await (prisma as any).productionplanitem.deleteMany({});
+  await (prisma as any).productionplan.deleteMany({});
   
-  await prisma.purchasingPlanItem.deleteMany({});
-  await prisma.dispatchOrder.deleteMany({});
-  await prisma.purchasingPlan.deleteMany({});
+  await (prisma as any).purchasingplanitem.deleteMany({});
+  await (prisma as any).dispatchorder.deleteMany({});
+  await (prisma as any).purchasingplan.deleteMany({});
   
-  await prisma.leaveRequest.deleteMany({});
-  await prisma.salaryIncreaseRequest.deleteMany({});
+  await (prisma as any).leaverequest.deleteMany({});
+  await (prisma as any).salaryincreaserequest.deleteMany({});
+
+  await (prisma as any).contractitem.deleteMany({});
+  await (prisma as any).contract.deleteMany({});
   
   // Xóa các bảng danh mục
   await prisma.product.deleteMany({});
-  await prisma.productCategory.deleteMany({});
+  await (prisma as any).productcategory.deleteMany({});
   await prisma.customer.deleteMany({});
   await prisma.supplier.deleteMany({});
   await prisma.branch.deleteMany({});

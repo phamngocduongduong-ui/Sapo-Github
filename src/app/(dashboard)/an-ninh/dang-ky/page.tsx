@@ -14,17 +14,18 @@ export default async function SecurityRegistrationPage() {
   });
 
   const isAdmin = user?.username === "admin" || user?.role === "Admin";
+  const activeBranch = session?.activeBranch;
   const registrations = await (prisma as any).securityregistration.findMany({
+    where: activeBranch ? { branch: activeBranch } : {},
     orderBy: { createdAt: 'desc' }
   });
 
   return (
-    <div className="page-content">
-      <SecurityRegistrationTable 
-        initialData={JSON.parse(JSON.stringify(registrations))} 
-        isAdmin={isAdmin} 
-        currentUserName={user?.employeeName || user?.username || "Unknown"}
-      />
-    </div>
+    <SecurityRegistrationTable 
+      initialData={JSON.parse(JSON.stringify(registrations))} 
+      isAdmin={isAdmin} 
+      currentUserName={user?.employeeName || user?.username || "Unknown"}
+      activeBranch={activeBranch}
+    />
   );
 }

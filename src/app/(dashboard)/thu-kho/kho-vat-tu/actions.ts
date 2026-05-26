@@ -197,7 +197,7 @@ export async function deleteWarehouseLog(id: string) {
             oldData: { status: "Đã nhập kho" },
             newData: { status: "Chờ giao hàng" },
             changedBy: "Hệ thống",
-            changeDetail: `Đã xóa phiếu nhập kho ${log.logCode}. Lệnh mua chuyển về trạng thái: Chờ giao hàng`
+            changeDetail: `Đã xóa phiếu nhập kho ${log.logCode}. Đơn mua hàng chuyển về trạng thái: Chờ giao hàng`
           });
         }
       }

@@ -22,22 +22,43 @@ export async function GET() {
       return NextResponse.json({ permissions: [] }, { status: 404 });
     }
 
+    const activeBranches = (await (prisma as any).branch.findMany({
+      where: { status: "ACTIVE" },
+      select: { name: true }
+    })).map((b: any) => b.name);
+
+    const userBranches = user.branch 
+      ? user.branch.split(",").map((b: string) => b.trim()).filter(Boolean).filter((b: string) => activeBranches.includes(b))
+      : [];
+
     // Admin (username admin hoặc role Admin) có toàn quyền
     if (user.username === "admin" || user.role === "Admin") {
-      const allBranches = await (prisma as any).branch.findMany({ select: { name: true } });
-      const branchStr = allBranches.map((b: any) => b.name).join(", ");
+      const allowed = userBranches.length > 0 ? userBranches : activeBranches;
+      const defaultBranch = allowed.length > 0 ? allowed[0] : "Toàn bộ chi nhánh";
       return NextResponse.json({ 
         isAdmin: true, 
+        username: user.username,
+        role: user.role,
         employeeName: user.employeeName, 
-        branch: branchStr || "Toàn bộ chi nhánh" 
+        branch: session.activeBranch || defaultBranch,
+        allowedBranches: allowed
       });
     }
 
     const permissionIds = (user as any).permission.map((p: any) => p.id);
-    if (permissionIds.length === 0) {
-      return NextResponse.json({ permissions: [], isAdmin: false });
-    }
+    const allowed = userBranches;
 
+    if (permissionIds.length === 0) {
+      return NextResponse.json({ 
+        permissions: [], 
+        isAdmin: false,
+        username: user.username,
+        role: user.role,
+        employeeName: user.employeeName,
+        branch: session.activeBranch || allowed[0] || "Toàn bộ chi nhánh",
+        allowedBranches: allowed
+      });
+    }
 
     // Lấy chi tiết quyền từ các Mục quyền của User
     const permissions = await (prisma as any).permissiondetail.findMany({
@@ -51,8 +72,11 @@ export async function GET() {
     return NextResponse.json({ 
       permissions: Array.from(new Set(permissions.map((p: any) => p.moduleKey))),
       isAdmin: false,
+      username: user.username,
+      role: user.role,
       employeeName: user.employeeName,
-      branch: user.branch
+      branch: session.activeBranch || allowed[0] || "Toàn bộ chi nhánh",
+      allowedBranches: allowed
     });
 
   } catch (error) {

@@ -18,6 +18,7 @@ export default function DriverSelfRegistrationPage() {
   const [error, setError] = useState<string | null>(null);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
+  const [submittedLicensePlate, setSubmittedLicensePlate] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -41,11 +42,12 @@ export default function DriverSelfRegistrationPage() {
       phoneNumber: (formData.get("phoneNumber") as string)?.trim() || null,
       unit: (formData.get("unit") as string)?.toUpperCase()?.trim(),
       purpose: (formData.get("purpose") as string),
+      branch: (formData.get("branch") as string) || "Đồng Tháp",
       note: (formData.get("note") as string)?.trim() || null,
       creator: "TÀI XẾ TỰ ĐĂNG KÝ",
     };
 
-    if (!payload.licensePlate || !payload.driverName || !payload.unit) {
+    if (!payload.licensePlate || !payload.driverName || !payload.unit || !payload.idCardNumber || !payload.phoneNumber || !payload.branch) {
       setError("Vui lòng điền đầy đủ các trường thông tin bắt buộc (*)");
       setLoading(false);
       return;
@@ -54,6 +56,7 @@ export default function DriverSelfRegistrationPage() {
     try {
       const res = await createRegistration(payload);
       if (res.success) {
+        setSubmittedLicensePlate(payload.licensePlate);
         setRegistrationId(res.id || null);
         setIsSubmitted(true);
       } else {
@@ -102,50 +105,91 @@ export default function DriverSelfRegistrationPage() {
           </p>
 
           {/* QR Code Container for Live Queue Tracking */}
-          {registrationId && origin && (
-            <div style={{
-              marginTop: "1.25rem",
-              padding: "1rem 0.75rem",
-              background: "#f8fafc",
-              borderRadius: "12px",
-              border: "1px solid #e2e8f0",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "0.5rem"
-            }}>
-              <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.02em" }}>
-                Mã QR Theo Dõi Thứ Tự
-              </span>
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${origin}/x/${registrationId}`)}`}
-                alt="Mã QR Thứ tự"
-                style={{
-                  width: "140px",
-                  height: "140px",
-                  border: "4px solid white",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
-                }}
-              />
-              <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0.25rem 0 0.5rem 0", textAlign: "center", lineHeight: 1.4 }}>
-                Quét mã QR bằng điện thoại để xem trực tiếp thứ tự xếp hàng và tiến trình gọi xe của bạn
-              </p>
-              <a 
-                href={`${origin}/x/${registrationId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: "#0284c7",
-                  fontSize: "0.8rem",
-                  fontWeight: 700,
-                  textDecoration: "underline"
-                }}
-              >
-                Bấm vào đây để theo dõi và nhận thông báo
-              </a>
-            </div>
-          )}
+          {registrationId && origin && (() => {
+            const resolvedOrigin = origin.includes('localhost') || origin.includes('127.0.0.1') || origin.startsWith('http://192.168.')
+              ? 'https://ems.sapodaklak.com'
+              : origin;
+            const trackingUrl = `${resolvedOrigin}/x/${registrationId}`;
+
+            return (
+              <div style={{
+                marginTop: "1.25rem",
+                padding: "1rem 0.75rem",
+                background: "#f8fafc",
+                borderRadius: "12px",
+                border: "1px solid #e2e8f0",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "0.5rem"
+              }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                  Mã QR Theo Dõi Thứ Tự
+                </span>
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(trackingUrl)}`}
+                  alt="Mã QR Thứ tự"
+                  style={{
+                    width: "140px",
+                    height: "140px",
+                    border: "4px solid white",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+                  }}
+                />
+                <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0.25rem 0 0.5rem 0", textAlign: "center", lineHeight: 1.4 }}>
+                  Quét mã QR bằng điện thoại để xem trực tiếp thứ tự xếp hàng và tiến trình gọi xe của bạn
+                </p>
+                <a 
+                  href={trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: "#0284c7",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                    textDecoration: "underline"
+                  }}
+                >
+                  Bấm vào đây để theo dõi và nhận thông báo
+                </a>
+
+                <button 
+                  onClick={() => {
+                    const message = `Sapo EMS: Đăng ký thành công cho xe ${submittedLicensePlate}. Theo dõi vị trí hàng đợi chờ gọi tại: ${trackingUrl}`;
+                    if (navigator.share) {
+                      navigator.share({
+                        title: 'Sapo EMS Tracking',
+                        text: message,
+                        url: trackingUrl
+                      }).catch(err => {
+                        console.log("Error sharing:", err);
+                      });
+                    } else {
+                      navigator.clipboard.writeText(message);
+                      alert("Đã sao chép tin nhắn kèm link theo dõi vào bộ nhớ tạm!");
+                    }
+                  }}
+                  style={{
+                    marginTop: "0.5rem",
+                    fontSize: "0.8rem",
+                    background: "#0284c7",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "0.5rem 1rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.35rem"
+                  }}
+                >
+                  🔗 Chia sẻ / Copy link Zalo
+                </button>
+              </div>
+            );
+          })()}
         </div>
       </div>
     );
@@ -300,13 +344,40 @@ export default function DriverSelfRegistrationPage() {
             </select>
           </div>
 
+          {/* Row 3.5: Nhà máy */}
+          <div>
+            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.2rem" }}>Nhà máy *</label>
+            <input type="hidden" name="branch" value="Đồng Tháp" />
+            <select 
+              name="branch_select" 
+              defaultValue="Đồng Tháp"
+              required
+              disabled
+              style={{
+                width: "100%",
+                height: "36px",
+                border: "1.5px solid #cbd5e1",
+                borderRadius: "8px",
+                padding: "0 0.5rem",
+                fontSize: "0.85rem",
+                background: "#f1f5f9",
+                color: "#64748b"
+              }}
+            >
+              <option value="Đồng Tháp">Đồng Tháp</option>
+              <option value="Đắk Lắk">Đắk Lắk</option>
+              <option value="Hồ Chí Minh">Hồ Chí Minh</option>
+            </select>
+          </div>
+
           {/* Row 4: Số CCCD & Số điện thoại */}
           <div style={{ display: "flex", gap: "0.75rem" }}>
             <div style={{ flex: 1 }}>
-              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.2rem" }}>Số CCCD</label>
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.2rem" }}>Số CCCD *</label>
               <input 
                 type="text" 
                 name="idCardNumber" 
+                required
                 placeholder="CMND / CCCD" 
                 style={{
                   width: "100%",
@@ -320,10 +391,11 @@ export default function DriverSelfRegistrationPage() {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.2rem" }}>Số điện thoại</label>
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.2rem" }}>Số điện thoại *</label>
               <input 
                 type="tel" 
                 name="phoneNumber" 
+                required
                 placeholder="Số điện thoại" 
                 style={{
                   width: "100%",

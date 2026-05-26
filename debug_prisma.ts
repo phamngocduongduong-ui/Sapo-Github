@@ -1,7 +1,12 @@
 import { prisma } from "./src/lib/db";
 
 async function main() {
-  console.log("Prisma models:", Object.keys(prisma).filter(k => !k.startsWith("_")));
+  const contracts = await prisma.contract.findMany({
+    select: { status: true }
+  });
+  const statuses = Array.from(new Set(contracts.map(c => c.status)));
+  console.log("Distinct contract statuses in database:", statuses);
+  console.log("Contracts:", contracts);
 }
 
 main();

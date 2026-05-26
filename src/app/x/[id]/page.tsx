@@ -8,15 +8,15 @@ export const revalidate = 0; // Force dynamic page re-rendering
 function getCallTypeName(type: string) {
   switch (type) {
     case "can-xe":
-      return "Gọi cân xe";
+      return "Cân xe";
     case "kho-vat-tu":
-      return "Gọi vào kho vật tư";
+      return "Kho vật tư";
     case "kho-nguyen-lieu-cua-1":
-      return "Gọi vào kho nguyên liệu cửa 1";
+      return "Kho nguyên liệu cửa 1";
     case "kho-nguyen-lieu-cua-2":
-      return "Gọi vào kho nguyên liệu cửa 2";
+      return "Kho nguyên liệu cửa 2";
     default:
-      return "Gọi vào cổng";
+      return "Cân xe";
   }
 }
 
@@ -34,10 +34,18 @@ export default async function DriverQueueDashboardPage({ params }: { params: { i
   const startOfDay = new Date(`${dateStr}T00:00:00+07:00`);
   const endOfDay = new Date(`${dateStr}T23:59:59.999+07:00`);
 
-  // Fetch all same-day registrations with the same purpose, sorted by timeIn ascending
-  const sameDayRegs = await (prisma as any).securityregistration.findMany({
+  const hasEnteredQueue = registration.status !== "Đã đăng ký" && registration.status !== "Đã vào";
+  const isCompleted = registration.status === "Đã hoàn thành";
+
+  // Get called state from global map
+  const calledMap = (global as any).calledVehicles;
+  const calledInfo = calledMap ? calledMap.get(registration.licensePlate) : null;
+  const isCalled = registration.status === "Đã gọi xe" || !!calledInfo;
+
+  // Fetch all same-day registrations, sorted by timeIn ascending
+  const allSameDayRegs = await (prisma as any).securityregistration.findMany({
     where: {
-      purpose: registration.purpose,
+      branch: registration.branch,
       timeIn: {
         gte: startOfDay,
         lte: endOfDay
@@ -48,42 +56,23 @@ export default async function DriverQueueDashboardPage({ params }: { params: { i
     }
   });
 
-  // Filter to only include vehicles that have entered the gate in the queue sequence
-  const activeQueueRegs = sameDayRegs.filter((r: any) => r.status === "Đã vào cổng" || r.status === "Đã gọi xe");
+  // Calculate global registration order number in the day
+  const myGlobalIndex = allSameDayRegs.findIndex((r: any) => r.id === registration.id);
+  const queueNumber = myGlobalIndex !== -1 ? myGlobalIndex + 1 : null;
 
-  // Sort activeQueueRegs so called vehicles ("Đã gọi xe") come before waiting/registered vehicles ("Đã vào cổng")
-  activeQueueRegs.sort((a: any, b: any) => {
-    const aIsCalled = a.status === "Đã gọi xe";
-    const bIsCalled = b.status === "Đã gọi xe";
-    
-    if (aIsCalled && !bIsCalled) return -1;
-    if (!aIsCalled && bIsCalled) return 1;
-    
-    if (aIsCalled && bIsCalled) {
-      const calledMap = (global as any).calledVehicles;
-      
-      const aCleanPlate = a.licensePlate.trim().toUpperCase();
-      const aCalledInfo = calledMap ? calledMap.get(aCleanPlate) : null;
-      const aTime = aCalledInfo ? aCalledInfo.timestamp : new Date(a.updatedAt).getTime();
+  // Filter registrations of the same purpose
+  const samePurposeRegs = allSameDayRegs.filter((r: any) => r.purpose === registration.purpose);
 
-      const bCleanPlate = b.licensePlate.trim().toUpperCase();
-      const bCalledInfo = calledMap ? calledMap.get(bCleanPlate) : null;
-      const bTime = bCalledInfo ? bCalledInfo.timestamp : new Date(b.updatedAt).getTime();
+  // The wait-to-call queue only includes same-purpose vehicles with status "Đã vào cổng" (not called, not completed)
+  const waitingToCallRegs = samePurposeRegs.filter((r: any) => r.status === "Đã vào cổng");
+  
+  // Sort by entry time (timeIn) ascending (first-in first-served)
+  waitingToCallRegs.sort((a: any, b: any) => new Date(a.timeIn).getTime() - new Date(b.timeIn).getTime());
 
-      return aTime - bTime;
-    }
-    
-    return new Date(a.timeIn).getTime() - new Date(b.timeIn).getTime();
-  });
-
-  const hasEnteredQueue = registration.status === "Đã vào cổng" || registration.status === "Đã gọi xe";
-
-  // 1-indexed order position of this vehicle
-  const myIndex = hasEnteredQueue ? activeQueueRegs.findIndex((r: any) => r.id === registration.id) : -1;
-  const queueNumber = myIndex !== -1 ? myIndex + 1 : null;
-
-  // Calculate vehicles currently waiting in front of us
-  const waitingInFront = myIndex !== -1 ? myIndex : 0;
+  // Find index in the waiting list
+  const myIndexInWaiting = waitingToCallRegs.findIndex((r: any) => r.id === registration.id);
+  const myQueuePos = myIndexInWaiting !== -1 ? myIndexInWaiting + 1 : null;
+  const waitingInFront = myIndexInWaiting !== -1 ? myIndexInWaiting : 0;
 
   const formattedTime = new Date(registration.timeIn).toLocaleTimeString("vi-VN", {
     hour: "2-digit",
@@ -96,13 +85,6 @@ export default async function DriverQueueDashboardPage({ params }: { params: { i
     month: "2-digit",
     year: "numeric"
   });
-
-  const isCompleted = registration.status === "Đã hoàn thành";
-
-  // Get called state from global map
-  const calledMap = (global as any).calledVehicles;
-  const calledInfo = calledMap ? calledMap.get(registration.licensePlate) : null;
-  const isCalled = registration.status === "Đã gọi xe" || !!calledInfo;
 
   // Step 2 properties (Đã vào cổng)
   const hasEntered = registration.status === "Đã vào cổng" || isCalled || isCompleted;
@@ -158,27 +140,6 @@ export default async function DriverQueueDashboardPage({ params }: { params: { i
           .driver-page-container {
             padding: 1.5rem 1rem !important;
           }
-          .driver-header {
-            margin-bottom: 0.8rem !important;
-            max-width: 820px !important;
-          }
-          .driver-card {
-            max-width: 820px !important;
-          }
-          .driver-card-body {
-            display: grid !important;
-            grid-template-columns: 1.05fr 0.95fr !important;
-            gap: 1.4rem !important;
-            padding: 1.2rem 1.4rem !important;
-          }
-          .driver-right-col {
-            border-left: 1px solid #e2e8f0;
-            padding-left: 1.4rem;
-            gap: 0.85rem !important;
-          }
-          .driver-left-col {
-            gap: 0.85rem !important;
-          }
         }
       `}} />
 
@@ -217,8 +178,8 @@ export default async function DriverQueueDashboardPage({ params }: { params: { i
           
           {/* Giant Queue Number Display */}
           <div style={{
-            background: isCompleted ? "#f0fdf4" : (!hasEnteredQueue ? "#fffbeb" : "#f0f9ff"),
-            border: isCompleted ? "1.5px dashed #86efac" : (!hasEnteredQueue ? "1.5px dashed #fef3c7" : "1.5px dashed #bae6fd"),
+            background: isCompleted ? "#f0fdf4" : (isCalled ? "#f0f9ff" : (!hasEnteredQueue ? "#fffbeb" : "#f0f9ff")),
+            border: isCompleted ? "1.5px dashed #86efac" : (isCalled ? "1.5px dashed #bae6fd" : (!hasEnteredQueue ? "1.5px dashed #fef3c7" : "1.5px dashed #bae6fd")),
             borderRadius: "11px",
             padding: "0.45rem 0.55rem",
             textAlign: "center",
@@ -227,11 +188,11 @@ export default async function DriverQueueDashboardPage({ params }: { params: { i
             alignItems: "center",
             justifyContent: "center"
           }}>
-            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: isCompleted ? "#166534" : (!hasEnteredQueue ? "#b45309" : "#0369a1"), textTransform: "uppercase" }}>
-              {isCompleted ? "Trạng thái xe" : (hasEnteredQueue ? "Vị trí hàng đợi hiện tại" : "Trạng thái xe")}
+            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: isCompleted ? "#166534" : (isCalled ? "#0369a1" : (!hasEnteredQueue ? "#b45309" : "#0369a1")), textTransform: "uppercase" }}>
+              {isCompleted || isCalled || !hasEnteredQueue ? "Trạng thái xe" : "Vị trí hàng đợi chờ gọi"}
             </span>
-            <div style={{ fontSize: isCompleted || !hasEnteredQueue ? "2rem" : "2.4rem", fontWeight: 900, color: isCompleted ? "#10b981" : (hasEnteredQueue ? "#0284c7" : "#d97706"), margin: "0.02rem 0", lineHeight: 1 }}>
-              {isCompleted ? "ĐÃ RA CỔNG" : (hasEnteredQueue ? `#${waitingInFront + 1}` : "CHỜ VÀO CỔNG")}
+            <div style={{ fontSize: isCompleted || isCalled || !hasEnteredQueue ? "2rem" : "2.4rem", fontWeight: 900, color: isCompleted ? "#10b981" : (isCalled ? "#0284c7" : (hasEnteredQueue ? "#0284c7" : "#d97706")), margin: "0.02rem 0", lineHeight: 1 }}>
+              {isCompleted ? "ĐÃ RA CỔNG" : (isCalled ? "ĐÃ GỌI XE" : (hasEnteredQueue ? `#${myQueuePos}` : "CHỜ VÀO CỔNG"))}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "0", fontSize: "0.74rem", color: "#64748b", fontWeight: 500 }}>
               <span>Hàng đợi: <strong style={{ color: "#334155" }}>{registration.purpose}</strong></span>
@@ -240,7 +201,7 @@ export default async function DriverQueueDashboardPage({ params }: { params: { i
           </div>
 
           {/* Queue Real-time Message */}
-          {!isCompleted && (
+          {!isCompleted && !isCalled && (
             <div style={{
               background: !hasEnteredQueue ? "#fffbeb" : (waitingInFront === 0 ? "#fef3c7" : "#f8fafc"),
               border: !hasEnteredQueue ? "1px solid #fde68a" : (waitingInFront === 0 ? "1px solid #fde68a" : "1px solid #e2e8f0"),
@@ -254,7 +215,7 @@ export default async function DriverQueueDashboardPage({ params }: { params: { i
               {!hasEnteredQueue ? (
                 <>📢 Vui lòng di chuyển xe đến cổng bảo vệ để xác nhận vào cổng và nhận số thứ tự.</>
               ) : waitingInFront === 0 ? (
-                <>📢 Bạn đang là xe tiếp theo chuẩn bị vào cổng!</>
+                <>📢 Bạn đang là xe tiếp theo chuẩn bị được gọi!</>
               ) : (
                 <>⏳ Có <strong style={{ color: "#0284c7", fontSize: "0.88rem" }}>{waitingInFront}</strong> xe khác đang xếp hàng chờ trước bạn</>
               )}

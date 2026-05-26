@@ -67,6 +67,8 @@ model customer {
   phone          String?
   email          String?
   address        String?
+  representative String?
+  status         String?  @default("Hoạt động")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -204,7 +206,6 @@ model order {
   orderDate            DateTime        @default(now())
   branch               String?
   requestDeliveryDate  DateTime?
-  productionFinishDate DateTime?
   shipDate             DateTime?
   thermometer          Boolean         @default(false)
   status               String          @default("Tạo mới")
@@ -225,9 +226,14 @@ model orderitem {
   orderId        String
   productName    String
   packaging      String?
+  unit           String?
   quantity       Int      @default(0)
   hasPallet      Boolean  @default(false)
   hasCornerGuard Boolean  @default(false)
+  printedBag     Boolean  @default(false)
+  printedBox     Boolean  @default(false)
+  brix           String?
+  otherRequirements String?
   note           String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -308,6 +314,8 @@ model product {
   id              String          @id @default(cuid())
   code            String          @unique(map: "Product_code_key")
   name            String
+  englishName     String?
+  packaging       String?
   categoryId      String
   createdAt       DateTime        @default(now())
   updatedAt       DateTime @updatedAt
@@ -368,6 +376,7 @@ model purchaseorder {
   purpose             String
   status              String                @default("Tạo mới")
   deliveryLocation    String?
+  supplier            String?
   note                String?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime @updatedAt
@@ -376,17 +385,21 @@ model purchaseorder {
 }
 
 model purchaseorderdetail {
-  id                String        @id
-  purchaseOrderId   String
-  productCode       String
-  productName       String
-  requestedQuantity Float         @default(0)
-  deliveryLocation  String?
-  note              String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime @updatedAt
-  unit              String?
-  purchaseorder     purchaseorder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade, map: "PurchaseOrderDetail_purchaseOrderId_fkey")
+  id                  String        @id
+  purchaseOrderId     String
+  productCode         String
+  productName         String
+  proposalProductName String?
+  requestedQuantity   Float         @default(0)
+  proposalQuantity    Float?
+  price               Float         @default(0)
+  amount              Float         @default(0)
+  deliveryLocation    String?
+  note                String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime @updatedAt
+  unit                String?
+  purchaseorder       purchaseorder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade, map: "PurchaseOrderDetail_purchaseOrderId_fkey")
 
   @@index([purchaseOrderId], map: "PurchaseOrderDetail_purchaseOrderId_fkey")
 }
@@ -516,14 +529,18 @@ model salarylevel {
 }
 
 model supplier {
-  id        String   @id
-  code      String   @unique(map: "Supplier_code_key")
-  name      String
-  phone     String?
-  email     String?
-  address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  code       String   @unique(map: "Supplier_code_key")
+  name       String
+  taxCode    String?
+  phone      String?
+  email      String?
+  address    String?
+  debtPolicy String?
+  debtDays   Int      @default(0)
+  status     String?  @default("Hoạt động")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model transferpromotion {
@@ -568,6 +585,9 @@ model user {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime @updatedAt
   permission   permission[] @relation("permissiontouser")
+  deviceSecret        String?      @db.VarChar(255)
+  pendingDeviceSecret String?      @db.VarChar(255)
+  deviceStatus        String       @default("APPROVED")
 }
 
 model violation {
@@ -751,6 +771,7 @@ model securityregistration {
   phoneNumber  String?
   unit         String
   purpose      String
+  branch       String   @default("Đồng Tháp")
   status       String   @default("Đã vào")
   timeIn       DateTime @default(now())
   timeOut      DateTime?
@@ -758,3 +779,88 @@ model securityregistration {
   creator      String?
   updatedAt    DateTime @updatedAt
 }
+
+model contract {
+  id                    String         @id
+  contractNumber        String         @unique(map: "Contract_contractNumber_key")
+  contractDate          DateTime
+  seller                String
+  buyer                 String
+  deliveryDate          String?
+  portOfLoading         String?
+  portOfDischarge       String?
+  transshipment         String?
+  partialShipment       String?
+  deliveryTerms         String?
+  paymentMethod         String?
+  paymentTerms          String?
+  bank                  String?
+  bankAccount           String?
+  bankName              String?
+  bankAddress           String?
+  beneficiaryName       String?
+  beneficiaryAddress    String?
+  swiftCode             String?
+  accompanyingDocuments String? @db.Text
+  expiryDate            DateTime?
+  thermometer           Boolean        @default(false)
+  thermometerQty        Int            @default(0)
+  pallet                Boolean        @default(false)
+  salesEmployee         String?
+  status                String         @default("Tạo mới")
+  note                  String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  contractitem          contractitem[]
+}
+
+model contractitem {
+  id          String   @id
+  contractId  String
+  productCode String?
+  productName String
+  unit        String?
+  quantity    Float    @default(0)
+  price       Float    @default(0)
+  amount      Float    @default(0)
+  packaging   String?
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  contract    contract @relation(fields: [contractId], references: [id], onDelete: Cascade, map: "ContractItem_contractId_fkey")
+
+  @@index([contractId], map: "ContractItem_contractId_fkey")
+}
+
+model maintenanceproposal {
+  id           String                    @id @default(cuid())
+  proposalCode String                    @unique(map: "MaintenanceProposal_proposalCode_key")
+  proposalDate DateTime                  @default(now())
+  proposer     String
+  branch       String
+  purpose      String
+  urgency      String
+  status       String                    @default("Tạo mới")
+  note         String?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  items        maintenanceproposalitem[]
+}
+
+model maintenanceproposalitem {
+  id           String              @id @default(cuid())
+  proposalId   String
+  productName  String
+  techStandard String?
+  unit         String?
+  quantity     Float               @default(0)
+  price        Float               @default(0)
+  amount       Float               @default(0)
+  note         String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  proposal     maintenanceproposal @relation(fields: [proposalId], references: [id], onDelete: Cascade, map: "MaintenanceProposalItem_proposalId_fkey")
+
+  @@index([proposalId], map: "MaintenanceProposalItem_proposalId_fkey")
+}
+

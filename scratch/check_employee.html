@@ -1,0 +1,219 @@
+<!DOCTYPE html><html lang="vi"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/><link rel="stylesheet" href="/_next/static/css/app/layout.css?v=1779389879264" data-precedence="next_static/css/app/layout.css"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/chunks/webpack.js?v=1779389879264"/><script src="/_next/static/chunks/main-app.js?v=1779389879264" async=""></script><script src="/_next/static/chunks/app-pages-internals.js" async=""></script><script src="/_next/static/chunks/app/an-ninh/kiem-tra/page.js" async=""></script><script src="/_next/static/chunks/app/an-ninh/layout.js" async=""></script><script src="/_next/static/chunks/app/layout.js" async=""></script><title>EMS - Enterprise Management System</title><meta name="description" content="Phần mềm quản lý doanh nghiệp tích hợp Kinh Doanh, Sản Xuất, Thu Mua"/><script>
+          // Prevent mobile pinch-to-zoom
+          document.addEventListener('touchmove', function (event) {
+            if (event.touches.length > 1) {
+              event.preventDefault();
+            }
+          }, { passive: false });
+
+          // Prevent iOS Safari pinch-gesture zoom
+          document.addEventListener('gesturestart', function (event) {
+            event.preventDefault();
+          });
+        </script><script src="/_next/static/chunks/polyfills.js" noModule=""></script></head><body style="touch-action:manipulation"><div style="display:flex;align-items:center;justify-content:center;height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background-color:#f8fafc;padding:20px"><div style="width:100%;max-width:1200px"><!--$--><div class="check-page-container"><style>
+        .check-page-container {
+          width: 100%;
+          min-width: 0;
+          font-family: "Segoe UI", -apple-system, sans-serif;
+          font-size: 13px;
+          padding: 10px 0px;
+        }
+        .check-page-container input,
+        .check-page-container button,
+        .check-page-container table,
+        .check-page-container td,
+        .check-page-container th,
+        .check-page-container label {
+          font-size: 13px !important;
+          font-family: "Segoe UI", -apple-system, sans-serif !important;
+        }
+        .breadcrumb-banner {
+          background-color: #003466;
+          color: white;
+          padding: 8px 15px;
+          font-weight: 700;
+          display: block;
+          border-radius: 0 !important;
+          margin-top: 0;
+          margin-left: -20px;
+          margin-right: -20px;
+          text-transform: uppercase;
+        }
+        .check-layout {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          width: 100%;
+          margin-top: 15px;
+        }
+        .search-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          padding: 10px;
+          max-width: 550px;
+          width: 100%;
+          margin: 0 auto;
+        }
+        .search-box-base {
+          position: relative;
+          display: flex;
+          align-items: center;
+          width: 300px;
+          max-width: 100%;
+        }
+        .search-box-base input {
+          width: 100%;
+          height: 32px;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 4px !important;
+          outline: none !important;
+          background: white !important;
+          padding: 6px 30px 6px 32px !important;
+        }
+        .search-box-base .search-icon {
+          position: absolute;
+          left: 10px;
+          color: #64748b;
+        }
+        .sapo-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px;
+          border-radius: 4px;
+          font-weight: 400;
+          font-size: 13px !important;
+          cursor: pointer;
+          transition: background-color 0.2s, transform 0.1s;
+          border: none;
+          height: 32px;
+          white-space: nowrap;
+        }
+        .sapo-btn:hover {
+          background-color: #002244;
+        }
+        .sapo-btn:active {
+          transform: scale(0.98);
+        }
+        .sapo-btn-secondary {
+          background-color: #475569;
+        }
+        .sapo-btn-secondary:hover {
+          background-color: #334155;
+        }
+        .scan-status-panel {
+          border-radius: 6px;
+          padding: 12px 15px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-weight: 600;
+          transition: all 0.2s ease;
+        }
+        .scan-status-success {
+          background-color: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          color: #065f46;
+        }
+        .scan-status-resigned {
+          background-color: #fef2f2;
+          border: 1px solid #fca5a5;
+          color: #991b1b;
+        }
+        .scan-status-error {
+          background-color: #fffbeb;
+          border: 1px solid #fde68a;
+          color: #92400e;
+        }
+        .scan-status-idle {
+          background-color: #f8fafc;
+          border: 1px solid #cbd5e1;
+          color: #475569;
+        }
+        .base-table-wrapper {
+          max-height: 520px;
+          overflow-y: auto;
+          overflow-x: auto;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          background: white;
+        }
+        .base-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .base-table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
+          text-align: left;
+          height: 35px !important;
+          padding: 8px 12px !important;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+        .base-table td {
+          padding: 10px 12px !important;
+          vertical-align: middle !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          color: #334155;
+        }
+        .row-hoverable:hover {
+          background-color: #f8fafc;
+          cursor: pointer;
+        }
+        .row-selected {
+          background-color: #eff6ff !important;
+        }
+        .status-badge {
+          display: inline-block;
+          padding: 3px 8px;
+          font-size: 11px !important;
+          font-weight: 700;
+          border-radius: 9999px;
+          text-transform: uppercase;
+        }
+        .status-active {
+          background-color: #d1fae5;
+          color: #065f46;
+        }
+        .status-resigned {
+          background-color: #fee2e2;
+          color: #991b1b;
+        }
+        .table-loading-state {
+          padding: 40px;
+          text-align: center;
+          color: #64748b;
+        }
+        .table-empty-state {
+          padding: 40px;
+          text-align: center;
+          color: #64748b;
+        }
+        @keyframes popIn {
+          from { opacity: 0; transform: scale(0.97); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-6px); }
+          75% { transform: translateX(6px); }
+        }
+        .animate-pop-in {
+          animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .animate-shake {
+          animation: shake 0.4s ease-in-out;
+        }
+      </style><div class="breadcrumb-banner">Kiểm tra thông tin nhân viên</div><div class="check-layout"><form class="search-row"><div class="search-box-base"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search search-icon"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" class="search-input" placeholder="Nhập mã nhân viên, họ tên, bộ phận hoặc chức vụ..." autofocus="" value=""/></div><button type="submit" class="sapo-btn">Tìm kiếm</button><button type="button" class="sapo-btn sapo-btn-secondary">Làm mới</button></form><div style="margin:15px auto 0;max-width:550px;width:100%"><div style="background:white;border:1.5px dashed #cbd5e1;border-radius:12px;padding:80px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#64748b"><div style="background:#f1f5f9;width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#64748b"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-fingerprint "><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"></path><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"></path><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"></path><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"></path><path d="M8.65 22c.21-.66.45-1.32.57-2"></path><path d="M14 13.12c0 2.38 0 6.38-1 8.88"></path><path d="M2 16h.01"></path><path d="M21.8 16c.2-2 .131-5.354 0-6"></path><path d="M9 6.8a6 6 0 0 1 9 5.2c0 .47 0 1.17-.02 2"></path></svg></div><h3 style="margin:0;font-size:22px;font-weight:700;color:#334155">ĐANG CHỜ THÔNG TIN QUÉT THẺ</h3><p style="margin:0;font-size:18px;color:#64748b">Vui lòng quét thẻ từ hoặc nhập mã nhân viên/tên vào ô tìm kiếm để kiểm tra.</p></div></div></div></div><!--/$--></div></div><script src="/_next/static/chunks/webpack.js?v=1779389879264" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0]);self.__next_f.push([2,null])</script><script>self.__next_f.push([1,"1:HL[\"/_next/static/css/app/layout.css?v=1779389879264\",\"style\"]\n0:D{\"name\":\"r5\",\"env\":\"Server\"}\n"])</script><script>self.__next_f.push([1,"2:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n5:\"$Sreact.suspense\"\n6:I[\"(app-pages-browser)/./src/app/an-ninh/kiem-tra/CheckEmployee.tsx\",[\"app/an-ninh/kiem-tra/page\",\"static/chunks/app/an-ninh/kiem-tra/page.js\"],\"default\"]\n7:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n8:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n9:I[\"(app-pages-browser)/./src/app/an-ninh/layout.tsx\",[\"app/an-ninh/layout\",\"static/chunks/app/an-ninh/layout.js\"],\"default\",1]\nb:I[\"(app-pages-browser)/./src/components/FirebaseAnalytics.tsx\",[\"app/layout\",\"static/chunks/app/layout.js\"],\"default\"]\nf:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n3:D{\"name\":\"\",\"env\":\"Server\"}\n4:D{\"name\":\"KiemTraPage\",\"env\":\"Server\"}\n4:[\"$\",\"div\",null,{\"style\":{\"display\":\"flex\",\"alignItems\":\"center\",\"justifyContent\":\"center\",\"height\":\"100vh\",\"overflowY\":\"auto\",\"WebkitOverflowScrolling\":\"touch\",\"backgroundColor\":\"#f8fafc\",\"padding\":\"20px\"},\"children\":[\"$\",\"div\",null,{\"style\":{\"width\":\"100%\",\"maxWidth\":\"1200px\"},\"children\":[\"$\",\"$5\",null,{\"fallback\":[\"$\",\"div\",null,{\"className\":\"check-loading-state\",\"style\":{\"textAlign\":\"center\",\"padding\":\"2rem\"},\"children\":[[\"$\",\"div\",null,{\"className\":\"loading-pulse\"}],[\"$\",\"p\",null,{\"style\":{\"marginTop\":\"1rem\",\"color\":\"#64748b\",\"fontFamily\":\"sans-serif\"},\"children\":\"Đang tải giao diện kiểm tra...\"}]]}],\"children\":[\"$\",\"$L6\",null,{}]}]}]}]\na:D{\"name\":\"RootLayout\",\"env\":\"Server\"}\nc:D{\"name\":\"NotFound\",\"env\":\"Server\"}\nc:[[\"$\",\"title\",null,{\"children\":\"404: This page could not be found.\"}],[\"$\",\"div\",null,{\"style\":{\"fontFamily\":\"system-ui,\\\"Segoe UI\\\",Roboto,Helvetica,Arial,sans-serif,\\\"Apple Color Emoj"])</script><script>self.__next_f.push([1,"i\\\",\\\"Segoe UI Emoji\\\"\",\"height\":\"100vh\",\"textAlign\":\"center\",\"display\":\"flex\",\"flexDirection\":\"column\",\"alignItems\":\"center\",\"justifyContent\":\"center\"},\"children\":[\"$\",\"div\",null,{\"children\":[[\"$\",\"style\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\"}}],[\"$\",\"h1\",null,{\"className\":\"next-error-h1\",\"style\":{\"display\":\"inline-block\",\"margin\":\"0 20px 0 0\",\"padding\":\"0 23px 0 0\",\"fontSize\":24,\"fontWeight\":500,\"verticalAlign\":\"top\",\"lineHeight\":\"49px\"},\"children\":\"404\"}],[\"$\",\"div\",null,{\"style\":{\"display\":\"inline-block\"},\"children\":[\"$\",\"h2\",null,{\"style\":{\"fontSize\":14,\"fontWeight\":400,\"lineHeight\":\"49px\",\"margin\":0},\"children\":\"This page could not be found.\"}]}]]}]}]]\na:[\"$\",\"html\",null,{\"lang\":\"vi\",\"children\":[[\"$\",\"head\",null,{\"children\":[\"$\",\"script\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"\\n          // Prevent mobile pinch-to-zoom\\n          document.addEventListener('touchmove', function (event) {\\n            if (event.touches.length \u003e 1) {\\n              event.preventDefault();\\n            }\\n          }, { passive: false });\\n\\n          // Prevent iOS Safari pinch-gesture zoom\\n          document.addEventListener('gesturestart', function (event) {\\n            event.preventDefault();\\n          });\\n        \"}}]}],[\"$\",\"body\",null,{\"style\":{\"touchAction\":\"manipulation\"},\"children\":[[\"$\",\"$Lb\",null,{}],[\"$\",\"$L7\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\"],\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L8\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$c\",\"notFoundStyles\":[]}]]}]]}]\nd:D{\"name\":\"r6\",\"env\":\"Server\"}\nd:null\ne:D{\"name\":\"\",\"env\":\"Server\"}\n10:[]\n0:[\"$\",\"$L2\",null,{\"buildId\":\"development\",\"assetPrefix\":\"\",\"urlParts\":[\"\",\"an-ninh\",\"kiem-tra\"],\"initialTree\":[\"\",{\"children\":[\"an"])</script><script>self.__next_f.push([1,"-ninh\",{\"children\":[\"kiem-tra\",{\"children\":[\"__PAGE__\",{}]}]}]},\"$undefined\",\"$undefined\",true],\"initialSeedData\":[\"\",{\"children\":[\"an-ninh\",{\"children\":[\"kiem-tra\",{\"children\":[\"__PAGE__\",{},[[\"$L3\",\"$4\",null],null],null]},[null,[\"$\",\"$L7\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\",\"an-ninh\",\"children\",\"kiem-tra\",\"children\"],\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L8\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"notFoundStyles\":\"$undefined\"}]],null]},[[null,[\"$\",\"$L9\",null,{\"children\":[\"$\",\"$L7\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\",\"an-ninh\",\"children\"],\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L8\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"notFoundStyles\":\"$undefined\"}],\"params\":{}}]],null],null]},[[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/app/layout.css?v=1779389879264\",\"precedence\":\"next_static/css/app/layout.css\",\"crossOrigin\":\"$undefined\"}]],\"$a\"],null],null],\"couldBeIntercepted\":false,\"initialHead\":[\"$d\",\"$Le\"],\"globalErrorComponent\":\"$f\",\"missingSlots\":\"$W10\"}]\n"])</script><script>self.__next_f.push([1,"e:[[\"$\",\"meta\",\"0\",{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no\"}],[\"$\",\"meta\",\"1\",{\"charSet\":\"utf-8\"}],[\"$\",\"title\",\"2\",{\"children\":\"EMS - Enterprise Management System\"}],[\"$\",\"meta\",\"3\",{\"name\":\"description\",\"content\":\"Phần mềm quản lý doanh nghiệp tích hợp Kinh Doanh, Sản Xuất, Thu Mua\"}]]\n3:null\n"])</script></body></html>

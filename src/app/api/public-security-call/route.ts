@@ -29,9 +29,10 @@ export async function GET(request: Request) {
     const startOfDay = new Date(`${dateStr}T00:00:00+07:00`);
     const endOfDay = new Date(`${dateStr}T23:59:59.999+07:00`);
 
-    const sameDayRegs = await (prisma as any).securityregistration.findMany({
+    // Fetch all same-day registrations, sorted by timeIn ascending
+    const allSameDayRegs = await (prisma as any).securityregistration.findMany({
       where: {
-        purpose: registration.purpose,
+        branch: registration.branch,
         timeIn: {
           gte: startOfDay,
           lte: endOfDay
@@ -42,42 +43,23 @@ export async function GET(request: Request) {
       }
     });
 
-    // Filter to only include entered vehicles in the queue sequence
-    const activeQueueRegs = sameDayRegs.filter((r: any) => r.status === "Đã vào cổng" || r.status === "Đã gọi xe");
+    // Calculate global registration order number in the day
+    const myGlobalIndex = allSameDayRegs.findIndex((r: any) => r.id === registration.id);
+    const queueNumber = myGlobalIndex !== -1 ? myGlobalIndex + 1 : null;
 
-    // Sort activeQueueRegs so called vehicles ("Đã gọi xe") come before waiting/registered vehicles ("Đã vào cổng")
-    activeQueueRegs.sort((a: any, b: any) => {
-      const aIsCalled = a.status === "Đã gọi xe";
-      const bIsCalled = b.status === "Đã gọi xe";
-      
-      if (aIsCalled && !bIsCalled) return -1;
-      if (!aIsCalled && bIsCalled) return 1;
-      
-      if (aIsCalled && bIsCalled) {
-        const calledMap = (global as any).calledVehicles;
-        
-        const aCleanPlate = a.licensePlate.trim().toUpperCase();
-        const aCalledInfo = calledMap ? calledMap.get(aCleanPlate) : null;
-        const aTime = aCalledInfo ? aCalledInfo.timestamp : new Date(a.updatedAt).getTime();
+    // Filter registrations of the same purpose
+    const samePurposeRegs = allSameDayRegs.filter((r: any) => r.purpose === registration.purpose);
 
-        const bCleanPlate = b.licensePlate.trim().toUpperCase();
-        const bCalledInfo = calledMap ? calledMap.get(bCleanPlate) : null;
-        const bTime = bCalledInfo ? bCalledInfo.timestamp : new Date(b.updatedAt).getTime();
+    // The wait-to-call queue only includes same-purpose vehicles with status "Đã vào cổng" (not called, not completed)
+    const waitingToCallRegs = samePurposeRegs.filter((r: any) => r.status === "Đã vào cổng");
+    
+    // Sort by entry time (timeIn) ascending (first-in first-served)
+    waitingToCallRegs.sort((a: any, b: any) => new Date(a.timeIn).getTime() - new Date(b.timeIn).getTime());
 
-        return aTime - bTime;
-      }
-      
-      return new Date(a.timeIn).getTime() - new Date(b.timeIn).getTime();
-    });
-
-    const hasEnteredQueue = registration.status === "Đã vào cổng" || registration.status === "Đã gọi xe";
-
-    // 1-indexed order position of this vehicle
-    const myIndex = hasEnteredQueue ? activeQueueRegs.findIndex((r: any) => r.id === registration.id) : -1;
-    const queueNumber = myIndex !== -1 ? myIndex + 1 : null;
-
-    // Calculate vehicles currently waiting in front of us
-    const waitingInFront = myIndex !== -1 ? myIndex : 0;
+    // Find index in the waiting list
+    const myIndexInWaiting = waitingToCallRegs.findIndex((r: any) => r.id === registration.id);
+    const myQueuePos = myIndexInWaiting !== -1 ? myIndexInWaiting + 1 : null;
+    const waitingInFront = myIndexInWaiting !== -1 ? myIndexInWaiting : 0;
 
     // 3. Get called state from global map
     const calledMap = (global as any).calledVehicles;
@@ -86,7 +68,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       status: registration.status,
       waitingInFront,
-      queueNumber,
+      queueNumber: myQueuePos,
       calledInfo: calledInfo || null
     }, {
       headers: {

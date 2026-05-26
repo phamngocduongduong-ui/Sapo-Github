@@ -98,7 +98,7 @@ export default function WarehouseLogPage() {
   };
 
   const handleDeleteLog = (id: string) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa phiếu này? Trạng thái đơn mua/lệnh mua sẽ được hoàn trả.")) return;
+    if (!confirm("Bạn có chắc chắn muốn xóa phiếu này? Trạng thái đơn mua/đơn mua hàng sẽ được hoàn trả.")) return;
     startTransition(async () => {
       await deleteWarehouseLog(id);
       fetchData();
@@ -166,7 +166,7 @@ export default function WarehouseLogPage() {
   });
 
   return (
-    <div style={{ padding: "1.5rem", width: "100%", height: "calc(100vh - 60px)", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div style={{ padding: "1.5rem", width: "100%", minHeight: "calc(100vh - 140px)", height: "auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
@@ -178,10 +178,10 @@ export default function WarehouseLogPage() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: "1.5rem", flex: 1, overflow: "hidden" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: "1.5rem" }}>
         
         {/* Left Column: Tabs */}
-        <div className="card" style={{ display: "flex", flexDirection: "column", padding: 0, overflow: "hidden" }}>
+        <div className="card" style={{ display: "flex", flexDirection: "column", padding: 0 }}>
           <div style={{ display: "flex", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", alignItems: "center", paddingRight: "0.5rem" }}>
             <div style={{ flex: 1, display: "flex" }}>
               <button 
@@ -212,7 +212,7 @@ export default function WarehouseLogPage() {
             </button>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
+          <div style={{ padding: "1rem" }}>
             {activeLeftTab === "in" ? (
               pendingIn.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "2rem", color: "#94a3b8" }}>Không có đơn chờ giao nào</div>
@@ -281,7 +281,7 @@ export default function WarehouseLogPage() {
         </div>
 
         {/* Right Column: Log List */}
-        <div className="card" style={{ display: "flex", flexDirection: "column", padding: 0, overflow: "hidden" }}>
+        <div className="card" style={{ display: "flex", flexDirection: "column", padding: 0 }}>
           <div style={{ padding: "1.25rem", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Inbox size={20} /> Nhật ký kho vật tư
@@ -318,7 +318,7 @@ export default function WarehouseLogPage() {
             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto" }}>
+          <div>
             <table className="table">
               <thead>
                 <tr>

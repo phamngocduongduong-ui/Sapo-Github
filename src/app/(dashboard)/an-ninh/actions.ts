@@ -13,6 +13,7 @@ export async function createRegistration(data: any) {
         phoneNumber: data.phoneNumber,
         unit: data.unit,
         purpose: data.purpose,
+        branch: data.branch || "Đồng Tháp",
         status: "Đã đăng ký",
         timeIn: new Date(),
         note: data.note,
@@ -39,6 +40,7 @@ export async function updateRegistration(id: string, data: any) {
         phoneNumber: data.phoneNumber,
         unit: data.unit,
         purpose: data.purpose,
+        branch: data.branch,
         note: data.note,
       },
     });
@@ -145,5 +147,33 @@ export async function verifyEmployee(code: string) {
   } catch (error) {
     console.error(error);
     return null;
+  }
+}
+
+export async function searchEmployees(query: string) {
+  try {
+    const term = query.trim();
+    if (!term) {
+      return await prisma.employee.findMany({
+        take: 100,
+        orderBy: { employeeCode: "asc" }
+      });
+    }
+    return await prisma.employee.findMany({
+      where: {
+        OR: [
+          { employeeCode: { contains: term } },
+          { cardCode: { contains: term } },
+          { fullName: { contains: term } },
+          { department: { contains: term } },
+          { position: { contains: term } }
+        ]
+      },
+      take: 100,
+      orderBy: { employeeCode: "asc" }
+    });
+  } catch (error) {
+    console.error(error);
+    return [];
   }
 }

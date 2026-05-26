@@ -176,36 +176,66 @@ export default function SalaryChangeTable({
                   </button>
 
                   {openMenuId === item.id && (
-                    <div className="action-dropdown" onClick={(e) => e.stopPropagation()}>
+                    <div className="horizontal-action-dropdown" onClick={(e) => e.stopPropagation()}>
                       {(item.status === "Tạo mới" || item.status === "Từ chối") && (
-                        <div className="dropdown-item" onClick={() => { onEdit(item); setOpenMenuId(null); }}>
-                          <Pencil size={14} /> Chỉnh sửa
-                        </div>
+                        <button
+                          type="button"
+                          className="icon-action-btn"
+                          title="Chỉnh sửa"
+                          onClick={() => { onEdit(item); setOpenMenuId(null); }}
+                        >
+                          <Pencil size={15} style={{ color: "#d97706" }} />
+                        </button>
                       )}
-                      <div className="dropdown-item" onClick={() => { setHistoryRecordId(item.id); setOpenMenuId(null); }}>
-                        <History size={14} /> Lịch sử
-                      </div>
+                      <button
+                        type="button"
+                        className="icon-action-btn"
+                        title="Lịch sử"
+                        onClick={() => { setHistoryRecordId(item.id); setOpenMenuId(null); }}
+                      >
+                        <History size={15} style={{ color: "#64748b" }} />
+                      </button>
                       
                       {(item.status === "Tạo mới" || item.status === "Từ chối") && (
-                        <div className="dropdown-item success" onClick={() => handleStatusChange(item.id, "Chờ phê duyệt", `của NV ${item.employeeName}`)}>
-                          <Mail size={14} /> Gửi duyệt
-                        </div>
+                        <button
+                          type="button"
+                          className="icon-action-btn"
+                          title="Gửi duyệt"
+                          onClick={() => { handleStatusChange(item.id, "Chờ phê duyệt", `của NV ${item.employeeName}`); setOpenMenuId(null); }}
+                        >
+                          <Mail size={15} style={{ color: "#2563eb" }} />
+                        </button>
                       )}
 
                       {item.status === "Chờ phê duyệt" && (
-                        <div className="dropdown-item warning" onClick={() => handleStatusChange(item.id, "Tạo mới", `của NV ${item.employeeName}`)}>
-                          <RotateCcw size={14} /> Thu hồi
-                        </div>
+                        <button
+                          type="button"
+                          className="icon-action-btn"
+                          title="Thu hồi"
+                          onClick={() => { handleStatusChange(item.id, "Tạo mới", `của NV ${item.employeeName}`); setOpenMenuId(null); }}
+                        >
+                          <RotateCcw size={15} style={{ color: "#ea580c" }} />
+                        </button>
                       )}
 
                       {item.status === "Chờ phê duyệt" && isAdmin && (
                         <>
-                          <div className="dropdown-item success" onClick={() => handleStatusChange(item.id, "Đã phê duyệt", `của NV ${item.employeeName}`)}>
-                            <CheckCircle size={14} /> Duyệt đơn
-                          </div>
-                          <div className="dropdown-item danger" onClick={() => handleStatusChange(item.id, "Từ chối", `của NV ${item.employeeName}`)}>
-                            <PowerOff size={14} /> Từ chối
-                          </div>
+                          <button
+                            type="button"
+                            className="icon-action-btn"
+                            title="Duyệt đơn"
+                            onClick={() => { handleStatusChange(item.id, "Đã phê duyệt", `của NV ${item.employeeName}`); setOpenMenuId(null); }}
+                          >
+                            <CheckCircle size={15} style={{ color: "#22c55e" }} />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-action-btn danger"
+                            title="Từ chối"
+                            onClick={() => { handleStatusChange(item.id, "Từ chối", `của NV ${item.employeeName}`); setOpenMenuId(null); }}
+                          >
+                            <PowerOff size={15} style={{ color: "#ef4444" }} />
+                          </button>
                         </>
                       )}
                     </div>

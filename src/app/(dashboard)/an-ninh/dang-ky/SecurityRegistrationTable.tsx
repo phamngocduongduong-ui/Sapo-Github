@@ -11,7 +11,7 @@ import {
   confirmEntry,
   undoStatus
 } from "../actions";
-import { Plus, RotateCcw, Filter, Pencil, Trash2, CheckCircle, Undo2, Search, MoreHorizontal, Clock, LogIn, Volume2, VolumeX } from "lucide-react";
+import { Plus, RotateCcw, Filter, Pencil, Trash2, CheckCircle, Undo2, Search, MoreHorizontal, Clock, LogIn, Volume2, VolumeX, Eye, ChevronDown } from "lucide-react";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 
 interface Registration {
@@ -23,6 +23,7 @@ interface Registration {
   phoneNumber?: string | null;
   unit: string;
   purpose: string;
+  branch?: string;
   status: string;
   timeIn: string | Date;
   timeOut: string | Date | null;
@@ -36,18 +37,21 @@ const PURPOSES = ["Giao nguyên liệu", "Công tác", "Giao vật tư", "Nhà t
 export default function SecurityRegistrationTable({
   initialData,
   isAdmin,
-  currentUserName
+  currentUserName,
+  activeBranch
 }: {
   initialData: Registration[],
   isAdmin: boolean,
-  currentUserName: string
+  currentUserName: string,
+  activeBranch?: string | null
 }) {
   const router = useRouter();
   const [data, setData] = useState<Registration[]>(initialData);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<Registration | null>(null);
+  const [isViewOnly, setIsViewOnly] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("Chưa ra");
   const [searchTerm, setSearchTerm] = useState("");
   // Date filter: defaults to current date (YYYY-MM-DD) in local time
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -66,12 +70,16 @@ export default function SecurityRegistrationTable({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">("down");
   const [showQrModal, setShowQrModal] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const selectedItem = data.find(i => i.id === selectedId);
 
   // Progress tracker modal states
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [progressItem, setProgressItem] = useState<Registration | null>(null);
   const [progressLoading, setProgressLoading] = useState(false);
   const [progressData, setProgressData] = useState<any>(null);
+  const [origin, setOrigin] = useState("");
 
   const handleViewProgress = async (item: Registration) => {
     setProgressItem(item);
@@ -80,7 +88,7 @@ export default function SecurityRegistrationTable({
     setProgressData(null);
     try {
       const cleanPlate = encodeURIComponent(item.licensePlate.trim().toUpperCase());
-      const res = await fetch(`/api/public-security-call?licensePlate=${cleanPlate}&_t=${Date.now()}`);
+      const res = await fetch(`/api/public-security-call?licensePlate=${cleanPlate}&id=${item.id}&_t=${Date.now()}`);
       if (res.ok) {
         const payload = await res.json();
         setProgressData(payload);
@@ -95,8 +103,22 @@ export default function SecurityRegistrationTable({
   // Voice Calling & Sound Broadcast States
   const [localLastCalled, setLocalLastCalled] = useState<{ licensePlate: string; clientId: string; timestamp: number } | null>(null);
   const [isMuted, setIsMuted] = useState(true);
+  const [showSoundActivationModal, setShowSoundActivationModal] = useState(false);
   const [currentlySpeakingPlate, setCurrentlySpeakingPlate] = useState<string | null>(null);
   const clientIdRef = useRef<string>("");
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin);
+      const savedMuteState = localStorage.getItem("sapo_sound_active");
+      if (savedMuteState === "true") {
+        setIsMuted(false);
+      } else {
+        setIsMuted(true);
+        setShowSoundActivationModal(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     clientIdRef.current = Math.random().toString(36).substring(2);
@@ -302,10 +324,19 @@ export default function SecurityRegistrationTable({
   const handleClose = () => {
     setShowModal(false);
     setEditingItem(null);
+    setIsViewOnly(false);
+    setSelectedId(null);
   };
 
   const handleEdit = (item: Registration) => {
     setEditingItem(item);
+    setIsViewOnly(false);
+    setShowModal(true);
+  };
+
+  const handleView = (item: Registration) => {
+    setEditingItem(item);
+    setIsViewOnly(true);
     setShowModal(true);
   };
 
@@ -320,6 +351,7 @@ export default function SecurityRegistrationTable({
       const res = await deleteRegistration(deleteData.id);
       if (res.success) {
         setShowDeleteModal(false);
+        setSelectedId(null);
         router.refresh();
       } else alert(res.error);
     });
@@ -336,6 +368,7 @@ export default function SecurityRegistrationTable({
       const res = await confirmExit(confirmData.id);
       if (res.success) {
         setShowConfirmModal(false);
+        setSelectedId(null);
         router.refresh();
       } else alert(res.error);
     });
@@ -352,6 +385,7 @@ export default function SecurityRegistrationTable({
       const res = await confirmEntry(entryData.id);
       if (res.success) {
         setShowEntryModal(false);
+        setSelectedId(null);
         router.refresh();
       } else alert(res.error);
     });
@@ -361,8 +395,10 @@ export default function SecurityRegistrationTable({
     if (!confirm("Hoàn tác trạng thái về 'Đã đăng ký'?")) return;
     startTransition(async () => {
       const res = await undoStatus(id);
-      if (res.success) router.refresh();
-      else alert(res.error);
+      if (res.success) {
+        setSelectedId(null);
+        router.refresh();
+      } else alert(res.error);
     });
   };
 
@@ -376,6 +412,7 @@ export default function SecurityRegistrationTable({
       phoneNumber: (formData.get("phoneNumber") as string),
       unit: (formData.get("unit") as string)?.toUpperCase(),
       purpose: (formData.get("purpose") as string),
+      branch: (formData.get("branch") as string) || "Đồng Tháp",
       note: formData.get("note"),
       creator: editingItem?.creator || currentUserName,
     };
@@ -410,319 +447,290 @@ export default function SecurityRegistrationTable({
     return true;
   });
 
-  const filteredData = dateFilteredData
+  // Base filtered by date and search term
+  const baseFilteredData = dateFilteredData.filter(item => {
+    return item.licensePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.driverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.unit.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const pendingCount = baseFilteredData.filter(i => i.status === "Đã đăng ký" || i.status === "Đã gọi xe" || i.status === "Đã vào cổng" || i.status === "Đã vào").length;
+  const completedCount = baseFilteredData.filter(i => i.status === "Đã hoàn thành").length;
+
+  const filteredData = baseFilteredData
     .filter(item => {
-      const matchSearch = item.licensePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.driverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.unit.toLowerCase().includes(searchTerm.toLowerCase());
-
-      if (!matchSearch) return false;
-
-      // Tab filtering
-      if (activeTab === 1) return item.status === "Đã đăng ký" || item.status === "Đã gọi xe" || item.status === "Đã vào cổng" || item.status === "Đã vào";
-      if (activeTab === 2) return item.status === "Đã hoàn thành";
-      return false;
+      if (statusFilter === "Chưa ra") {
+        return item.status === "Đã đăng ký" || item.status === "Đã gọi xe" || item.status === "Đã vào cổng" || item.status === "Đã vào";
+      }
+      if (statusFilter === "Đã hoàn thành") {
+        return item.status === "Đã hoàn thành";
+      }
+      return true; // "Tất cả"
     })
     .sort((a, b) => new Date(a.timeIn).getTime() - new Date(b.timeIn).getTime());
 
+  const getStatusClass = (status: string) => {
+    const s = status === "Đã vào" ? "Đã đăng ký" : status;
+    if (s === "Đã đăng ký") return "status-pill status-registered";
+    if (s === "Đã gọi xe") return "status-pill status-called";
+    if (s === "Đã vào cổng") return "status-pill status-entered";
+    if (s === "Đã hoàn thành") return "status-pill status-completed";
+    return "status-pill";
+  };
+
   return (
-    <div style={{ padding: "0" }}>
+    <div className="security-page-container">
       <style dangerouslySetInnerHTML={{
         __html: `
-        .base-toolbar {
-          display: flex !important;
-          justify-content: space-between !important;
-          align-items: center !important;
-          margin-bottom: 0.75rem !important;
-          padding: 0 !important;
-          gap: 1rem !important;
-          flex-wrap: nowrap !important;
-          width: 100% !important;
-          font-family: "Segoe UI", sans-serif !important;
+        .security-page-container {
+          width: 100%;
+          min-width: 0;
+          font-family: "Segoe UI", -apple-system, sans-serif;
+          font-size: 13px;
+          padding: 0px 0px 10px 0px;
         }
-        .toolbar-left {
-          display: flex !important;
-          align-items: center !important;
-          gap: 1rem !important;
-        }
-        .toolbar-right {
-          display: flex !important;
-          align-items: center !important;
-          gap: 0.75rem !important;
-        }
-        .page-title-base {
-          font-size: 1.25rem !important;
-          font-weight: 700 !important;
-          color: #1e293b !important;
-          display: flex !important;
-          align-items: center !important;
-          gap: 0.5rem !important;
-          margin: 0 !important;
-          white-space: nowrap !important;
-        }
-        .badge-count {
-          background: #e2e8f0 !important;
-          color: #475569 !important;
-          font-size: 0.75rem !important;
-          font-weight: 600 !important;
-          padding: 2px 8px !important;
-          border-radius: 999px !important;
-          margin-left: 0.25rem !important;
-        }
-        .search-box-base {
-          position: relative !important;
-          display: flex !important;
-          align-items: center !important;
-        }
-        .search-box-base input {
-          padding: 6px 10px 6px 32px !important;
+        .security-page-container input,
+        .security-page-container select,
+        .security-page-container textarea,
+        .security-page-container button,
+        .security-page-container table,
+        .security-page-container td,
+        .security-page-container th,
+        .security-page-container label {
           font-size: 13px !important;
-          border: 1px solid #cbd5e1 !important;
-          border-radius: 4px !important;
-          width: 160px !important;
-          height: 32px !important;
-          outline: none !important;
-          transition: all 0.2s !important;
-          background: #ffffff !important;
+          font-family: "Segoe UI", -apple-system, sans-serif !important;
         }
-        .search-box-base input:focus {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
+        .security-page-container .breadcrumb-banner {
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          display: block;
+          border-radius: 0 !important;
+          margin-top: 0 !important;
+          margin-left: -10px;
+          margin-right: -10px;
         }
-        .search-icon {
-          position: absolute !important;
-          left: 10px !important;
-          color: #94a3b8 !important;
+        .security-layout {
+          display: flex;
+          gap: 1.5rem;
+          width: 100%;
+          min-width: 0;
         }
-        .btn-base {
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          padding: 6px 12px !important;
+        .panel-full {
+          flex: 1 1 100%;
+          width: 100%;
+          min-width: 0;
+        }
+        .search-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 0;
+          padding: 8px 0;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+          position: sticky;
+          top: 140px;
+          z-index: 100;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .sapo-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          border-radius: 4px;
+          font-weight: 400;
           font-size: 13px !important;
-          font-weight: 600 !important;
-          border-radius: 4px !important;
-          cursor: pointer !important;
-          border: 1px solid transparent !important;
-          transition: all 0.2s !important;
-          height: 32px !important;
-          white-space: nowrap !important;
-          gap: 6px !important;
-          font-family: "Segoe UI", sans-serif !important;
+          cursor: pointer;
+          transition: background-color 0.2s, transform 0.1s;
+          border: none;
+          height: 32px;
+          white-space: nowrap;
         }
-        .btn-primary {
-          background: #3b82f6 !important;
-          color: #ffffff !important;
+        .sapo-btn:hover {
+          background-color: #002244;
         }
-        .btn-primary:hover {
-          background: #2563eb !important;
+        .sapo-btn:active {
+          transform: scale(0.98);
         }
-        .btn-outline {
-          background: #ffffff !important;
-          border-color: #cbd5e1 !important;
-          color: #475569 !important;
+        .sapo-btn-secondary {
+          background-color: #475569;
         }
-        .btn-outline:hover {
-          background: #f8fafc !important;
-          border-color: #94a3b8 !important;
-          color: #1e293b !important;
+        .sapo-btn-secondary:hover {
+          background-color: #334155;
         }
-        .btn-group-base {
-          display: flex !important;
-          gap: 0.75rem !important;
+        .sapo-btn-danger {
+          background-color: #ef4444;
         }
-        .unified-container {
-          border: 1px solid #e2e8f0 !important;
-          border-radius: 8px !important;
-          background: #ffffff !important;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
-          overflow: hidden !important;
+        .sapo-btn-danger:hover {
+          background-color: #dc2626;
+        }
+        .sapo-btn-info {
+          background-color: #2563eb;
+        }
+        .sapo-btn-info:hover {
+          background-color: #1d4ed8;
+        }
+        .sapo-btn-teal {
+          background-color: #0d9488;
+        }
+        .sapo-btn-teal:hover {
+          background-color: #0f766e;
+        }
+        .row-hoverable:hover {
+          background-color: #f8fafc;
+        }
+        .row-selected {
+          background-color: #eff6ff !important;
         }
         .base-table-wrapper {
           max-height: 485px !important;
           height: auto !important;
-          overflow: auto !important;
+          overflow-y: auto !important;
+          overflow-x: auto !important;
           padding-bottom: 60px !important;
         }
         .base-table {
+          height: auto !important;
           width: 100% !important;
+          min-width: 1200px !important;
+          table-layout: auto !important;
           border-collapse: collapse !important;
-          font-size: 13px !important;
-          font-family: "Segoe UI", sans-serif !important;
-          margin-bottom: 60px !important;
         }
         .base-table th {
-          background: #f8fafc !important;
-          padding: 0px 0.75rem !important;
+          text-transform: uppercase !important;
           font-weight: 700 !important;
-          color: #334155 !important;
-          border-bottom: 1px solid #e2e8f0 !important;
-          text-align: left !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
+          text-align: center !important;
           height: 35px !important;
+          padding-top: 6px !important;
+          padding-bottom: 6px !important;
         }
         .base-table td {
-          padding: 0px 0.75rem !important;
+          padding: 6px 0.75rem !important;
           vertical-align: middle !important;
+          white-space: normal !important;
+          word-break: break-word !important;
           border-bottom: 1px solid #f1f5f9 !important;
-          color: #1e293b !important;
         }
         .base-table tbody tr {
-          height: 40px !important;
-          transition: background 0.15s !important;
+          height: 45px !important;
         }
-        .base-table tbody tr:hover {
+        .base-filters {
           background: #f8fafc !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 6px !important;
+          padding: 10px !important;
+          margin-bottom: 4px !important;
         }
-        .badge-active-base {
-          background: #fef3c7 !important;
-          color: #d97706 !important;
-          padding: 4px 10px !important;
-          border-radius: 9999px !important;
-          font-weight: 600 !important;
-          font-size: 11px !important;
-          border: 1px solid #fde68a !important;
-          display: inline-block !important;
-          text-align: center !important;
-          white-space: nowrap !important;
-        }
-        .badge-completed-base {
-          background: #dcfce7 !important;
-          color: #15803d !important;
-          padding: 4px 10px !important;
-          border-radius: 9999px !important;
-          font-weight: 600 !important;
-          font-size: 11px !important;
-          border: 1px solid #bbf7d0 !important;
-          display: inline-block !important;
-          text-align: center !important;
-          white-space: nowrap !important;
-        }
-        .action-btn-base {
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          width: 28px !important;
-          height: 28px !important;
-          border-radius: 50% !important;
-          background: transparent !important;
-          border: none !important;
-          color: #64748b !important;
-          cursor: pointer !important;
-          transition: all 0.2s !important;
-        }
-        .action-btn-base:hover {
-          background: #f1f5f9 !important;
-          color: #1e293b !important;
-        }
-        .action-btn-base.text-danger:hover {
-          background: #fef2f2 !important;
-          color: #ef4444 !important;
-        }
-        .action-btn-base.text-success:hover {
-          background: #f0fdf4 !important;
-          color: #22c55e !important;
-        }
-        .action-btn-base.text-warning:hover {
-          background: #fffbeb !important;
-          color: #f59e0b !important;
-        }
-        
-        .tab-btn-base {
-          padding: 0.5rem 1rem !important; 
-          border: none !important;
-          background: none !important;
-          color: #64748b !important;
-          font-weight: 600 !important;
-          font-size: 13px !important;
-          cursor: pointer !important;
-          position: relative !important;
-          transition: all 0.2s !important;
-        }
-        .tab-btn-base:hover {
-          color: #1e293b !important;
-        }
-        .tab-btn-base.active {
-          color: #3b82f6 !important;
-        }
-        .tab-btn-base.active::after {
-          content: '' !important;
-          position: absolute !important;
-          bottom: 0 !important;
-          left: 0 !important;
-          right: 0 !important;
-          height: 2.5px !important;
-          background: #3b82f6 !important;
-          border-radius: 99px !important;
-        }
-        
         .form-control {
           border: 1px solid #cbd5e1 !important;
           border-radius: 4px !important;
-          font-size: 13px !important;
-          font-family: "Segoe UI", sans-serif !important;
-          padding: 6px 10px !important;
           outline: none !important;
+          background: white !important;
+        }
+        .form-control:not(.search-input) {
+          padding: 6px 10px !important;
+        }
+        .search-input {
+          padding: 6px 10px 6px 32px !important;
+        }
+        .base-table .status-pill {
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          font-weight: 600 !important;
+          font-size: 13px !important;
+          border-radius: 0 !important;
+          display: inline-block !important;
+          text-align: center !important;
+          white-space: nowrap !important;
+        }
+        .base-table .status-pill.status-registered {
+          color: #d97706 !important;
+        }
+        .base-table .status-pill.status-called {
+          color: #0284c7 !important;
+        }
+        .base-table .status-pill.status-entered {
+          color: #7c3aed !important;
+        }
+        .base-table .status-pill.status-completed {
+          color: #15803d !important;
+        }
+        .tab-btn-base {
+          background: none !important;
+          border: none !important;
+          cursor: pointer !important;
+          font-weight: 700 !important;
+          font-size: 13px !important;
+          text-transform: uppercase !important;
+          padding: 12px 0px !important;
+          color: rgba(0, 52, 102, 0.6) !important;
+          border-bottom: 3px solid transparent !important;
           transition: all 0.2s !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
         }
-        .form-control:focus {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
+        .tab-btn-base:hover {
+          color: #003466 !important;
         }
-
-        /* Slide Drawer Backdrop Overlay */
-        .drawer-overlay {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100vw !important;
-          height: 100vh !important;
-          background-color: rgba(0, 0, 0, 0.4) !important;
-          z-index: 1200 !important;
-          opacity: 0 !important;
-          pointer-events: none !important;
-          transition: opacity 0.3s ease !important;
-        }
-        .drawer-overlay.show {
-          opacity: 1 !important;
-          pointer-events: auto !important;
+        .tab-btn-base.active {
+          color: #003466 !important;
+          border-bottom: 3px solid #003466 !important;
         }
 
-        /* Drawer Container */
-        .drawer-container {
+        /* Modal Backdrop Overlay */
+        .custom-modal-overlay {
           position: fixed !important;
-          top: 0 !important;
-          right: 0 !important;
-          width: 500px !important;
-          max-width: 100vw !important;
-          height: 100vh !important;
-          height: 100dvh !important;
-          background-color: #ffffff !important;
-          box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15) !important;
-          z-index: 1250 !important;
+          background: rgba(0, 0, 0, 0.5) !important;
           display: flex !important;
-          flex-direction: column !important;
-          transform: translateX(100%) !important;
-          transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          align-items: center !important;
+          justify-content: center !important;
+          z-index: 9999 !important;
         }
-        .drawer-container.show {
-          transform: translateX(0) !important;
+        @media (min-width: 769px) {
+          .custom-modal-overlay {
+            left: 220px !important;
+            top: 140px !important;
+            right: 0 !important;
+            bottom: 0 !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .custom-modal-overlay {
+            left: 0 !important;
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+          }
         }
 
-        .drawer-header {
-          padding: 1.25rem 1.5rem !important;
+        .modal-header {
+          padding: 8px 20px !important;
           border-bottom: 1px solid #e2e8f0 !important;
           display: flex !important;
           justify-content: space-between !important;
           align-items: center !important;
-          background: #f8fafc !important;
+          background: #ffffff !important;
+          border-top-left-radius: 16px !important;
+          border-top-right-radius: 16px !important;
         }
-        .drawer-title {
+        .modal-title {
           font-size: 1.15rem !important;
           font-weight: 700 !important;
           color: #1e293b !important;
           margin: 0 !important;
         }
-        .drawer-close {
+        .modal-close {
           background: none !important;
           border: none !important;
           cursor: pointer !important;
@@ -737,38 +745,68 @@ export default function SecurityRegistrationTable({
           width: 28px !important;
           height: 28px !important;
         }
-        .drawer-close:hover {
+        .modal-close:hover {
           background: #e2e8f0 !important;
           color: #0f172a !important;
         }
-        .drawer-body {
+        .modal-body {
           flex: 1 !important;
           overflow-y: auto !important;
-          padding: 1.5rem !important;
+          padding: 0.5rem 1.25rem !important;
           display: flex !important;
           flex-direction: column !important;
-          gap: 1rem !important;
+          gap: 0.4rem !important;
         }
-        .drawer-footer {
-          padding: 1rem 1.5rem !important;
-          padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+        .modal-footer {
+          padding: 8px 20px !important;
           border-top: 1px solid #e2e8f0 !important;
           background: #f8fafc !important;
           display: flex !important;
           justify-content: flex-end !important;
           gap: 0.75rem !important;
           flex-shrink: 0 !important;
+          border-bottom-left-radius: 16px !important;
+          border-bottom-right-radius: 16px !important;
         }
+
+        /* Modal elements focus state */
+        .custom-modal-overlay .form-control {
+          border-radius: 8px !important;
+          border: 1px solid #cbd5e1 !important;
+          padding: 6px 12px !important;
+          transition: border-color 0.2s, box-shadow 0.2s !important;
+          width: 100%;
+        }
+        .custom-modal-overlay .form-control:focus {
+          border-color: #ff5c00 !important;
+          box-shadow: 0 0 0 2px rgba(255, 92, 0, 0.1) !important;
+        }
+        .custom-modal-overlay select.form-control {
+          border-radius: 8px !important;
+          border: 1px solid #cbd5e1 !important;
+          padding: 6px 12px !important;
+          height: 34px !important;
+          transition: border-color 0.2s, box-shadow 0.2s !important;
+          width: 100%;
+        }
+        .custom-modal-overlay select.form-control:focus {
+          border-color: #ff5c00 !important;
+          box-shadow: 0 0 0 2px rgba(255, 92, 0, 0.1) !important;
+        }
+
         .form-row {
           display: flex !important;
           flex-direction: column !important;
-          gap: 0.35rem !important;
+          gap: 2px !important;
         }
         .form-label {
+          display: block !important;
+          margin-bottom: 0px !important;
           font-weight: 700 !important;
-          font-size: 13px !important;
-          color: #475569 !important;
+          font-size: 12px !important;
+          color: #003466 !important;
           text-align: left !important;
+          text-transform: uppercase !important;
         }
 
         .sound-toggle-btn {
@@ -829,12 +867,29 @@ export default function SecurityRegistrationTable({
           animation: speak-card-pulse 1.2s 10 ease-in-out !important;
         }
 
+        .mobile-filter-header {
+          display: none !important;
+        }
+
+        .filter-label {
+          display: block !important;
+          margin-bottom: 0.4rem !important;
+          font-size: 0.8rem !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          text-transform: uppercase !important;
+          text-align: left !important;
+        }
+
         @media (max-width: 768px) {
           .desktop-only { display: none !important; }
           .mobile-list { 
-            display: block !important; 
+            display: flex !important; 
+            flex-direction: column !important;
+            gap: 8px !important;
             padding-bottom: 130px !important; 
-            margin-top: 0.75rem !important;
+            margin-top: 10px !important;
+            width: 100% !important;
           }
           .mobile-action-bar {
             display: block !important;
@@ -843,6 +898,128 @@ export default function SecurityRegistrationTable({
           .drawer-container {
             width: 100% !important;
           }
+          .mobile-filter-header {
+            display: flex !important;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 6px !important;
+            padding: 5px 15px !important;
+            margin-top: 10px !important;
+            margin-bottom: 5px !important;
+            cursor: pointer !important;
+            user-select: none !important;
+            transition: background-color 0.2s !important;
+          }
+          .mobile-filter-header:hover {
+            background: #f8fafc !important;
+          }
+          .mobile-filter-title {
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            color: #0f172a !important;
+          }
+          .mobile-filter-arrow {
+            transition: transform 0.2s ease !important;
+            color: #64748b !important;
+          }
+          .mobile-filter-arrow.open {
+            transform: rotate(180deg) !important;
+          }
+          .base-filters.mobile-hide {
+            display: none !important;
+          }
+          .base-filters.mobile-show {
+            display: grid !important;
+          }
+          .progress-modal-content {
+            max-height: 80vh !important;
+            margin: auto auto 70px auto !important;
+          }
+          .search-container {
+            position: sticky !important;
+            top: 70px !important;
+            z-index: 100 !important;
+            background: #f8fafc !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            padding: 8px 10px !important;
+            margin-left: -10px !important;
+            margin-right: -10px !important;
+            margin-top: 0px !important;
+            margin-bottom: 10px !important;
+          }
+
+          /* Premium Mobile Card Layout like de-nghi-mua */
+          .proposal-card {
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 8px 12px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            user-select: none !important;
+          }
+          .proposal-card:hover {
+            background: #f8fafc !important;
+          }
+          .proposal-card.selected {
+            border: 1px solid #b9d5f0 !important;
+            border-left: 6px solid #003466 !important;
+            background-color: #f0f7ff !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 52, 102, 0.08) !important;
+          }
+          .card-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+          }
+          .card-header {
+            border-bottom: 1px solid #f1f5f9 !important;
+            padding-bottom: 5px !important;
+            margin-bottom: 6px !important;
+          }
+          .code-box {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+          }
+          .idx-pill {
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+          }
+          .proposal-code {
+            color: #003466 !important;
+            font-weight: 700 !important;
+            font-size: 13px !important;
+          }
+          .card-body {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 3px !important;
+          }
+          .info-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            font-size: 12px !important;
+          }
+          .info-label {
+            color: #64748b !important;
+            font-weight: 500 !important;
+          }
+          .info-val {
+            color: #1e293b !important;
+            text-align: right !important;
+          }
+          .info-val.highlight {
+            font-weight: 600 !important;
+            color: #0f172a !important;
+          }
         }
         @media (min-width: 769px) {
           .desktop-only { display: block !important; }
@@ -850,179 +1027,64 @@ export default function SecurityRegistrationTable({
         }
       ` }} />
 
+      <div className="breadcrumb-banner">QUẢN LÝ XE VÀO RA</div>
 
-
-      {/* Header Toolbar */}
-      <div className="base-toolbar mobile-hide">
-        <div className="toolbar-left">
-          <h3 className="page-title-base">🚗 Quản lý xe ra vào</h3>
-          <span className="badge-count">{data.length}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
-            <div className="search-box-base">
-              <Search size={16} className="search-icon" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm biển số, tài xế..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-              <span style={{ fontSize: "13px", fontWeight: 600, color: "#64748b" }}>Ngày:</span>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="form-control"
-                style={{
-                  height: "32px",
-                  padding: "4px 8px",
-                  fontSize: "13px",
-                  borderColor: "#cbd5e1",
-                  borderRadius: "4px",
-                  width: "135px"
-                }}
-              />
-              {selectedDate && (
-                <button
-                  onClick={() => setSelectedDate("")}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#94a3b8",
-                    cursor: "pointer",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    padding: "4px",
-                    display: "flex",
-                    alignItems: "center"
-                  }}
-                  title="Xóa lọc ngày"
-                >
-                  Xóa
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="toolbar-right">
-          <div className="btn-group-base">
-            <button 
-              className={`btn-base btn-outline sound-toggle-btn ${!isMuted ? 'active' : ''} ${currentlySpeakingPlate ? 'speaking' : ''}`} 
-              onClick={() => {
-                if (isMuted) {
-                  setIsMuted(false);
-                  playTestVoice();
-                } else {
-                  setIsMuted(true);
-                  if (typeof window !== 'undefined' && (window as any).currentVehicleAudio) {
-                    try {
-                      (window as any).currentVehicleAudio.pause();
-                    } catch(e){}
-                  }
-                  if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                  }
-                  setCurrentlySpeakingPlate(null);
-                }
-              }}
-              style={{
-                borderColor: !isMuted ? '#bbf7d0' : '#cbd5e1',
-                color: !isMuted ? '#15803d' : '#64748b',
-                background: !isMuted ? '#f0fdf4' : '#ffffff',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              {!isMuted ? <Volume2 size={16} className={currentlySpeakingPlate ? 'speaking-icon' : ''} /> : <VolumeX size={16} />}
-              <span>{!isMuted ? 'Âm thanh: BẬT' : 'Âm thanh: TẮT'}</span>
-            </button>
-            <button className="btn-base btn-outline" onClick={() => router.refresh()}>
-              <RotateCcw size={16} /> Làm mới
-            </button>
-            <button className="btn-base btn-outline" onClick={() => setShowQrModal(true)} style={{ color: "#0284c7", borderColor: "#bfdbfe" }}>
-              <span>📱</span> Mã QR đăng ký
-            </button>
-          </div>
-          <button className="btn-base btn-primary" onClick={() => setShowModal(true)}>
-            <Plus size={16} /> Đăng ký xe
-          </button>
-        </div>
+      {/* Mobile filter toggle box */}
+      <div 
+        className="mobile-filter-header"
+        onClick={() => setFilterOpen(!filterOpen)}
+      >
+        <span className="mobile-filter-title">Tìm kiếm & Bộ lọc</span>
+        <ChevronDown size={18} className={`mobile-filter-arrow ${filterOpen ? "open" : ""}`} />
       </div>
 
-      {/* Mobile-only Action Bar */}
-      <div className="mobile-action-bar" style={{ display: "none", marginBottom: "0.5rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1e293b", margin: 0 }}>🚗 Xe ra vào</h3>
-          <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-            <button 
-              className={`btn-base btn-outline ${currentlySpeakingPlate ? 'speaking' : ''}`}
-              style={{ 
-                padding: "4px", 
-                height: "28px", 
-                width: "28px", 
-                display: "inline-flex", 
-                alignItems: "center", 
-                justifyContent: "center",
-                borderColor: !isMuted ? '#bbf7d0' : '#cbd5e1',
-                color: !isMuted ? '#15803d' : '#64748b',
-                background: !isMuted ? '#f0fdf4' : '#ffffff'
-              }}
-              onClick={() => {
-                if (isMuted) {
-                  setIsMuted(false);
-                  playTestVoice();
-                } else {
-                  setIsMuted(true);
-                  if (typeof window !== 'undefined' && (window as any).currentVehicleAudio) {
-                    try {
-                      (window as any).currentVehicleAudio.pause();
-                    } catch(e){}
-                  }
-                  if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                  }
-                  setCurrentlySpeakingPlate(null);
-                }
-              }}
-            >
-              {!isMuted ? <Volume2 size={14} className={currentlySpeakingPlate ? 'speaking-icon' : ''} /> : <VolumeX size={14} />}
-            </button>
-            <button className="btn-base btn-outline" style={{ padding: "4px 8px", height: "28px" }} onClick={() => router.refresh()}>Mới</button>
-            <button className="btn-base btn-outline" style={{ padding: "4px 8px", height: "28px", color: "#0284c7", borderColor: "#bfdbfe" }} onClick={() => setShowQrModal(true)}>Mã QR</button>
-            <button className="btn-base btn-primary" style={{ padding: "4px 8px", height: "28px" }} onClick={() => setShowModal(true)}>Đăng ký</button>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-          <div style={{ flex: 1 }}>
+      {/* Filters Grid */}
+      <div className={`base-filters ${filterOpen ? "mobile-show" : "mobile-hide"}`} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginTop: "10px", marginBottom: "10px" }}>
+        <div>
+          <label className="filter-label">Tìm kiếm</label>
+          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <Search size={16} style={{ position: "absolute", left: "10px", color: "#64748b" }} />
             <input
               type="text"
+              placeholder="Tìm kiếm biển số, tài xế, đơn vị..."
               className="form-control"
-              style={{ width: "100%", height: "30px", fontSize: "12px" }}
-              placeholder="Tìm biển số, tài xế..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: "100%", paddingLeft: "32px", height: "32px" }}
             />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        </div>
+
+        <div>
+          <label className="filter-label">Lọc theo ngày</label>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <input
               type="date"
-              className="form-control"
-              style={{ height: "30px", fontSize: "12px", width: "120px" }}
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
+              className="form-control"
+              style={{
+                height: "32px",
+                padding: "4px 8px",
+                fontSize: "13px",
+                borderColor: "#cbd5e1",
+                borderRadius: "4px",
+                flex: 1
+              }}
             />
             {selectedDate && (
               <button
+                type="button"
                 onClick={() => setSelectedDate("")}
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#94a3b8",
+                  color: "#ef4444",
                   cursor: "pointer",
-                  fontSize: "11px",
-                  fontWeight: 600
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  padding: "4px",
+                  whiteSpace: "nowrap"
                 }}
               >
                 Xóa
@@ -1030,359 +1092,380 @@ export default function SecurityRegistrationTable({
             )}
           </div>
         </div>
-      </div>
 
-      {/* Unified Panel (Tabs + Table) */}
-      <div className="unified-container">
-        {/* Navigation tabs */}
-        <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", padding: "0 0.75rem" }}>
-          <button
-            onClick={() => setActiveTab(1)}
-            className={`tab-btn-base ${activeTab === 1 ? 'active' : ''}`}
+        <div className="mobile-hide">
+          <label className="filter-label">Trạng thái xe</label>
+          <select 
+            className="form-control" 
+            style={{ width: "100%", height: "32px" }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
           >
-            Chưa ra ({dateFilteredData.filter(i => i.status === "Đã đăng ký" || i.status === "Đã gọi xe" || i.status === "Đã vào cổng" || i.status === "Đã vào").length})
-          </button>
-          <button
-            onClick={() => setActiveTab(2)}
-            className={`tab-btn-base ${activeTab === 2 ? 'active' : ''}`}
+            <option value="Chưa ra">Chưa ra ({pendingCount})</option>
+            <option value="Đã hoàn thành">Đã ra ({completedCount})</option>
+            <option value="Tất cả">Tất cả ({baseFilteredData.length})</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="filter-label">Cài đặt âm thanh</label>
+          <button 
+            type="button"
+            className={`sapo-btn sound-toggle-btn ${currentlySpeakingPlate ? 'speaking' : ''}`} 
+            onClick={() => {
+              if (isMuted) {
+                setIsMuted(false);
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem("sapo_sound_active", "true");
+                }
+                playTestVoice();
+              } else {
+                setIsMuted(true);
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem("sapo_sound_active", "false");
+                }
+                if (typeof window !== 'undefined' && (window as any).currentVehicleAudio) {
+                  try {
+                    (window as any).currentVehicleAudio.pause();
+                  } catch(e){}
+                }
+                if ('speechSynthesis' in window) {
+                  window.speechSynthesis.cancel();
+                }
+                setCurrentlySpeakingPlate(null);
+              }
+            }}
+            style={{
+              color: '#ffffff',
+              display: 'inline-flex',
+              alignItems: 'center',
+              height: '32px',
+              width: "100%",
+              justifyContent: "center"
+            }}
           >
-            Đã ra ({dateFilteredData.filter(i => i.status === "Đã hoàn thành").length})
+            {!isMuted ? '🔊 Âm thanh: BẬT' : '🔇 Âm thanh: TẮT'}
           </button>
         </div>
 
-        {/* Desktop Grid Layout */}
-        <div className="base-table-wrapper desktop-only">
-          <table className="base-table">
-            <thead>
-              <tr>
-                <th style={{ width: "50px", textAlign: "center" }}>STT</th>
-                <th style={{ textAlign: "center" }}>Ngày tạo</th>
-                <th style={{ textAlign: "center" }}>Số xe</th>
-                <th style={{ textAlign: "center" }}>Tên tài xế</th>
-                <th style={{ textAlign: "center" }}>Số điện thoại</th>
-                <th style={{ textAlign: "center" }}>Đơn vị</th>
-                <th style={{ textAlign: "center" }}>Mục đích</th>
-                <th style={{ textAlign: "center" }}>Giờ vào</th>
-                <th style={{ textAlign: "center" }}>Giờ ra</th>
-                <th style={{ textAlign: "center" }}>Trạng thái</th>
-                <th style={{ width: "80px", textAlign: "center" }}>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredData.map((item, index) => {
-                const normalizePlate = (p: string) => p.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                const isRowSpeaking = currentlySpeakingPlate && (() => {
-                  const underscoreIndex = currentlySpeakingPlate.lastIndexOf('_');
-                  if (underscoreIndex === -1) return false;
-                  const speakingPlate = currentlySpeakingPlate.substring(0, underscoreIndex);
-                  return normalizePlate(speakingPlate) === normalizePlate(item.licensePlate);
-                })();
+        <div>
+          <label className="filter-label">Mã QR</label>
+          <button 
+            type="button"
+            className="sapo-btn" 
+            onClick={() => setShowQrModal(true)}
+            style={{ width: "100%", justifyContent: "center", height: "32px" }}
+          >
+            🔲 Mã QR đăng ký
+          </button>
+        </div>
+      </div>
 
-                return (
-                  <tr 
-                    key={item.id} 
-                    className={isRowSpeaking ? "row-speaking-flash" : ""}
-                  >
-                  <td style={{ textAlign: "center", color: "#64748b" }}>{index + 1}</td>
-                  <td style={{ textAlign: "center" }}>{new Date(item.createdAt).toLocaleDateString("vi-VN")}</td>
-                  <td style={{ fontWeight: 700, color: "#1e293b", textAlign: "center", textTransform: "uppercase" }}>{item.licensePlate}</td>
-                  <td>{item.driverName}</td>
-                  <td style={{ textAlign: "center" }}>{item.phoneNumber || "—"}</td>
-                  <td>{item.unit}</td>
-                  <td style={{ textAlign: "center" }}>{item.purpose}</td>
-                  <td style={{ textAlign: "center" }}>
-                    {item.status === "Đã đăng ký" || item.status === "Đã vào"
-                      ? "—"
-                      : new Date(item.timeIn).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td style={{ textAlign: "center" }}>{item.timeOut ? new Date(item.timeOut).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) : "—"}</td>
-                  <td style={{ textAlign: "center" }}>
-                    <span
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: "9999px",
-                        fontWeight: 600,
-                        fontSize: "11px",
-                        display: "inline-block",
-                        textAlign: "center",
-                        whiteSpace: "nowrap",
-                        background: (item.status === "Đã đăng ký" || item.status === "Đã vào")
-                          ? "#fef3c7"
-                          : (item.status === "Đã vào cổng")
-                            ? "#f5f3ff"
-                            : (item.status === "Đã gọi xe" ? "#e0f2fe" : "#dcfce7"),
-                        color: (item.status === "Đã đăng ký" || item.status === "Đã vào")
-                          ? "#d97706"
-                          : (item.status === "Đã vào cổng")
-                            ? "#7c3aed"
-                            : (item.status === "Đã gọi xe" ? "#0284c7" : "#15803d"),
-                        border: `1px solid ${(item.status === "Đã đăng ký" || item.status === "Đã vào")
-                          ? "#fde68a"
-                          : (item.status === "Đã vào cổng")
-                            ? "#ddd6fe"
-                            : (item.status === "Đã gọi xe" ? "#bae6fd" : "#bbf7d0")}`
-                      }}
-                    >
-                      {item.status === "Đã vào" ? "Đã đăng ký" : item.status}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: "center", position: "relative" }}>
-                    <button
-                      className="action-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const isLastRows = index >= filteredData.length - 2;
-                        const isFirstRow = index === 0;
-                        setDropdownDirection((isLastRows && !isFirstRow) ? "up" : "down");
-                        setOpenMenuId(openMenuId === item.id ? null : item.id);
-                      }}
-                    >
-                      <MoreHorizontal size={18} />
-                    </button>
+      <div className="security-layout" style={{ paddingTop: "0px" }}>
+        <div className="panel-full">
+          {/* Main Action Toolbar (matches de-nghi-mua search-container style) */}
+          <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "0px", flexWrap: "wrap" }}>
+            <button className="sapo-btn" onClick={() => { setEditingItem(null); setIsViewOnly(false); setShowModal(true); }}>
+              Thêm mới
+            </button>
+            {selectedItem && (
+              <>
+                <button className="sapo-btn" onClick={() => handleView(selectedItem)}>
+                  Xem
+                </button>
+                <button className="sapo-btn" onClick={() => handleEdit(selectedItem)}>
+                  Sửa
+                </button>
+                <button className="sapo-btn" onClick={() => handleViewProgress(selectedItem)}>
+                  Tiến trình
+                </button>
+                {(selectedItem.status === "Đã đăng ký" || selectedItem.status === "Đã vào") && (
+                  <button className="sapo-btn" onClick={() => handleConfirmEntry(selectedItem.id, selectedItem.licensePlate, selectedItem.driverName)}>
+                    Xe vào
+                  </button>
+                )}
+                {(selectedItem.status === "Đã vào cổng" || selectedItem.status === "Đã gọi xe") && (
+                  <button className="sapo-btn" onClick={() => handleConfirmExit(selectedItem.id, selectedItem.licensePlate, selectedItem.driverName)}>
+                    Hoàn thành
+                  </button>
+                )}
+                {selectedItem.status === "Đã hoàn thành" && (
+                  <button className="sapo-btn" onClick={() => handleUndo(selectedItem.id)}>
+                    Hoàn tác
+                  </button>
+                )}
+                {isAdmin && selectedItem.status !== "Đã vào cổng" && selectedItem.status !== "Đã hoàn thành" && (
+                  <button className="sapo-btn sapo-btn-danger" onClick={() => handleDelete(selectedItem.id, selectedItem.licensePlate, selectedItem.driverName)}>
+                    Xóa
+                  </button>
+                )}
+              </>
+            )}
 
-                    {openMenuId === item.id && (
-                      <div className={`action-dropdown ${dropdownDirection === "up" ? "open-up" : ""}`} onClick={(e) => e.stopPropagation()}>
-                        <div className="dropdown-item" onClick={() => { handleViewProgress(item); setOpenMenuId(null); }}>
-                          <Clock size={14} style={{ color: "#0284c7" }} /> Tiến trình
-                        </div>
-                        <div className="dropdown-item" onClick={() => { handleEdit(item); setOpenMenuId(null); }}>
-                          <Pencil size={14} /> Chỉnh sửa
-                        </div>
+          </div>
 
-                        {(item.status === "Đã đăng ký" || item.status === "Đã vào") && (
-                          <div className="dropdown-item" style={{ color: "#0284c7" }} onClick={() => { handleConfirmEntry(item.id, item.licensePlate, item.driverName); setOpenMenuId(null); }}>
-                            <LogIn size={14} /> Xe vào
-                          </div>
-                        )}
+          {/* Unified Panel (Table & Cards) */}
+          <div className="unified-container">
 
-                        {item.status !== "Đã hoàn thành" ? (
-                          <div className="dropdown-item success" onClick={() => { handleConfirmExit(item.id, item.licensePlate, item.driverName); setOpenMenuId(null); }}>
-                            <CheckCircle size={14} /> Hoàn thành
-                          </div>
-                        ) : (
-                          <div className="dropdown-item success" onClick={() => { handleUndo(item.id); setOpenMenuId(null); }}>
-                            <Undo2 size={14} /> Hoàn tác trạng thái
-                          </div>
-                        )}
-
-                        {isAdmin && (
-                          <>
-                            <div className="divider"></div>
-                            <div className="dropdown-item danger" onClick={() => { handleDelete(item.id, item.licensePlate, item.driverName); setOpenMenuId(null); }}>
-                              <Trash2 size={14} /> Xóa bản ghi
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </td>
+            {/* Desktop Grid Layout */}
+            <div className="base-table-wrapper desktop-only">
+              <table className="base-table">
+                <thead>
+                  <tr>
+                    <th className="th-first nowrap" style={{ width: "50px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>STT</th>
+                    <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Ngày tạo</th>
+                    <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Số xe</th>
+                    <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tên tài xế</th>
+                    <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Số điện thoại</th>
+                    <th style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Đơn vị</th>
+                    <th style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Mục đích</th>
+                    <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Giờ vào</th>
+                    <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Giờ ra</th>
+                    <th className="th-last nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Trạng thái</th>
                   </tr>
-                );
-              })}
-              {filteredData.length === 0 && (
-                <tr style={{ height: "45px" }}>
-                  <td colSpan={11} style={{ textAlign: "center", color: "#64748b", verticalAlign: "middle", height: "45px" }}>
-                    Chưa có dữ liệu
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody>
+                  {filteredData.map((item, index) => {
+                    const normalizePlate = (p: string) => p.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                    const isRowSpeaking = currentlySpeakingPlate && (() => {
+                      const underscoreIndex = currentlySpeakingPlate.lastIndexOf('_');
+                      if (underscoreIndex === -1) return false;
+                      const speakingPlate = currentlySpeakingPlate.substring(0, underscoreIndex);
+                      return normalizePlate(speakingPlate) === normalizePlate(item.licensePlate);
+                    })();
+
+                    return (
+                      <tr 
+                        key={item.id} 
+                        onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
+                        className={`row-hoverable ${selectedId === item.id ? "row-selected" : ""} ${isRowSpeaking ? "row-speaking-flash" : ""}`}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{index + 1}</td>
+                        <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{new Date(item.createdAt).toLocaleDateString("vi-VN")}</td>
+                        <td className="nowrap" style={{ fontWeight: 700, color: "#000", textAlign: "center", textTransform: "uppercase" }}>{item.licensePlate}</td>
+                        <td style={{ color: "#000", fontWeight: 600 }}>{item.driverName}</td>
+                        <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.phoneNumber || "—"}</td>
+                        <td style={{ color: "#000", fontWeight: 600 }}>{item.unit}</td>
+                        <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.purpose}</td>
+                        <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>
+                          {item.status === "Đã đăng ký" || item.status === "Đã vào"
+                            ? "—"
+                            : new Date(item.timeIn).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.timeOut ? new Date(item.timeOut).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) : "—"}</td>
+                        <td className="nowrap" style={{ textAlign: "center" }}>
+                          <span className={getStatusClass(item.status)}>
+                            {item.status === "Đã vào" ? "Đã đăng ký" : item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredData.length === 0 && (
+                    <tr style={{ height: "45px" }}>
+                      <td colSpan={10} style={{ textAlign: "center", color: "#64748b", verticalAlign: "middle", height: "45px" }}>
+                        Chưa có dữ liệu
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
       {/* Mobile Card list */}
       <div className="mobile-list" style={{ display: "none" }}>
-        {filteredData.map((item) => {
-          const normalizePlate = (p: string) => p.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-          const isRowSpeaking = currentlySpeakingPlate && (() => {
-            const underscoreIndex = currentlySpeakingPlate.lastIndexOf('_');
-            if (underscoreIndex === -1) return false;
-            const speakingPlate = currentlySpeakingPlate.substring(0, underscoreIndex);
-            return normalizePlate(speakingPlate) === normalizePlate(item.licensePlate);
-          })();
+        {filteredData.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "2rem", color: "#94a3b8", background: "#ffffff", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
+            Không tìm thấy đăng ký nào.
+          </div>
+        ) : (
+          filteredData.map((item, idx) => {
+            const isSelected = selectedId === item.id;
+            const normalizePlate = (p: string) => p.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            const isRowSpeaking = currentlySpeakingPlate && (() => {
+              const underscoreIndex = currentlySpeakingPlate.lastIndexOf('_');
+              if (underscoreIndex === -1) return false;
+              const speakingPlate = currentlySpeakingPlate.substring(0, underscoreIndex);
+              return normalizePlate(speakingPlate) === normalizePlate(item.licensePlate);
+            })();
 
-          return (
-            <div 
-              key={item.id} 
-              className={isRowSpeaking ? "mobile-card-speaking-pulse" : ""}
-              style={{
-                background: "white",
-                padding: "0.6rem 0.8rem",
-                borderRadius: "8px",
-                marginBottom: "0.5rem",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.25rem" }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#3b82f6", lineHeight: 1.3, textTransform: "uppercase" }}>{item.licensePlate}</div>
-                  <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b", lineHeight: 1.4, marginTop: "2px" }}>
-                    {item.driverName} {item.phoneNumber && <span style={{ color: "#64748b", fontWeight: 400, marginLeft: "0.5rem" }}>({item.phoneNumber})</span>}
+            return (
+              <div 
+                key={item.id} 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedId(isSelected ? null : item.id);
+                }}
+                onDoubleClick={() => handleView(item)}
+                className={`proposal-card ${isSelected ? "selected" : ""} ${isRowSpeaking ? "mobile-card-speaking-pulse" : ""}`}
+              >
+                {/* Header: STT, License Plate and Status */}
+                <div className="card-row card-header">
+                  <div className="code-box">
+                    <span className="idx-pill">#{idx + 1}</span>
+                    <span className="proposal-code" style={{ textTransform: "uppercase" }}>{item.licensePlate}</span>
                   </div>
-                </div>
-                <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
-                  <button
-                    className="action-btn-base"
-                    onClick={() => handleViewProgress(item)}
-                    style={{
-                      padding: "2px 6px",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      color: "#0284c7",
-                      background: "#e0f2fe",
-                      border: "1px solid #bae6fd",
-                      borderRadius: "4px",
-                      cursor: "pointer"
-                    }}
-                    title="Tiến trình"
-                  >
-                    ⏱️ Tiến trình
-                  </button>
-                  <button className="action-btn-base" onClick={() => handleEdit(item)} style={{ padding: "0.2rem" }}><Pencil size={15} /></button>
-                  {isAdmin && (
-                    <button className="action-btn-base text-danger" onClick={() => handleDelete(item.id, item.licensePlate, item.driverName)} style={{ padding: "0.2rem" }}><Trash2 size={15} /></button>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ fontSize: "0.8rem", color: "#475569", marginBottom: "0.15rem" }}>
-                <span style={{ fontWeight: 600 }}>ĐƠN VỊ:</span> {item.unit}
-              </div>
-              <div style={{ fontSize: "0.8rem", color: "#475569", marginBottom: "0.4rem" }}>
-                <span style={{ fontWeight: 600 }}>MỤC ĐÍCH:</span> {item.purpose}
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: "0.4rem" }}>
-                <div>
                   <span
-                    style={{
-                      padding: "2px 8px",
-                      borderRadius: "9999px",
-                      fontWeight: 600,
-                      fontSize: "0.7rem",
-                      display: "inline-block",
-                      textAlign: "center",
-                      whiteSpace: "nowrap",
-                      background: (item.status === "Đã đăng ký" || item.status === "Đã vào")
-                        ? "#fef3c7"
-                        : (item.status === "Đã vào cổng")
-                          ? "#f5f3ff"
-                          : (item.status === "Đã gọi xe" ? "#e0f2fe" : "#dcfce7"),
-                      color: (item.status === "Đã đăng ký" || item.status === "Đã vào")
-                        ? "#d97706"
-                        : (item.status === "Đã vào cổng")
-                          ? "#7c3aed"
-                          : (item.status === "Đã gọi xe" ? "#0284c7" : "#15803d"),
-                      border: `1px solid ${(item.status === "Đã đăng ký" || item.status === "Đã vào")
-                        ? "#fde68a"
-                        : (item.status === "Đã vào cổng")
-                          ? "#ddd6fe"
-                          : (item.status === "Đã gọi xe" ? "#bae6fd" : "#bbf7d0")}`
-                    }}
+                    className={`status-pill ${
+                      item.status === "Đã hoàn thành"
+                        ? "status-active"
+                        : item.status === "Đã đăng ký" || item.status === "Đã vào"
+                        ? "status-new"
+                        : item.status === "Đã gọi xe"
+                        ? "status-pending"
+                        : "status-inactive"
+                    }`}
                   >
                     {item.status === "Đã vào" ? "Đã đăng ký" : item.status}
                   </span>
-                  <span style={{ marginLeft: "0.4rem", fontSize: "0.75rem", color: "#94a3b8" }}>
-                    {item.status === "Đã đăng ký" || item.status === "Đã vào"
-                      ? "—"
-                      : new Date(item.timeIn).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
-                  </span>
                 </div>
-                <div style={{ display: "flex", gap: "4px" }}>
-                  {(item.status === "Đã đăng ký" || item.status === "Đã vào") && (
-                    <button
-                      className="btn-base btn-primary"
-                      onClick={() => handleConfirmEntry(item.id, item.licensePlate, item.driverName)}
-                      style={{ padding: "2px 8px", height: "26px", fontSize: "0.75rem", background: "#0284c7" }}
-                    >
-                      Xe vào
-                    </button>
+
+                {/* Card Body */}
+                <div className="card-body">
+                  <div className="info-row">
+                    <span className="info-label">Ngày tạo:</span>
+                    <span className="info-val">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Tài xế:</span>
+                    <span className="info-val highlight">{item.driverName}</span>
+                  </div>
+                  {item.phoneNumber && (
+                    <div className="info-row">
+                      <span className="info-label">Số điện thoại:</span>
+                      <span className="info-val">{item.phoneNumber}</span>
+                    </div>
                   )}
-                  {item.status !== "Đã hoàn thành" ? (
-                    <button className="btn-base btn-primary" onClick={() => handleConfirmExit(item.id, item.licensePlate, item.driverName)} style={{ padding: "2px 8px", height: "26px", fontSize: "0.75rem" }}>Hoàn thành</button>
-                  ) : (
-                    <button className="btn-base btn-outline" onClick={() => handleUndo(item.id)} style={{ padding: "2px 8px", height: "26px", fontSize: "0.75rem" }}>Hoàn tác</button>
+                  <div className="info-row">
+                    <span className="info-label">Đơn vị:</span>
+                    <span className="info-val">{item.unit}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Mục đích:</span>
+                    <span className="info-val">{item.purpose}</span>
+                  </div>
+                  {item.timeIn && (
+                    <div className="info-row">
+                      <span className="info-label">Giờ vào:</span>
+                      <span className="info-val">{new Date(item.timeIn).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  )}
+                  {item.timeOut && (
+                    <div className="info-row">
+                      <span className="info-label">Giờ ra:</span>
+                      <span className="info-val">{new Date(item.timeOut).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
-          );
-        })}
-        {filteredData.length === 0 && (
-          <div style={{ textAlign: "center", padding: "2rem", color: "#94a3b8" }}>Không tìm thấy đăng ký nào.</div>
+            );
+          })
         )}
       </div>
 
-      {/* Edit/Create Slide Drawer */}
-      <div className={`drawer-overlay ${showModal ? "show" : ""}`} onClick={handleClose} />
-      <div className={`drawer-container ${showModal ? "show" : ""}`}>
-        <div className="drawer-header">
-          <h3 className="drawer-title">
-            {editingItem ? "✏️ Sửa thông tin xe ra vào" : "🚗 Đăng ký xe ra vào mới"}
-          </h3>
-          <button className="drawer-close" onClick={handleClose}>✕</button>
         </div>
-
-        <div style={{ background: "#f1f5f9", padding: "0.5rem 1.5rem", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem" }}>
-          <p style={{ margin: 0, color: "#64748b" }}>
-            Người thực hiện: <strong style={{ color: "#3b82f6" }}>{editingItem?.creator || currentUserName}</strong>
-          </p>
-          <p style={{ margin: 0, color: "#64748b" }}>
-            Ngày tạo: <strong>{editingItem ? new Date(editingItem.createdAt).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN")}</strong>
-          </p>
-        </div>
-
-        <form key={editingItem?.id || "new"} onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden", margin: 0 }}>
-          <div className="drawer-body">
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <div className="form-row" style={{ flex: 4 }}>
-                <label className="form-label">Số xe *</label>
-                <input type="text" name="licensePlate" className="form-control" defaultValue={editingItem?.licensePlate || ""} required style={{ textTransform: "uppercase", height: "36px", width: "100%" }} placeholder="VD: 29C-12345" />
-              </div>
-              <div className="form-row" style={{ flex: 6 }}>
-                <label className="form-label">Tên tài xế *</label>
-                <input type="text" name="driverName" className="form-control" defaultValue={editingItem?.driverName || ""} required style={{ textTransform: "uppercase", height: "36px", width: "100%" }} placeholder="TÊN TÀI XẾ" />
-              </div>
-            </div>
-            <div className="form-row">
-              <label className="form-label">Đơn vị *</label>
-              <input type="text" name="unit" className="form-control" defaultValue={editingItem?.unit || ""} required style={{ textTransform: "uppercase", height: "36px" }} placeholder="ĐƠN VỊ CÔNG TÁC" />
-            </div>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <div className="form-row" style={{ flex: 1 }}>
-                <label className="form-label">Số CCCD</label>
-                <input type="text" name="idCardNumber" className="form-control" defaultValue={editingItem?.idCardNumber || ""} style={{ textTransform: "uppercase", height: "36px", width: "100%" }} placeholder="CCCD / CMTND" />
-              </div>
-              <div className="form-row" style={{ flex: 1 }}>
-                <label className="form-label">Số điện thoại</label>
-                <input type="text" name="phoneNumber" className="form-control" defaultValue={editingItem?.phoneNumber || ""} style={{ height: "36px", width: "100%" }} placeholder="SỐ ĐIỆN THOẠI" />
-              </div>
-            </div>
-            <div className="form-row">
-              <label className="form-label">Mục đích *</label>
-              <select name="purpose" className="form-control" defaultValue={editingItem?.purpose || PURPOSES[0]} required style={{ height: "36px", padding: "0 8px" }}>
-                {PURPOSES.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-            <div className="form-row">
-              <label className="form-label">Ghi chú</label>
-              <textarea name="note" className="form-control" defaultValue={editingItem?.note || ""} rows={4} placeholder="Nhập ghi chú thêm..."></textarea>
-            </div>
-          </div>
-          <div className="drawer-footer">
-            <button type="button" className="btn-base btn-outline" onClick={handleClose}>Hủy bỏ</button>
-            <button type="submit" className="btn-base btn-primary" disabled={isPending}>
-              {isPending ? "Đang xử lý..." : "Lưu đăng ký"}
-            </button>
-          </div>
-        </form>
       </div>
+
+      {/* Edit/Create Modal Popup */}
+      {showModal && (
+        <div className="custom-modal-overlay">
+          <div
+            style={{
+              width: "95%",
+              maxWidth: "500px",
+              maxHeight: "90%",
+              margin: "auto",
+              display: "flex",
+              flexDirection: "column",
+              padding: 0,
+              background: "#ffffff",
+              borderRadius: "16px",
+              border: "1px solid #cbd5e1",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              overflow: "hidden"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3 className="modal-title">
+                {isViewOnly ? "👁️ Chi tiết xe ra vào" : (editingItem ? "✏️ Sửa thông tin xe ra vào" : "🚗 Thêm mới xe ra vào")}
+              </h3>
+              <button className="modal-close" onClick={handleClose}>✕</button>
+            </div>
+
+            <div style={{ background: "#003466", padding: "4px 20px", borderBottom: "1px solid #002244", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem" }}>
+              <p style={{ margin: 0, color: "#ffffff" }}>
+                Người thực hiện: <strong style={{ color: "#ffffff" }}>{editingItem?.creator || currentUserName}</strong>
+              </p>
+              <p style={{ margin: 0, color: "#ffffff" }}>
+                Ngày tạo: <strong style={{ color: "#ffffff" }}>{editingItem ? new Date(editingItem.createdAt).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN")}</strong>
+              </p>
+            </div>
+
+            <form key={editingItem?.id || "new"} onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden", margin: 0 }}>
+              <div className="modal-body">
+                <div style={{ display: "flex", gap: "1rem" }}>
+                  <div className="form-row" style={{ flex: 4 }}>
+                    <label className="form-label">SỐ XE <span style={{ color: "red" }}>(*)</span></label>
+                    <input type="text" name="licensePlate" className="form-control" defaultValue={editingItem?.licensePlate || ""} required disabled={isViewOnly} style={{ textTransform: "uppercase", height: "34px", width: "100%" }} placeholder="VD: 29C-12345" />
+                  </div>
+                  <div className="form-row" style={{ flex: 6 }}>
+                    <label className="form-label">TÊN TÀI XẾ <span style={{ color: "red" }}>(*)</span></label>
+                    <input type="text" name="driverName" className="form-control" defaultValue={editingItem?.driverName || ""} required disabled={isViewOnly} style={{ textTransform: "uppercase", height: "34px", width: "100%" }} placeholder="TÊN TÀI XẾ" />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <label className="form-label">ĐƠN VỊ <span style={{ color: "red" }}>(*)</span></label>
+                  <input type="text" name="unit" className="form-control" defaultValue={editingItem?.unit || ""} required disabled={isViewOnly} style={{ textTransform: "uppercase", height: "34px" }} placeholder="ĐƠN VỊ CÔNG TÁC" />
+                </div>
+                 <div style={{ display: "flex", gap: "1rem" }}>
+                  <div className="form-row" style={{ flex: 1 }}>
+                    <label className="form-label">SỐ CCCD <span style={{ color: "red" }}>(*)</span></label>
+                    <input type="text" name="idCardNumber" className="form-control" defaultValue={editingItem?.idCardNumber || ""} required disabled={isViewOnly} style={{ textTransform: "uppercase", height: "34px", width: "100%" }} placeholder="CCCD / CMTND" />
+                  </div>
+                  <div style={{ flex: 1 }} className="form-row">
+                    <label className="form-label">SỐ ĐIỆN THOẠI <span style={{ color: "red" }}>(*)</span></label>
+                    <input type="text" name="phoneNumber" className="form-control" defaultValue={editingItem?.phoneNumber || ""} required disabled={isViewOnly} style={{ height: "34px", width: "100%" }} placeholder="SỐ ĐIỆN THOẠI" />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <label className="form-label">MỤC ĐÍCH <span style={{ color: "red" }}>(*)</span></label>
+                  <select name="purpose" className="form-control" defaultValue={editingItem?.purpose || PURPOSES[0]} required disabled={isViewOnly} style={{ height: "34px", padding: "0 8px" }}>
+                    {PURPOSES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="form-row">
+                  <label className="form-label">NHÀ MÁY <span style={{ color: "red" }}>(*)</span></label>
+                  <input type="hidden" name="branch" value={editingItem?.branch || (activeBranch && ["Đồng Tháp", "Đắk Lắk", "Hồ Chí Minh"].includes(activeBranch) ? activeBranch : "Đồng Tháp")} />
+                  <select name="branch_select" className="form-control" defaultValue={editingItem?.branch || (activeBranch && ["Đồng Tháp", "Đắk Lắk", "Hồ Chí Minh"].includes(activeBranch) ? activeBranch : "Đồng Tháp")} required disabled style={{ height: "34px", padding: "0 8px" }}>
+                    <option value="Đồng Tháp">Đồng Tháp</option>
+                    <option value="Đắk Lắk">Đắk Lắk</option>
+                    <option value="Hồ Chí Minh">Hồ Chí Minh</option>
+                  </select>
+                </div>
+                <div className="form-row">
+                  <label className="form-label">GHI CHÚ</label>
+                  <textarea name="note" className="form-control" defaultValue={editingItem?.note || ""} disabled={isViewOnly} rows={2} placeholder="Nhập ghi chú thêm..." style={{ resize: "none" }}></textarea>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="sapo-btn sapo-btn-secondary" onClick={handleClose}>Thoát</button>
+                {!isViewOnly && (
+                  <button type="submit" className="sapo-btn" disabled={isPending}>
+                    {isPending ? "Đang xử lý..." : "Lưu đăng ký"}
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Confirm Exit Modal */}
       {showConfirmModal && confirmData && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
           <div className="modal-content" style={{ maxWidth: "420px", textAlign: "center", padding: "1.5rem", borderRadius: "10px", border: "none" }}>
             <div style={{ color: "#10b981", marginBottom: "0.75rem" }}>
               <CheckCircle size={48} style={{ margin: "0 auto" }} />
@@ -1416,7 +1499,7 @@ export default function SecurityRegistrationTable({
 
       {/* Confirm Entry Modal */}
       {showEntryModal && entryData && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
           <div className="modal-content" style={{ maxWidth: "420px", textAlign: "center", padding: "1.5rem", borderRadius: "10px", border: "none" }}>
             <div style={{ color: "#0284c7", marginBottom: "0.75rem" }}>
               <LogIn size={48} style={{ margin: "0 auto" }} />
@@ -1450,19 +1533,20 @@ export default function SecurityRegistrationTable({
 
       {/* Progress Stepper Modal (identical driver queue style) */}
       {showProgressModal && progressItem && (
-        <div className="modal-overlay" style={{ zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px 0" }} onClick={() => setShowProgressModal(false)}>
+        <div className="modal-overlay" style={{ zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0" }} onClick={() => setShowProgressModal(false)}>
           <div
-            className="modal-content"
+            className="modal-content progress-modal-content"
             onClick={(e) => e.stopPropagation()}
             style={{
               maxWidth: "680px",
               width: "95%",
-              maxHeight: "calc(100vh - 40px)",
+              maxHeight: "88vh",
+              margin: "auto",
               display: "flex",
               flexDirection: "column",
               padding: "0",
               borderRadius: "15px",
-              overflow: "hidden",
+              overflowY: "auto",
               border: "none",
               boxShadow: "0 25px 50px -12px rgba(0,0,0,0.15)"
             }}
@@ -1490,7 +1574,7 @@ export default function SecurityRegistrationTable({
               </button>
             </div>
 
-            <div style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto", flex: 1 }}>
+            <div style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem", flex: 1 }}>
               <style dangerouslySetInnerHTML={{
                 __html: `
                 @media (max-width: 580px) {
@@ -1518,42 +1602,29 @@ export default function SecurityRegistrationTable({
                     {/* Giant Queue Number Display */}
                     {(() => {
                       const isCompleted = progressItem.status === "Đã hoàn thành";
-                      const isCalled = progressData?.isCalled || progressItem.status === "Đã gọi xe";
+                      const isCalled = progressItem.status === "Đã gọi xe";
                       const hasEnteredQueue = progressItem.status !== "Đã đăng ký" && progressItem.status !== "Đã vào";
 
-                      const wInFront = progressData !== null ? progressData.waitingInFront : (() => {
-                        const itemDate = new Date(progressItem.timeIn).toDateString();
-                        const sameDayRegs = data.filter(r => new Date(r.timeIn).toDateString() === itemDate);
-                        const activeRegs = sameDayRegs.filter(r => r.status === "Đã vào cổng" || r.status === "Đã gọi xe");
-                        activeRegs.sort((a, b) => {
-                          const aIsCalled = a.status === "Đã gọi xe";
-                          const bIsCalled = b.status === "Đã gọi xe";
-                          if (aIsCalled && !bIsCalled) return -1;
-                          if (!aIsCalled && bIsCalled) return 1;
-                          if (aIsCalled && bIsCalled) {
-                            return new Date(a.updatedAt || 0).getTime() - new Date(b.updatedAt || 0).getTime();
-                          }
-                          return new Date(a.timeIn).getTime() - new Date(b.timeIn).getTime();
-                        });
-                        const myIndex = hasEnteredQueue ? activeRegs.findIndex(r => r.id === progressItem.id) : -1;
-                        return myIndex !== -1 ? myIndex : 0;
+                      const waitingToCallList = (() => {
+                        const itemDate = new Date(progressItem.createdAt).toDateString();
+                        const sameDayRegs = data.filter(
+                          r => new Date(r.createdAt).toDateString() === itemDate &&
+                          r.purpose === progressItem.purpose
+                        );
+                        const uncalledRegs = sameDayRegs.filter(r => r.status === "Đã vào cổng");
+                        uncalledRegs.sort((a, b) => new Date(a.timeIn).getTime() - new Date(b.timeIn).getTime());
+                        return uncalledRegs;
                       })();
 
-                      const qNumber = progressData !== null ? progressData.queueNumber : (() => {
-                        const itemDate = new Date(progressItem.timeIn).toDateString();
-                        const sameDayRegs = data.filter(r => new Date(r.timeIn).toDateString() === itemDate);
-                        const activeRegs = sameDayRegs.filter(r => r.status === "Đã vào cổng" || r.status === "Đã gọi xe");
-                        activeRegs.sort((a, b) => {
-                          const aIsCalled = a.status === "Đã gọi xe";
-                          const bIsCalled = b.status === "Đã gọi xe";
-                          if (aIsCalled && !bIsCalled) return -1;
-                          if (!aIsCalled && bIsCalled) return 1;
-                          if (aIsCalled && bIsCalled) {
-                            return new Date(a.updatedAt || 0).getTime() - new Date(b.updatedAt || 0).getTime();
-                          }
-                          return new Date(a.timeIn).getTime() - new Date(b.timeIn).getTime();
-                        });
-                        const myIndex = hasEnteredQueue ? activeRegs.findIndex(r => r.id === progressItem.id) : -1;
+                      const myIndexInWaiting = waitingToCallList.findIndex(r => r.id === progressItem.id);
+                      const myQueuePos = myIndexInWaiting !== -1 ? myIndexInWaiting + 1 : null;
+                      const wInFront = myIndexInWaiting !== -1 ? myIndexInWaiting : 0;
+
+                      const qNumber = (() => {
+                        const itemDate = new Date(progressItem.createdAt).toDateString();
+                        const sameDayRegs = data.filter(r => new Date(r.createdAt).toDateString() === itemDate);
+                        sameDayRegs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                        const myIndex = sameDayRegs.findIndex(r => r.id === progressItem.id);
                         return myIndex !== -1 ? myIndex + 1 : null;
                       })();
 
@@ -1581,11 +1652,11 @@ export default function SecurityRegistrationTable({
                             alignItems: "center",
                             justifyContent: "center"
                           }}>
-                            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: isCompleted ? "#166534" : (!hasEnteredQueue ? "#b45309" : "#0369a1"), textTransform: "uppercase" }}>
-                              {isCompleted ? "Trạng thái xe" : (hasEnteredQueue ? "Vị trí hàng đợi hiện tại" : "Trạng thái xe")}
+                            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: isCompleted ? "#166534" : (isCalled ? "#0284c7" : (!hasEnteredQueue ? "#b45309" : "#0369a1")), textTransform: "uppercase" }}>
+                              {isCompleted || isCalled || !hasEnteredQueue ? "Trạng thái xe" : "Vị trí hàng đợi chờ gọi"}
                             </span>
-                            <div style={{ fontSize: isCompleted || !hasEnteredQueue ? "2rem" : "2.4rem", fontWeight: 900, color: isCompleted ? "#10b981" : (hasEnteredQueue ? "#0284c7" : "#d97706"), margin: "0.15rem 0", lineHeight: 1 }}>
-                              {isCompleted ? "ĐÃ RA CỔNG" : (hasEnteredQueue ? `#${wInFront + 1}` : "CHỜ VÀO CỔNG")}
+                            <div style={{ fontSize: isCompleted || isCalled || !hasEnteredQueue ? "2rem" : "2.4rem", fontWeight: 900, color: isCompleted ? "#10b981" : (isCalled ? "#0284c7" : (hasEnteredQueue ? "#0284c7" : "#d97706")), margin: "0.15rem 0", lineHeight: 1 }}>
+                              {isCompleted ? "ĐÃ RA CỔNG" : (isCalled ? "ĐÃ GỌI XE" : (hasEnteredQueue ? `#${myQueuePos}` : "CHỜ VÀO CỔNG"))}
                             </div>
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.1rem", fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>
                               <span>Hàng đợi: <strong style={{ color: "#334155" }}>{progressItem.purpose}</strong></span>
@@ -1594,7 +1665,7 @@ export default function SecurityRegistrationTable({
                           </div>
 
                           {/* Queue Real-time Message */}
-                          {!isCompleted && (
+                          {!isCompleted && !isCalled && (
                             <div style={{
                               background: !hasEnteredQueue ? "#fffbeb" : (wInFront === 0 ? "#fef3c7" : "#f8fafc"),
                               border: !hasEnteredQueue ? "1px solid #fde68a" : (wInFront === 0 ? "1px solid #fde68a" : "1px solid #e2e8f0"),
@@ -1608,7 +1679,7 @@ export default function SecurityRegistrationTable({
                               {!hasEnteredQueue ? (
                                 <>📢 Vui lòng xác nhận xe vào cổng để đưa vào hàng đợi.</>
                               ) : wInFront === 0 ? (
-                                <>📢 Xe tiếp theo chuẩn bị vào cổng!</>
+                                <>📢 Xe tiếp theo chuẩn bị được gọi!</>
                               ) : (
                                 <>⏳ Còn <strong style={{ color: "#0284c7", fontSize: "0.92rem" }}>{wInFront}</strong> xe khác đang xếp hàng phía trước</>
                               )}
@@ -1695,14 +1766,14 @@ export default function SecurityRegistrationTable({
                                 }} />
                                 <span style={{ fontSize: "0.82rem", fontWeight: 700, color: stepCalledColor }}>
                                   {isStepCalledCompleted ? (
-                                    <>3. Đã gọi vào: {progressData?.calledInfo?.type ? (() => {
-                                      const t = progressData.calledInfo.type;
+                                    <>3. Đã gọi vào: {(() => {
+                                      const t = progressData?.calledInfo?.type || 'can-xe';
                                       if (t === 'can-xe') return 'Cân xe';
                                       if (t === 'kho-vat-tu') return 'Kho vật tư';
                                       if (t === 'kho-nguyen-lieu-cua-1') return 'Kho nguyên liệu cửa 1';
                                       if (t === 'kho-nguyen-lieu-cua-2') return 'Kho nguyên liệu cửa 2';
                                       return 'Cân xe';
-                                    })() : 'Vào cổng'}</>
+                                    })()}</>
                                   ) : (
                                     <>3. Chờ gọi {hasEntered ? `(${wInFront} xe trước)` : ""}</>
                                   )}
@@ -1752,17 +1823,54 @@ export default function SecurityRegistrationTable({
                       border: "1px dashed #cbd5e1",
                       display: "inline-flex"
                     }}>
-                      {typeof window !== 'undefined' ? (
+                      {origin ? (
                         <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${window.location.origin}/x/${progressItem.id}`)}`}
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${origin.includes('localhost') || origin.includes('127.0.0.1') || origin.startsWith('http://192.168.') ? 'https://ems.sapodaklak.com' : origin}/x/${progressItem.id}`)}`}
                           alt="QR Theo dõi xếp hàng"
                           style={{ width: "150px", height: "150px" }}
                         />
-                      ) : null}
+                      ) : (
+                        <div style={{ width: "150px", height: "150px", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: "11px", fontWeight: 500 }}>
+                          Đang khởi tạo...
+                        </div>
+                      )}
                     </div>
                     <p style={{ fontSize: "11px", color: "#64748b", margin: "0.5rem 0 0 0", lineHeight: "1.4", textAlign: "center", fontWeight: 500 }}>
                       Tài xế dùng điện thoại quét mã này để theo dõi tiến trình trực tiếp.
                     </p>
+                    <button
+                      onClick={() => {
+                        const resolvedOrigin = origin.includes('localhost') || origin.includes('127.0.0.1') || origin.startsWith('http://192.168.') ? 'https://ems.sapodaklak.com' : origin;
+                        const trackingUrl = `${resolvedOrigin}/x/${progressItem.id}`;
+                        const message = `Sapo EMS: Đăng ký thành công cho xe ${progressItem.licensePlate}. Theo dõi vị trí hàng đợi chờ gọi tại: ${trackingUrl}`;
+                        navigator.clipboard.writeText(message);
+                        alert("Đã sao chép tin nhắn gửi Zalo vào bộ nhớ tạm!");
+                        if (progressItem.phoneNumber) {
+                          window.open(`https://zalo.me/${progressItem.phoneNumber.replace(/[^0-9]/g, '')}`, '_blank');
+                        } else {
+                          alert("Không có số điện thoại tài xế để mở Zalo!");
+                        }
+                      }}
+                      className="btn-base"
+                      style={{
+                        marginTop: "10px",
+                        fontSize: "11px",
+                        width: "100%",
+                        padding: "5px 10px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "4px",
+                        border: "1px solid #0284c7",
+                        borderRadius: "6px",
+                        color: "#0284c7",
+                        background: "white",
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      💬 Gửi qua Zalo
+                    </button>
                   </div>
                 </div>
               )}
@@ -1784,7 +1892,7 @@ export default function SecurityRegistrationTable({
 
       {/* Delete Modal */}
       {showDeleteModal && deleteData && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
           <div className="modal-content" style={{ maxWidth: "420px", textAlign: "center", padding: "1.5rem", borderRadius: "10px", border: "none" }}>
             <div style={{ color: "#ef4444", marginBottom: "0.75rem" }}>
               <Trash2 size={48} style={{ margin: "0 auto" }} />
@@ -1818,7 +1926,7 @@ export default function SecurityRegistrationTable({
 
       {/* QR Code Modal */}
       {showQrModal && (
-        <div className="modal-overlay" style={{ zIndex: 1200 }} onClick={() => setShowQrModal(false)}>
+        <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setShowQrModal(false)}>
           <div
             className="modal-content"
             onClick={(e) => e.stopPropagation()}
@@ -1866,9 +1974,9 @@ export default function SecurityRegistrationTable({
                 border: "1.5px dashed #cbd5e1",
                 marginBottom: "0.75rem"
               }}>
-                {typeof window !== 'undefined' ? (
+                {origin ? (
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=${encodeURIComponent(`${window.location.origin}/dk?token=sapo-gate-secure-token-2026`)}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=${encodeURIComponent(`${origin.includes('localhost') || origin.includes('127.0.0.1') || origin.startsWith('http://192.168.') ? 'https://ems.sapodaklak.com' : origin}/dk?token=sapo-gate-secure-token-2026`)}`}
                     alt="Mã QR tự đăng ký"
                     style={{ width: "170px", height: "170px", display: "block" }}
                   />
@@ -1892,7 +2000,7 @@ export default function SecurityRegistrationTable({
               }}>
                 <strong>🔗 Đường dẫn đăng ký công cộng:</strong>
                 <div style={{ marginTop: "3px", fontSize: "11px", color: "#0284c7", wordBreak: "break-all", fontWeight: 700 }}>
-                  {typeof window !== 'undefined' ? `${window.location.origin}/dk?token=sapo-gate-secure-token-2026` : ""}
+                  {origin ? `${origin.includes('localhost') || origin.includes('127.0.0.1') || origin.startsWith('http://192.168.') ? 'https://ems.sapodaklak.com' : origin}/dk?token=sapo-gate-secure-token-2026` : ""}
                 </div>
               </div>
             </div>
@@ -1924,6 +2032,38 @@ export default function SecurityRegistrationTable({
         </div>
       )}
 
+      {/* Sound Activation Modal */}
+      {showSoundActivationModal && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-content" style={{ maxWidth: "420px", textAlign: "center", padding: "1.75rem", borderRadius: "12px", border: "none" }}>
+            <div style={{ color: "#003466", marginBottom: "1rem", fontSize: "3rem" }}>
+              📢
+            </div>
+            <h3 style={{ fontSize: "1.25rem", marginBottom: "0.6rem", color: "#1e293b", fontWeight: 700 }}>
+              Kích hoạt âm thanh thông báo?
+            </h3>
+            <p style={{ fontSize: "13px", color: "#64748b", marginBottom: "1.5rem", lineHeight: "1.45" }}>
+              Hệ thống cần được kích hoạt âm thanh để tự động phát loa gọi xe lên cân/vào kho khi đến lượt.
+            </p>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <button
+                className="sapo-btn"
+                style={{ height: "36px", padding: "0 24px" }}
+                onClick={() => {
+                  setIsMuted(false);
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem("sapo_sound_active", "true");
+                  }
+                  playTestVoice();
+                  setShowSoundActivationModal(false);
+                }}
+              >
+                KÍCH HOẠT
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

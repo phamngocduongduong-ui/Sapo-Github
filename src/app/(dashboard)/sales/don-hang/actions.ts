@@ -12,7 +12,6 @@ export async function createOrder(formData: FormData, items: any[]) {
   const employeeName = formData.get("employeeName") as string;
   const branch = formData.get("branch") as string;
   const requestDeliveryDate = formData.get("requestDeliveryDate") as string;
-  const productionFinishDate = formData.get("productionFinishDate") as string;
   const shipDate = formData.get("shipDate") as string;
   const thermometer = formData.get("thermometer") === "on";
   const note = formData.get("note") as string;
@@ -30,7 +29,6 @@ export async function createOrder(formData: FormData, items: any[]) {
       employeeName,
       branch: branch || null,
       requestDeliveryDate: requestDeliveryDate ? new Date(requestDeliveryDate) : null,
-      productionFinishDate: productionFinishDate ? new Date(productionFinishDate) : null,
       shipDate: shipDate ? new Date(shipDate) : null,
       thermometer,
       status: "Tạo mới",
@@ -40,9 +38,14 @@ export async function createOrder(formData: FormData, items: any[]) {
           id: crypto.randomUUID(),
           productName: item.productName,
           packaging: item.packaging,
+          unit: item.unit || null,
           quantity: parseInt(item.quantity) || 0,
           hasPallet: item.hasPallet,
           hasCornerGuard: item.hasCornerGuard,
+          printedBag: item.printedBag || false,
+          printedBox: item.printedBox || false,
+          brix: item.brix || null,
+          otherRequirements: item.otherRequirements || null,
           note: item.note,
           updatedAt: new Date()
         }))
@@ -70,7 +73,6 @@ export async function updateOrder(id: string, formData: FormData, items: any[]) 
   const customerCode = formData.get("customerCode") as string;
   const branch = formData.get("branch") as string;
   const requestDeliveryDate = formData.get("requestDeliveryDate") as string;
-  const productionFinishDate = formData.get("productionFinishDate") as string;
   const shipDate = formData.get("shipDate") as string;
   const thermometer = formData.get("thermometer") === "on";
   const note = formData.get("note") as string;
@@ -93,7 +95,6 @@ export async function updateOrder(id: string, formData: FormData, items: any[]) 
       customerCode,
       branch: branch || null,
       requestDeliveryDate: requestDeliveryDate ? new Date(requestDeliveryDate) : null,
-      productionFinishDate: productionFinishDate ? new Date(productionFinishDate) : null,
       shipDate: shipDate ? new Date(shipDate) : null,
       thermometer,
       status,
@@ -103,9 +104,14 @@ export async function updateOrder(id: string, formData: FormData, items: any[]) 
           id: crypto.randomUUID(),
           productName: item.productName,
           packaging: item.packaging,
+          unit: item.unit || null,
           quantity: parseInt(item.quantity) || 0,
           hasPallet: item.hasPallet,
           hasCornerGuard: item.hasCornerGuard,
+          printedBag: item.printedBag || false,
+          printedBox: item.printedBox || false,
+          brix: item.brix || null,
+          otherRequirements: item.otherRequirements || null,
           note: item.note,
           updatedAt: new Date()
         }))
@@ -136,7 +142,7 @@ export async function approveOrder(id: string) {
 
   await (prisma as any).order.update({
     where: { id },
-    data: { status: "Chờ kế hoạch sản xuất" }
+    data: { status: "Chờ tiếp nhận" }
   });
 
   const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
@@ -147,9 +153,9 @@ export async function approveOrder(id: string) {
     recordId: id,
     action: "STATUS_CHANGE",
     oldData: { status: oldOrder?.status },
-    newData: { status: "Chờ kế hoạch sản xuất" },
+    newData: { status: "Chờ tiếp nhận" },
     changedBy,
-    changeDetail: "Phê duyệt đơn hàng, chuyển sang Chờ kế hoạch sản xuất"
+    changeDetail: "Phê duyệt đơn hàng, chuyển sang Chờ tiếp nhận"
   });
   revalidatePath("/sales/don-hang");
 }

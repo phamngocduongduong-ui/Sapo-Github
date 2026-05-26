@@ -22,6 +22,7 @@ export async function GET(request: Request) {
   }
 
   const isAdmin = user.username === "admin" || user.role === "Admin";
+  const isStaff = user.role?.includes("Nhân viên") && !isAdmin;
   const userBranches = user.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
   const userName = user.employeeName || user.username || "";
 
@@ -32,8 +33,15 @@ export async function GET(request: Request) {
           where: isAdmin ? {} : { branch: { in: userBranches } },
           orderBy: { createdAt: "desc" } 
         }));
+      case "contracts":
+        return NextResponse.json(await (prisma as any).contract.findMany({ 
+          where: isStaff ? { salesEmployee: userName } : {},
+          include: { contractitem: true }, 
+          orderBy: { createdAt: "desc" } 
+        }));
       case "orders":
         return NextResponse.json(await (prisma as any).order.findMany({ 
+          where: isStaff ? { employeeName: userName } : {},
           include: { orderitem: true }, 
           orderBy: { createdAt: "desc" } 
         }));
@@ -88,7 +96,8 @@ export async function GET(request: Request) {
         }));
       case "security-registrations":
         return NextResponse.json(await (prisma as any).securityregistration.findMany({ 
-          orderBy: { createdAt: "desc" } 
+          where: session.activeBranch ? { branch: session.activeBranch } : {},
+          orderBy: { createdAt: 'desc' } 
         }));
       case "approvals":
         const [pContracts, pLeaves, pSalaryChanges, pTransfers, pResignations, pPayrolls] = await Promise.all([
@@ -107,6 +116,75 @@ export async function GET(request: Request) {
           resignations: pResignations,
           payrolls: pPayrolls
         });
+      case "customers":
+        return NextResponse.json(await (prisma as any).customer.findMany({
+          select: { code: true, name: true, abbreviation: true }
+        }));
+      case "products":
+        return NextResponse.json(await prisma.product.findMany({
+          select: { code: true, name: true, englishName: true, packaging: true, unit: { select: { name: true } } }
+        }));
+      case "pending-purchase-orders":
+        return NextResponse.json(await (prisma as any).purchaseorder.findMany({
+          where: { status: "Chờ mua hàng" },
+          include: { purchaseorderdetail: true },
+          orderBy: { createdAt: "asc" }
+        }));
+      case "purchase-invoices":
+        return NextResponse.json(await (prisma as any).purchaseinvoice.findMany({
+          include: { purchaseinvoicedetail: true },
+          orderBy: { createdAt: "desc" }
+        }));
+      case "purchase-orders":
+        return NextResponse.json(await (prisma as any).purchaseorder.findMany({
+          where: isAdmin ? {} : {
+            branch: { in: userBranches }
+          },
+          include: { purchaseorderdetail: true },
+          orderBy: { createdAt: "desc" }
+        }));
+      case "maintenance-proposals":
+        const proposals = await (prisma as any).maintenanceproposal.findMany({
+          where: isAdmin ? {} : {
+            branch: { in: userBranches }
+          },
+          include: { items: true },
+          orderBy: { createdAt: "desc" }
+        });
+        for (const proposal of proposals) {
+          const proposalCode = proposal.proposalCode;
+          const poDetails = await (prisma as any).purchaseorderdetail.findMany({
+            where: {
+              purchaseorder: {
+                purpose: {
+                  contains: proposalCode
+                }
+              }
+            },
+            select: {
+              proposalProductName: true,
+              requestedQuantity: true,
+              purchaseorder: {
+                select: {
+                  status: true
+                }
+              }
+            }
+          });
+          for (const item of proposal.items) {
+            const matchedDetails = poDetails.filter((d: any) => d.proposalProductName === item.productName);
+            const orderedQty = matchedDetails.reduce((sum: number, d: any) => sum + (d.requestedQuantity || 0), 0);
+            (item as any).orderedQuantity = orderedQty;
+            
+            if (orderedQty > 0) {
+              const statuses = Array.from(new Set(matchedDetails.map((d: any) => d.purchaseorder?.status).filter(Boolean)));
+              (item as any).poStatus = statuses.join(", ");
+            } else {
+              (item as any).poStatus = "";
+            }
+          }
+        }
+        return NextResponse.json(proposals);
       default:
         return NextResponse.json({ error: "Invalid module" }, { status: 400 });
     }

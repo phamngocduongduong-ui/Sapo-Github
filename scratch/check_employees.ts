@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const employees = await prisma.employee.findMany();
-  const contracts = await prisma.laborContract.findMany();
+  const contracts = await (prisma as any).laborcontract.findMany();
   const attendances = await prisma.attendance.findMany();
   
   console.log("--- All Employees ---");

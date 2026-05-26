@@ -1,0 +1,328 @@
+<!DOCTYPE html><html lang="vi"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/><link rel="preload" as="image" href="/images/sapo_logo.png"/><link rel="stylesheet" href="/_next/static/css/app/layout.css?v=1779380862618" data-precedence="next_static/css/app/layout.css"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/chunks/webpack.js?v=1779380862618"/><script src="/_next/static/chunks/main-app.js?v=1779380862618" async=""></script><script src="/_next/static/chunks/app-pages-internals.js" async=""></script><script src="/_next/static/chunks/app/(dashboard)/layout.js" async=""></script><script src="/_next/static/chunks/app/layout.js" async=""></script><script src="/_next/static/chunks/app/(dashboard)/sales/hop-dong/page.js" async=""></script><title>EMS - Enterprise Management System</title><meta name="description" content="Phần mềm quản lý doanh nghiệp tích hợp Kinh Doanh, Sản Xuất, Thu Mua"/><script>
+          // Prevent mobile pinch-to-zoom
+          document.addEventListener('touchmove', function (event) {
+            if (event.touches.length > 1) {
+              event.preventDefault();
+            }
+          }, { passive: false });
+
+          // Prevent iOS Safari pinch-gesture zoom
+          document.addEventListener('gesturestart', function (event) {
+            event.preventDefault();
+          });
+        </script><script src="/_next/static/chunks/polyfills.js" noModule=""></script></head><body style="touch-action:manipulation"><div class="app-container" style="display:flex;min-height:100vh;position:relative"><header class="login-header" style="height:140px;background-image:linear-gradient(rgba(0, 52, 102, 0.6), rgba(0, 52, 102, 0.6)), url(&#x27;/images/login_banner.png?v=2&#x27;);background-size:100% 100%;background-position:center;background-repeat:no-repeat;display:flex;align-items:center;justify-content:space-between;padding:0 2rem;color:white;border-bottom:4px solid #ff5c00;width:100%;margin:0"><div class="header-left"><button class="mobile-menu-toggle header-icon-btn" style="background:none;border:none;cursor:pointer;display:none;padding:8px;align-items:center;justify-content:center;margin-right:8px"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu "><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg></button><img src="/images/sapo_logo.png" alt="Sapo Logo" class="logo-img"/><div class="header-titles"><h1>HỆ THỐNG QUẢN LÝ SAPO GROUP</h1><p>Chào mừng bạn đến với hệ thống quản lý doanh nghiệp</p></div></div><div class="header-right"><div style="display:flex;align-items:center;gap:1.25rem"><div style="position:relative"><button class="header-icon-btn"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell "><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></button></div><div style="position:relative;display:flex;align-items:center;gap:0.75rem"><button style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:4px"><div style="width:36px;height:36px;border-radius:50%;background:white;color:#003466;display:flex;align-items:center;justify-content:center;font-weight:bold"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#003466" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user "><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down "><path d="m6 9 6 6 6-6"></path></svg></button></div><div style="margin-left:0.5rem;border-left:1px solid rgba(255, 255, 255, 0.3);padding-left:0.75rem"><form action="" encType="multipart/form-data" method="POST"><input type="hidden" name="$ACTION_ID_3f5ce7db4942274193450cc68a503ecf44143372"/><button type="submit" class="header-icon-btn" title="Đăng xuất" style="color:#ff5c00"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5c00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out "><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg></button></form></div></div></div></header><div class="mobile-overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background-color:rgba(0,0,0,0.4);display:block"></div><aside class="sidebar sidebar-aside open" style="width:220px;height:calc(100vh - 140px);position:fixed;left:0;top:140px;z-index:1050;display:flex;flex-direction:column;border-right:1px solid #cbd5e1"><button class="mobile-close-btn" style="position:absolute;top:12px;right:12px;background:none;border:none;color:#64748b;cursor:pointer;display:none;z-index:1060"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x "><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button><nav class="sidebar-nav" style="padding:0;flex:1;overflow-y:auto;display:flex;flex-direction:column"><a style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 20px;background:#ffffff;color:#2b6cb0;text-transform:uppercase;font-weight:700;font-size:13px;border-bottom:1px solid #cbd5e1;cursor:pointer;transition:background-color 0.2s ease, color 0.2s ease;text-decoration:none" href="/"><span style="text-align:left;flex:1;letter-spacing:0.2px">Tổng quan</span></a><div style="padding:1rem 1.75rem;display:flex;flex-direction:column;gap:1.25rem"><div style="height:1.25rem;background:rgba(0,0,0,0.05);border-radius:4px;width:85%;animation:pulse 1.5s infinite"></div><div style="height:1.25rem;background:rgba(0,0,0,0.05);border-radius:4px;width:70%;animation:pulse 1.5s infinite"></div><div style="height:1.25rem;background:rgba(0,0,0,0.05);border-radius:4px;width:85%;animation:pulse 1.5s infinite"></div><div style="height:1.25rem;background:rgba(0,0,0,0.05);border-radius:4px;width:70%;animation:pulse 1.5s infinite"></div><div style="height:1.25rem;background:rgba(0,0,0,0.05);border-radius:4px;width:85%;animation:pulse 1.5s infinite"></div></div></nav></aside><div class="main-wrapper" style="flex:1;display:flex;flex-direction:column;min-height:100vh;background:#f8fafc"><main class="main-content" style="flex:1;padding-top:140px;overflow:visible"><div class="contract-page-container"><style>
+        .contract-page-container {
+          width: 100%;
+          min-width: 0;
+        }
+        .contract-layout {
+          display: flex;
+          gap: 1.5rem;
+          width: 100%;
+          min-width: 0;
+          font-family: "Segoe UI", -apple-system, sans-serif;
+          font-size: 13px;
+          padding: 10px 0px 10px 0px;
+        }
+        .contract-layout input,
+        .contract-layout select,
+        .contract-layout textarea,
+        .contract-layout button,
+        .contract-layout table,
+        .contract-layout td,
+        .contract-layout th,
+        .contract-layout label,
+        .contract-layout .badge,
+        .contract-layout .blue-panel-header,
+        .contract-page-container .breadcrumb-banner {
+          font-size: 13px !important;
+        }
+        .breadcrumb-banner {
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          display: block;
+          border-radius: 0 !important;
+          margin-top: 0;
+          margin-left: -10px;
+          margin-right: -10px;
+        }
+        .panel-full {
+          flex: 1 1 100%;
+          width: 100%;
+          min-width: 0;
+        }
+        .blue-panel {
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          background: #ffffff;
+          overflow: hidden;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        }
+        .blue-panel-header {
+          background-color: #003466;
+          color: #ffffff;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          font-size: 0.95rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          border-bottom: 2px solid #ff5c00;
+        }
+        .blue-panel-body {
+          padding: 10px;
+        }
+        .search-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 5px 0px 10px 0px;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+        .sapo-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          border-radius: 4px;
+          font-weight: 400;
+          font-size: 13px !important;
+          cursor: pointer;
+          transition: background-color 0.2s, transform 0.1s;
+          border: none;
+        }
+        .sapo-btn:hover {
+          background-color: #002244;
+        }
+        .sapo-btn:active {
+          transform: scale(0.98);
+        }
+        .sapo-btn-secondary {
+          background-color: #475569;
+        }
+        .sapo-btn-secondary:hover {
+          background-color: #334155;
+        }
+        .sapo-btn-success {
+          background-color: #22c55e;
+        }
+        .sapo-btn-success:hover {
+          background-color: #16a34a;
+        }
+        .sapo-btn-warning {
+          background-color: #f59e0b;
+        }
+        .sapo-btn-warning:hover {
+          background-color: #d97706;
+        }
+        .sapo-btn-danger {
+          background-color: #ef4444;
+        }
+        .sapo-btn-danger:hover {
+          background-color: #dc2626;
+        }
+        .sapo-btn-info {
+          background-color: #2563eb;
+        }
+        .sapo-btn-info:hover {
+          background-color: #1d4ed8;
+        }
+        .sapo-btn-teal {
+          background-color: #0d9488;
+        }
+        .sapo-btn-teal:hover {
+          background-color: #0f766e;
+        }
+        .sapo-btn-sm {
+          padding: 4px 8px !important;
+          font-size: 12px !important;
+          border-radius: 4px !important;
+          font-weight: 400 !important;
+        }
+        .sapo-btn-sm svg {
+          width: 14px !important;
+          height: 14px !important;
+        }
+        .row-hoverable:hover {
+          background-color: #f8fafc;
+        }
+        .row-selected {
+          background-color: #eff6ff !important;
+        }
+
+        .base-toolbar {
+          display: flex !important;
+          justify-content: space-between !important;
+          align-items: center !important;
+          margin-bottom: 0.75rem !important;
+          padding: 0 !important;
+          gap: 1rem !important;
+          flex-wrap: nowrap !important;
+          width: 100% !important;
+          font-family: "Segoe UI", sans-serif !important;
+        }
+        .toolbar-left {
+          display: flex !important;
+          align-items: center !important;
+          gap: 1rem !important;
+        }
+        .toolbar-right {
+          display: flex !important;
+          align-items: center !important;
+          gap: 0.75rem !important;
+        }
+        .btn-group-base {
+          display: flex !important;
+          gap: 0.75rem !important;
+        }
+        .page-title-base {
+          font-size: 1.25rem !important;
+          font-weight: 700 !important;
+          color: #000000 !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 0.5rem !important;
+          margin: 0 !important;
+        }
+        .badge-count {
+          background: #e2e8f0 !important;
+          color: #000000 !important;
+          font-size: 0.75rem !important;
+          font-weight: 700 !important;
+          padding: 2px 8px !important;
+          border-radius: 999px !important;
+          margin-left: 0.25rem !important;
+        }
+        .base-table-wrapper {
+          max-height: 485px !important;
+          height: auto !important;
+          overflow-y: auto !important;
+          overflow-x: auto !important;
+          padding-bottom: 60px !important;
+        }
+        .base-table {
+          height: auto !important;
+          width: 100% !important;
+          min-width: 1200px !important;
+          table-layout: auto !important;
+        }
+        .base-table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
+          text-align: center !important;
+          height: 35px !important;
+          padding-top: 6px !important;
+          padding-bottom: 6px !important;
+        }
+        .base-table td {
+          padding: 6px 0.75rem !important;
+          vertical-align: middle !important;
+          white-space: normal !important;
+          word-break: break-word !important;
+        }
+        .base-table tbody tr {
+          height: 45px !important;
+        }
+        .nowrap, .base-table .nowrap {
+          white-space: nowrap !important;
+        }
+        .search-box-base {
+          position: relative !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+        .search-box-base input {
+          width: 220px !important;
+          padding: 6px 10px 6px 30px !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 4px !important;
+          outline: none !important;
+          font-weight: 500 !important;
+        }
+        .search-box-base .search-icon {
+          position: absolute !important;
+          left: 10px !important;
+          color: #94a3b8 !important;
+        }
+        .base-filters {
+          background: #f8fafc !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 6px !important;
+          padding: 10px !important;
+        }
+        .form-control {
+          padding: 6px 10px !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 4px !important;
+          outline: none !important;
+          background: white !important;
+        }
+      </style><div class="breadcrumb-banner">HỢP ĐỒNG XUẤT KHẨU (<!-- -->2<!-- -->)</div><div class="contract-layout"><div class="panel-full"><div class="search-container" style="display:flex;gap:0.5rem;justify-content:flex-start;align-items:center"><button type="button" class="sapo-btn">Thêm mới</button></div><div class="base-table-wrapper"><table class="base-table"><thead><tr><th class="th-first nowrap" style="width:50px;text-align:center;color:#003466;text-transform:uppercase;font-weight:700">STT</th><th class="nowrap" style="text-align:center;color:#003466;text-transform:uppercase;font-weight:700">NVKD</th><th class="nowrap" style="text-align:center;color:#003466;text-transform:uppercase;font-weight:700">Hợp đồng</th><th style="text-align:center;color:#003466;text-transform:uppercase;font-weight:700">Khách hàng (Bên mua)</th><th style="text-align:center;color:#003466;text-transform:uppercase;font-weight:700">ĐK giao hàng</th><th class="nowrap" style="text-align:center;color:#003466;text-transform:uppercase;font-weight:700">PT thanh toán</th><th class="nowrap" style="text-align:center;color:#003466;text-transform:uppercase;font-weight:700">Giá trị</th><th class="th-last nowrap" style="text-align:center;color:#003466;text-transform:uppercase;font-weight:700">Trạng thái</th></tr></thead><tbody><tr title="Nhấp để chọn hợp đồng" class="row-hoverable " style="cursor:pointer"><td class="nowrap" style="text-align:center;color:#000;font-weight:600">1</td><td class="nowrap" style="text-align:center;color:#000;font-size:0.875rem;font-weight:600">Mai Thị Thùy Luân</td><td class="nowrap" style="text-align:center"><div style="font-weight:600;color:var(--primary-color)">SC26SOM03</div><div style="font-size:0.8rem;color:#000;font-weight:600;display:flex;align-items:center;justify-content:center;gap:4px;margin-top:2px"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar "><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>20/5/2026</div></td><td style="text-align:center"><div style="font-weight:600;color:#000">SOM INTERNATIONAL CO., LTD</div></td><td style="text-align:center"><div style="font-weight:600;color:#000">CFR<!-- --> • Cảng đến: Busan port, Korea</div></td><td class="nowrap" style="text-align:center"><div style="color:#000;font-weight:600">T/T</div></td><td class="nowrap" style="text-align:center;font-weight:600;color:#2563eb">$<!-- -->28,980.00</td><td class="nowrap" style="text-align:center"><span class="status-pill status-active">Đã phê duyệt</span></td></tr><tr title="Nhấp để chọn hợp đồng" class="row-hoverable " style="cursor:pointer"><td class="nowrap" style="text-align:center;color:#000;font-weight:600">2</td><td class="nowrap" style="text-align:center;color:#000;font-size:0.875rem;font-weight:600">Mai Thị Thùy Luân</td><td class="nowrap" style="text-align:center"><div style="font-weight:600;color:var(--primary-color)">SC26SOM02</div><div style="font-size:0.8rem;color:#000;font-weight:600;display:flex;align-items:center;justify-content:center;gap:4px;margin-top:2px"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar "><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>20/5/2026</div></td><td style="text-align:center"><div style="font-weight:600;color:#000">SOM INTERNATIONAL CO., LTD</div></td><td style="text-align:center"><div style="font-weight:600;color:#000">CFR<!-- --> • Cảng đến: Incheon port, Korea</div></td><td class="nowrap" style="text-align:center"><div style="color:#000;font-weight:600">L/C at sight</div></td><td class="nowrap" style="text-align:center;font-weight:600;color:#2563eb">$<!-- -->59,800.00</td><td class="nowrap" style="text-align:center"><span class="status-pill status-inactive">Đã hủy</span></td></tr></tbody></table></div></div></div><style>
+        .custom-modal-overlay {
+          position: fixed;
+          top: 0;
+          bottom: 0;
+          right: 0;
+          background: rgba(0,0,0,0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+        @media (min-width: 769px) {
+          .custom-modal-overlay {
+            left: 180px !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .custom-modal-overlay {
+            left: 0 !important;
+          }
+        }
+        .filter-label { display: block; margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; }
+        .input-sm { width: 100%; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.85rem; outline: none; }
+        .input-sm:focus { border-color: #3498db; }
+        .input-sm:disabled { background: #f8fafc; cursor: not-allowed; border: none; }
+        .action-btn { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+        .action-btn:hover { background: #f1f5f9; }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+        .search-item-hover:hover {
+          background-color: #f1f5f9 !important;
+        }
+
+        /* Overrides to remove status backgrounds as requested (bỏ nền trạng thái) */
+        .base-table .status-pill {
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          font-weight: 600 !important;
+          font-size: 13px !important;
+          border-radius: 0 !important;
+        }
+        .base-table .status-pill.status-active {
+          color: #166534 !important;
+        }
+        .base-table .status-pill.status-new {
+          color: #4f46e5 !important;
+        }
+        .base-table .status-pill.status-pending {
+          color: #d97706 !important;
+        }
+        .base-table .status-pill.status-inactive {
+          color: #dc2626 !important;
+        }
+      </style></div></main></div></div><script src="/_next/static/chunks/webpack.js?v=1779380862618" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0]);self.__next_f.push([2,null])</script><script>self.__next_f.push([1,"1:HL[\"/_next/static/css/app/layout.css?v=1779380862618\",\"style\"]\n0:D{\"name\":\"r5\",\"env\":\"Server\"}\n"])</script><script>self.__next_f.push([1,"2:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n5:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n6:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n7:I[\"(app-pages-browser)/./src/app/(dashboard)/layout.tsx\",[\"app/(dashboard)/layout\",\"static/chunks/app/(dashboard)/layout.js\"],\"default\",1]\na:I[\"(app-pages-browser)/./src/components/FirebaseAnalytics.tsx\",[\"app/layout\",\"static/chunks/app/layout.js\"],\"default\"]\n12:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n3:D{\"name\":\"\",\"env\":\"Server\"}\n4:D{\"name\":\"HopDongPage\",\"env\":\"Server\"}\n8:D{\"name\":\"NotFound\",\"env\":\"Server\"}\n8:[[\"$\",\"title\",null,{\"children\":\"404: This page could not be found.\"}],[\"$\",\"div\",null,{\"style\":{\"fontFamily\":\"system-ui,\\\"Segoe UI\\\",Roboto,Helvetica,Arial,sans-serif,\\\"Apple Color Emoji\\\",\\\"Segoe UI Emoji\\\"\",\"height\":\"100vh\",\"textAlign\":\"center\",\"display\":\"flex\",\"flexDirection\":\"column\",\"alignItems\":\"center\",\"justifyContent\":\"center\"},\"children\":[\"$\",\"div\",null,{\"children\":[[\"$\",\"style\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\"}}],[\"$\",\"h1\",null,{\"className\":\"next-error-h1\",\"style\":{\"display\":\"inline-block\",\"margin\":\"0 20px 0 0\",\"padding\":\"0 23px 0 0\",\"fontSize\":24,\"fontWeight\":500,\"verticalAlign\":\"top\",\"lineHeight\":\"49px\"},\"children\":\"404\"}],[\"$\",\"div\",null,{\"style\":{\"display\":\"inline-block\"},\"children\":[\"$\",\"h2\",null,{\"style\":{\"fontSize\":14,\"fontWeight\":400,\"lineHeight\":\"49px\",\"margin\":0},\"children\":\"This page "])</script><script>self.__next_f.push([1,"could not be found.\"}]}]]}]}]]\n9:D{\"name\":\"RootLayout\",\"env\":\"Server\"}\nb:D{\"name\":\"NotFound\",\"env\":\"Server\"}\nc:{\"fontFamily\":\"system-ui,\\\"Segoe UI\\\",Roboto,Helvetica,Arial,sans-serif,\\\"Apple Color Emoji\\\",\\\"Segoe UI Emoji\\\"\",\"height\":\"100vh\",\"textAlign\":\"center\",\"display\":\"flex\",\"flexDirection\":\"column\",\"alignItems\":\"center\",\"justifyContent\":\"center\"}\nd:{\"display\":\"inline-block\",\"margin\":\"0 20px 0 0\",\"padding\":\"0 23px 0 0\",\"fontSize\":24,\"fontWeight\":500,\"verticalAlign\":\"top\",\"lineHeight\":\"49px\"}\ne:{\"display\":\"inline-block\"}\nf:{\"fontSize\":14,\"fontWeight\":400,\"lineHeight\":\"49px\",\"margin\":0}\nb:[[\"$\",\"title\",null,{\"children\":\"404: This page could not be found.\"}],[\"$\",\"div\",null,{\"style\":\"$c\",\"children\":[\"$\",\"div\",null,{\"children\":[[\"$\",\"style\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\"}}],[\"$\",\"h1\",null,{\"className\":\"next-error-h1\",\"style\":\"$d\",\"children\":\"404\"}],[\"$\",\"div\",null,{\"style\":\"$e\",\"children\":[\"$\",\"h2\",null,{\"style\":\"$f\",\"children\":\"This page could not be found.\"}]}]]}]}]]\n9:[\"$\",\"html\",null,{\"lang\":\"vi\",\"children\":[[\"$\",\"head\",null,{\"children\":[\"$\",\"script\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"\\n          // Prevent mobile pinch-to-zoom\\n          document.addEventListener('touchmove', function (event) {\\n            if (event.touches.length \u003e 1) {\\n              event.preventDefault();\\n            }\\n          }, { passive: false });\\n\\n          // Prevent iOS Safari pinch-gesture zoom\\n          document.addEventListener('gesturestart', function (event) {\\n            event.preventDefault();\\n          });\\n        \"}}]}],[\"$\",\"body\",null,{\"style\":{\"touchAction\":\"manipulation\"},\"children\":[[\"$\",\"$La\",null,{}],[\"$\",\"$L5\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\"],\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$"])</script><script>self.__next_f.push([1,"L6\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$b\",\"notFoundStyles\":[]}]]}]]}]\n10:D{\"name\":\"r6\",\"env\":\"Server\"}\n10:null\n11:D{\"name\":\"\",\"env\":\"Server\"}\n13:[]\n0:[\"$\",\"$L2\",null,{\"buildId\":\"development\",\"assetPrefix\":\"\",\"urlParts\":[\"\",\"sales\",\"hop-dong\"],\"initialTree\":[\"\",{\"children\":[\"(dashboard)\",{\"children\":[\"sales\",{\"children\":[\"hop-dong\",{\"children\":[\"__PAGE__\",{}]}]}]}]},\"$undefined\",\"$undefined\",true],\"initialSeedData\":[\"\",{\"children\":[\"(dashboard)\",{\"children\":[\"sales\",{\"children\":[\"hop-dong\",{\"children\":[\"__PAGE__\",{},[[\"$L3\",\"$L4\",null],null],null]},[null,[\"$\",\"$L5\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\",\"(dashboard)\",\"children\",\"sales\",\"children\",\"hop-dong\",\"children\"],\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L6\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"notFoundStyles\":\"$undefined\"}]],null]},[null,[\"$\",\"$L5\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\",\"(dashboard)\",\"children\",\"sales\",\"children\"],\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L6\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"notFoundStyles\":\"$undefined\"}]],null]},[[null,[\"$\",\"$L7\",null,{\"children\":[\"$\",\"$L5\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\",\"(dashboard)\",\"children\"],\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L6\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$8\",\"notFoundStyles\":[]}],\"params\":{}}]],null],null]},[[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/app/layout.css?v=1779380862618\",\"precedence\":\"next_static/css/app/layout.css\",\"crossOrigin\":\"$undefined\"}]],\"$9\"],null],null],\"couldBeIntercepted\":false,\"initialHead\":[\"$10\",\"$L11\"],\"globalErrorComponent\":\"$12\",\"missingSlots\":\"$W13\"}]\n"])</script><script>self.__next_f.push([1,"11:[[\"$\",\"meta\",\"0\",{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no\"}],[\"$\",\"meta\",\"1\",{\"charSet\":\"utf-8\"}],[\"$\",\"title\",\"2\",{\"children\":\"EMS - Enterprise Management System\"}],[\"$\",\"meta\",\"3\",{\"name\":\"description\",\"content\":\"Phần mềm quản lý doanh nghiệp tích hợp Kinh Doanh, Sản Xuất, Thu Mua\"}]]\n3:null\n"])</script><script>self.__next_f.push([1,"14:I[\"(app-pages-browser)/./src/app/(dashboard)/sales/hop-dong/ContractTable.tsx\",[\"app/(dashboard)/sales/hop-dong/page\",\"static/chunks/app/(dashboard)/sales/hop-dong/page.js\"],\"default\"]\n"])</script><script>self.__next_f.push([1,"4:[\"$\",\"$L14\",null,{\"initialContracts\":[{\"id\":\"bee4adc9-9792-4002-b1fc-31e927ba536e\",\"contractNumber\":\"SC26SOM03\",\"contractDate\":\"2026-05-20T00:00:00.000Z\",\"seller\":\"SAPO DAKLAK CO.,LTD\",\"buyer\":\"SOM INTERNATIONAL CO., LTD\",\"deliveryDate\":\"Before Jul 30, 2026\",\"portOfLoading\":\"Hochiminh Port, Vietnam\",\"portOfDischarge\":\"Busan port, Korea\",\"transshipment\":\"Not allowed\",\"partialShipment\":\"Not allowed\",\"deliveryTerms\":\"CFR\",\"paymentMethod\":\"T/T\",\"paymentTerms\":\"Deposit 30%, 70% after receiving the scan documents\",\"bank\":\"A\",\"bankAccount\":\"A\",\"bankName\":\"A\",\"bankAddress\":\"A\",\"beneficiaryName\":\"A\",\"beneficiaryAddress\":\"A\",\"swiftCode\":\"A\",\"accompanyingDocuments\":\"[{\\\"key\\\":\\\"invoice\\\",\\\"label\\\":\\\"Commercial Invoice (Hóa đơn thương mại)\\\",\\\"original\\\":1,\\\"copy\\\":0},{\\\"key\\\":\\\"packing_list\\\",\\\"label\\\":\\\"Packing List (Phiếu đóng gói chi tiết)\\\",\\\"original\\\":1,\\\"copy\\\":0},{\\\"key\\\":\\\"bl\\\",\\\"label\\\":\\\"Bill of Lading - B/L (Vận đơn đường biển)\\\",\\\"original\\\":0,\\\"copy\\\":1},{\\\"key\\\":\\\"co\\\",\\\"label\\\":\\\"Certificate of Origin - C/O (Chứng nhận xuất xứ)\\\",\\\"original\\\":0,\\\"copy\\\":1},{\\\"key\\\":\\\"phytosanitary\\\",\\\"label\\\":\\\"Certificate of Phytosanitary (Kiểm dịch thực vật)\\\",\\\"original\\\":1,\\\"copy\\\":1},{\\\"key\\\":\\\"coa\\\",\\\"label\\\":\\\"Certificate of Analysis - COA (Chứng nhận phân tích)\\\",\\\"original\\\":1,\\\"copy\\\":0},{\\\"key\\\":\\\"fumigation\\\",\\\"label\\\":\\\"Fumigation Certificate (Chứng nhận khử trùng)\\\",\\\"original\\\":0,\\\"copy\\\":0}]\",\"expiryDate\":\"2027-05-20T00:00:00.000Z\",\"thermometer\":true,\"thermometerQty\":2,\"salesEmployee\":\"Mai Thị Thùy Luân\",\"status\":\"Đã phê duyệt\",\"note\":null,\"createdAt\":\"2026-05-20T17:24:18.276Z\",\"updatedAt\":\"2026-05-21T14:22:02.055Z\",\"contractitem\":[{\"id\":\"dbd5647e-fd32-4b1d-95f1-513b5f8954eb\",\"contractId\":\"bee4adc9-9792-4002-b1fc-31e927ba536e\",\"productCode\":\"TP02\",\"productName\":\"Frozen banana slice 20mm \",\"unit\":\"Kg\",\"quantity\":23000,\"price\":1.26,\"amount\":28980,\"packaging\":\"(1kg/bag x 10 bag/ctn)\",\"note\":null,\"createdAt\":\"2026-05-20T17:37:29.260Z\",\"updatedAt\":\"2026-05-20T17:37:29.258Z\"}]},{\"id\":\"66eee298-9dfb-449d-9141-410f9d3693a1\",\"contractNumber\":\"SC26SOM02\",\"contractDate\":\"2026-05-20T00:00:00.000Z\",\"seller\":\"SAPO DAKLAK CO.,LTD\",\"buyer\":\"SOM INTERNATIONAL CO., LTD\",\"deliveryDate\":\"Before Jun 30, 2026\",\"portOfLoading\":\"Hochiminh Port, Vietnam\",\"portOfDischarge\":\"Incheon port, Korea\",\"transshipment\":\"Not allowed\",\"partialShipment\":\"Allowed\",\"deliveryTerms\":\"CFR\",\"paymentMethod\":\"L/C at sight\",\"paymentTerms\":\"At sight\",\"bank\":\"Ngân hàng A\",\"bankAccount\":\"TK A\",\"bankName\":\"Ngân hàng A\",\"bankAddress\":\"Địa chỉ A\",\"beneficiaryName\":\"Người A\",\"beneficiaryAddress\":\"A\",\"swiftCode\":\"A\",\"accompanyingDocuments\":\"[{\\\"key\\\":\\\"invoice\\\",\\\"label\\\":\\\"Commercial Invoice (Hóa đơn thương mại)\\\",\\\"original\\\":3,\\\"copy\\\":0},{\\\"key\\\":\\\"packing_list\\\",\\\"label\\\":\\\"Packing List (Phiếu đóng gói chi tiết)\\\",\\\"original\\\":3,\\\"copy\\\":0},{\\\"key\\\":\\\"bl\\\",\\\"label\\\":\\\"Bill of Lading - B/L (Vận đơn đường biển)\\\",\\\"original\\\":3,\\\"copy\\\":3},{\\\"key\\\":\\\"co\\\",\\\"label\\\":\\\"Certificate of Origin - C/O (Chứng nhận xuất xứ)\\\",\\\"original\\\":0,\\\"copy\\\":1},{\\\"key\\\":\\\"phytosanitary\\\",\\\"label\\\":\\\"Certificate of Phytosanitary (Kiểm dịch thực vật)\\\",\\\"original\\\":1,\\\"copy\\\":1},{\\\"key\\\":\\\"coa\\\",\\\"label\\\":\\\"Certificate of Analysis - COA (Chứng nhận phân tích)\\\",\\\"original\\\":1,\\\"copy\\\":0},{\\\"key\\\":\\\"fumigation\\\",\\\"label\\\":\\\"Fumigation Certificate (Chứng nhận khử trùng)\\\",\\\"original\\\":0,\\\"copy\\\":0}]\",\"expiryDate\":\"2027-05-20T00:00:00.000Z\",\"thermometer\":true,\"thermometerQty\":0,\"salesEmployee\":\"Mai Thị Thùy Luân\",\"status\":\"Đã hủy\",\"note\":null,\"createdAt\":\"2026-05-20T17:02:55.814Z\",\"updatedAt\":\"2026-05-21T16:16:29.565Z\",\"contractitem\":[{\"id\":\"34f8a828-3609-4b7c-b5ae-dc52b4bc35ed\",\"contractId\":\"66eee298-9dfb-449d-9141-410f9d3693a1\",\"productCode\":\"TP02\",\"productName\":\"Frozen banana slice 20mm \",\"unit\":\"Kg\",\"quantity\":23000,\"price\":1.25,\"amount\":28750,\"packaging\":\"(1kg/bag x 10 bag/ctn)\",\"note\":null,\"createdAt\":\"2026-05-20T17:37:41.962Z\",\"updatedAt\":\"2026-05-20T17:37:41.960Z\"},{\"id\":\"c3b6c6c5-576a-4943-940b-b571d7b541a1\",\"contractId\":\"66eee298-9dfb-449d-9141-410f9d3693a1\",\"productCode\":\"SP01\",\"productName\":\"IQF Kaew Mango Chunk 20x20mm \",\"unit\":\"Kg\",\"quantity\":23000,\"price\":1.35,\"amount\":31050,\"packaging\":\"(1kg/bag) x 10Bag/Ctn)\",\"note\":null,\"createdAt\":\"2026-05-20T17:37:41.962Z\",\"updatedAt\":\"2026-05-20T17:37:41.960Z\"}]}],\"customers\":[{\"name\":\"SAPO DAKLAK CO.,LTD\",\"code\":\"1001\",\"abbreviation\":\"SAPO\"},{\"name\":\"SOM INTERNATIONAL CO., LTD\",\"code\":\"SOM\",\"abbreviation\":\"SOM\"}],\"products\":[{\"code\":\"SP01\",\"name\":\"Xoài keo 20x20mm đông lạnh (1kg/túi x 10 túi/thùng)\",\"englishName\":\"IQF Kaew Mango Chunk 20x20mm \",\"packaging\":\"(1kg/bag) x 10Bag/Ctn)\",\"unit\":[{\"name\":\"Kg\"}]},{\"code\":\"TP02\",\"name\":\"Chuối 20mm đông lạnh (1kg/túi x 10 túi/thùng)\",\"englishName\":\"Frozen banana slice 20mm \",\"packaging\":\"(1kg/bag x 10 bag/ctn)\",\"unit\":[{\"name\":\"Kg\"}]}],\"currentUser\":\"Admin Test\",\"salesEmployees\":[\"Mai Thị Thùy Luân\"]}]\n"])</script></body></html>

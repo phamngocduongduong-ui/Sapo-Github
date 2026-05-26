@@ -32,20 +32,11 @@ export default async function TaiKhoanPage() {
   });
 
   return (
-    <main className="main-content" style={{ padding: '2rem', width: '100%' }}>
-      <h1 className="page-title" style={{ marginBottom: "0.25rem" }}>🛡️ Quản lý Tài khoản</h1>
-      <p style={{ color: "#888", marginBottom: "2rem", fontSize: "0.9rem" }}>
-        Danh sách các tài khoản đăng nhập và phân quyền hệ thống
-      </p>
-      
-      <div className="card" style={{ padding: '1.5rem' }}>
-        <UserTable 
-          users={users.map(u => ({...u, createdAt: u.createdAt.toISOString()}))} 
-          activeEmployees={activeEmployees.map(e => e.fullName)} 
-          branches={branches.map(b => b.name)} 
-          availablePermissions={availablePermissions}
-        />
-      </div>
-    </main>
+    <UserTable 
+      users={users.map(u => ({...u, createdAt: u.createdAt.toISOString()}))} 
+      activeEmployees={activeEmployees.map(e => e.fullName)} 
+      branches={branches.map(b => b.name)} 
+      availablePermissions={availablePermissions}
+    />
   );
 }

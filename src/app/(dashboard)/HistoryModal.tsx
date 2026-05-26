@@ -44,7 +44,7 @@ export default function HistoryModal({
     <div className="modal-overlay" style={{ zIndex: 1100 }}>
       <div className="card" style={{ width: "100%", maxWidth: "600px", maxHeight: "80vh", display: "flex", flexDirection: "column", padding: 0 }}>
         <div style={{ padding: "1.5rem", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem", color: "#000000", fontWeight: 700 }}>
             <Clock size={20} color="var(--primary-color)" /> Lịch sử thay đổi
           </h3>
           <button className="btn-icon" onClick={onClose} style={{ fontSize: "1.5rem" }}>×</button>
@@ -52,9 +52,9 @@ export default function HistoryModal({
 
         <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem" }}>
           {loading ? (
-            <div style={{ textAlign: "center", padding: "2rem" }}>Đang tải...</div>
+            <div style={{ textAlign: "center", padding: "2rem", color: "#000000", fontWeight: 600 }}>Đang tải...</div>
           ) : logs.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "2rem", color: "#888" }}>Chưa có lịch sử cho dòng này.</div>
+            <div style={{ textAlign: "center", padding: "2rem", color: "#000000", fontWeight: 600 }}>Chưa có lịch sử cho dòng này.</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               {logs.map((log) => (
@@ -63,22 +63,22 @@ export default function HistoryModal({
                   
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.4rem" }}>
                     <span className={`badge ${getActionColor(log.action)}`} style={{ fontSize: "0.75rem" }}>{log.action}</span>
-                    <span style={{ fontSize: "0.8rem", color: "#64748b" }}>{new Date(log.createdAt).toLocaleString("vi-VN")}</span>
+                    <span style={{ fontSize: "0.8rem", color: "#000000", fontWeight: 600 }}>{new Date(log.createdAt).toLocaleString("vi-VN")}</span>
                   </div>
 
-                  <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.25rem" }}>{log.changeDetail || "Không có chi tiết"}</div>
+                  <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#000000", marginBottom: "0.25rem" }}>{log.changeDetail || "Không có chi tiết"}</div>
                   
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", color: "#64748b" }}>
-                    <User size={14} /> Thực hiện bởi: <span style={{ fontWeight: 600, color: "#1e293b" }}>{log.changedBy}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", color: "#000000", fontWeight: 600 }}>
+                    <User size={14} /> Thực hiện bởi: <span style={{ fontWeight: 600, color: "#000000" }}>{log.changedBy}</span>
                   </div>
 
                   {log.action === "UPDATE" && log.oldData && log.newData && (
-                    <div style={{ marginTop: "0.75rem", background: "#f8fafc", padding: "0.75rem", borderRadius: "8px", fontSize: "0.85rem" }}>
+                    <div style={{ marginTop: "0.75rem", background: "#f8fafc", padding: "0.75rem", borderRadius: "8px", fontSize: "0.85rem", color: "#000000", fontWeight: 600 }}>
                        {Object.keys(log.newData).map(key => {
                          if (log.oldData[key] !== log.newData[key]) {
                            return (
                              <div key={key} style={{ marginBottom: "0.25rem" }}>
-                               <strong style={{ color: "#475569" }}>{key}:</strong> {String(log.oldData[key] || "—")} <ArrowRight size={12} style={{ margin: "0 4px" }} /> <span style={{ color: "#3b82f6", fontWeight: 600 }}>{String(log.newData[key])}</span>
+                               <strong style={{ color: "#000000" }}>{key}:</strong> {String(log.oldData[key] || "—")} <ArrowRight size={12} style={{ margin: "0 4px" }} /> <span style={{ color: "#3b82f6", fontWeight: 600 }}>{String(log.newData[key])}</span>
                              </div>
                            );
                          }

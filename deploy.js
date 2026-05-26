@@ -39,7 +39,7 @@ function runRemoteCommand(conn, cmd, streamOptions = {}) {
       let stdout = '';
       let stderr = '';
       stream.on('close', (code, signal) => {
-        if (code !== 0) {
+        if (code !== 0 && code !== undefined && code !== null) {
           console.error(`[REMOTE ERROR] Command failed with code ${code}. Stderr: ${stderr}`);
           reject(new Error(`Command failed with code ${code}`));
         } else {
@@ -67,7 +67,7 @@ async function main() {
     // 1. Pack source code locally
     console.log('Step 1: Compressing local project source code...');
     // We package only source files, config files, and DB schemas (excluding node_modules, .next, etc.)
-    await runLocalCommand(`tar -czf ${archiveName} src prisma package.json package-lock.json next.config.js tsconfig.json next-env.d.ts`);
+    await runLocalCommand(`tar -czf ${archiveName} src prisma public package.json package-lock.json next.config.js tsconfig.json next-env.d.ts`);
     console.log('✔ Compression complete.\n');
 
     // 2. Establish SSH connection
@@ -140,9 +140,17 @@ async function main() {
     await runRemoteCommand(conn, `mkdir -p ${remoteDeployPath}`);
     await runRemoteCommand(conn, `tar -xzf /tmp/${archiveName} -C ${remoteDeployPath}`);
     await runRemoteCommand(conn, `rm -f /tmp/${archiveName}`);
+    // Clean up deleted directories on VPS to prevent Next.js from building obsolete routes
+    await runRemoteCommand(conn, `rm -rf "${remoteDeployPath}/src/app/(dashboard)/luong-bhxh/khu-vuc"`);
     
-    // Create production .env file
-    const envContent = 'DATABASE_URL="mysql://sapo_user:5nOYlS6mTDuBF0GXk3Ih@127.0.0.1:3306/sapo_ems"\\n';
+    // Create production .env file with Database and SMTP settings
+    const envContent = 'DATABASE_URL="mysql://sapo_user:5nOYlS6mTDuBF0GXk3Ih@127.0.0.1:3306/sapo_ems"\\n' +
+      'SMTP_HOST="mail.sapodaklak.com"\\n' +
+      'SMTP_PORT=465\\n' +
+      'SMTP_SECURE="true"\\n' +
+      'SMTP_USER="hethong@sapodaklak.com"\\n' +
+      'SMTP_PASS="Duong@1991"\\n' +
+      'SMTP_FROM_NAME="Phòng Nhân sự SAPO"\\n';
     await runRemoteCommand(conn, `printf '${envContent}' > ${remoteDeployPath}/.env`);
     console.log('✔ Code extracted and remote .env configured.\n');
 
@@ -151,11 +159,12 @@ async function main() {
     const appSetupCmds = `
       export NVM_DIR="$HOME/.nvm"
       [ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"
+      pm2 stop sapo-ems || true
       cd ${remoteDeployPath}
       npm install
       npx prisma generate
       npx prisma db push --accept-data-loss
-      npm run build
+      NODE_OPTIONS="--max-old-space-size=1024" npm run build
     `;
     await runRemoteCommand(conn, `bash -c '${appSetupCmds}'`);
     console.log('✔ App build and Prisma migrations completed successfully.\n');

@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
+import { MoreHorizontal, Pencil, Eye } from "lucide-react";
 import { createDispatchOrder, updateDispatchOrder } from "./actions";
 import HistoryModal from "../../HistoryModal";
 
@@ -36,19 +37,36 @@ export default function DispatchTable({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">("down");
+  const [isViewOnly, setIsViewOnly] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useRealTimeSync("dispatch-orders", orders, setOrders);
 
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, []);
+
   function handleClose() {
     setShowModal(false);
     setEditingOrder(null);
+    setIsViewOnly(false);
     setError(null);
     formRef.current?.reset();
   }
 
   function handleEdit(order: DispatchOrder) {
     setEditingOrder(order);
+    setIsViewOnly(false);
+    setShowModal(true);
+  }
+
+  function handleView(order: DispatchOrder) {
+    setEditingOrder(order);
+    setIsViewOnly(true);
     setShowModal(true);
   }
 
@@ -77,7 +95,7 @@ export default function DispatchTable({
         <button
           id="btn-add-dispatch"
           className="btn btn-primary"
-          onClick={() => { setEditingOrder(null); setShowModal(true); }}
+          onClick={() => { setEditingOrder(null); setIsViewOnly(false); setShowModal(true); }}
           style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
         >
           <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>+</span>
@@ -115,23 +133,42 @@ export default function DispatchTable({
                   <td style={{ color: order.note ? "inherit" : "#888", fontStyle: order.note ? "normal" : "italic" }}>
                     {order.note ?? "—"}
                   </td>
-                  <td style={{ textAlign: "center" }}>
-                    <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center" }}>
+                  <td style={{ textAlign: "center", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                    <div style={{ display: "flex", justifyContent: "center" }}>
                       <button
-                        onClick={() => handleEdit(order)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", padding: "4px", borderRadius: "4px", color: "#3498db" }}
-                        title="Sửa lệnh"
+                        className="action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const isLastRows = idx >= orders.length - 2;
+                          const isFirstRow = idx === 0;
+                          setDropdownDirection((isLastRows && !isFirstRow) ? "up" : "down");
+                          setOpenMenuId(openMenuId === order.id ? null : order.id);
+                        }}
                       >
-                        ✏️
-                      </button>
-                      <button 
-                        className="btn btn-sm btn-outline" 
-                        onClick={() => setHistoryRecordId(order.id)}
-                        title="Lịch sử thay đổi"
-                      >
-                        Lịch sử
+                        <MoreHorizontal size={18} />
                       </button>
                     </div>
+
+                    {openMenuId === order.id && (
+                      <div className={`horizontal-action-dropdown ${dropdownDirection === "up" ? "open-up" : ""}`} style={{ left: "50%", transform: "translateX(-50%)" }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="icon-action-btn"
+                          title="Xem"
+                          onClick={() => { handleView(order); setOpenMenuId(null); }}
+                        >
+                          <Eye size={15} style={{ color: "#3b82f6" }} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-action-btn"
+                          title="Sửa"
+                          onClick={() => { handleEdit(order); setOpenMenuId(null); }}
+                        >
+                          <Pencil size={15} style={{ color: "#d97706" }} />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -181,9 +218,10 @@ export default function DispatchTable({
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
               <h3 style={{ margin: 0 }}>
-                {editingOrder ? "✏️ Cập nhật Lệnh điều động" : "🚚 Thêm Lệnh điều động mới"}
+                {isViewOnly ? "🚚 Chi tiết Lệnh điều động" : (editingOrder ? "✏️ Cập nhật Lệnh điều động" : "🚚 Thêm Lệnh điều động mới")}
               </h3>
               <button
+                type="button"
                 onClick={handleClose}
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.4rem", color: "#888", padding: "0.25rem 0.5rem", borderRadius: "6px" }}
               >✕</button>
@@ -206,6 +244,7 @@ export default function DispatchTable({
                     name="dispatchDate" 
                     className="input" 
                     required 
+                    disabled={isViewOnly}
                     defaultValue={editingOrder ? new Date(editingOrder.dispatchDate).toISOString().split('T')[0] : ""}
                   />
                 </div>
@@ -218,6 +257,7 @@ export default function DispatchTable({
                     name="expectedDate" 
                     className="input" 
                     required 
+                    disabled={isViewOnly}
                     defaultValue={editingOrder ? new Date(editingOrder.expectedDate).toISOString().split('T')[0] : ""}
                   />
                 </div>
@@ -227,7 +267,7 @@ export default function DispatchTable({
                 <label style={{ display: "block", marginBottom: "0.4rem", fontWeight: 600, fontSize: "0.875rem" }}>
                   Nhân viên <span style={{ color: "#e74c3c" }}>*</span>
                 </label>
-                <select name="employeeName" className="input" required defaultValue={editingOrder?.employeeName ?? ""}>
+                <select name="employeeName" className="input" required disabled={isViewOnly} defaultValue={editingOrder?.employeeName ?? ""}>
                   <option value="">-- Chọn nhân viên --</option>
                   {activeEmployees.map(name => (
                     <option key={name} value={name}>{name}</option>
@@ -249,6 +289,7 @@ export default function DispatchTable({
                     className="input" 
                     placeholder="Tên người điều động" 
                     required 
+                    disabled={isViewOnly}
                     defaultValue={editingOrder?.dispatcher ?? ""}
                   />
                 </div>
@@ -256,7 +297,7 @@ export default function DispatchTable({
                   <label style={{ display: "block", marginBottom: "0.4rem", fontWeight: 600, fontSize: "0.875rem" }}>
                     Trạng thái
                   </label>
-                  <select name="status" className="input" defaultValue={editingOrder?.status ?? "PENDING"}>
+                  <select name="status" className="input" disabled={isViewOnly} defaultValue={editingOrder?.status ?? "PENDING"}>
                     <option value="PENDING">Chờ xử lý</option>
                     <option value="IN_PROGRESS">Đang thực hiện</option>
                     <option value="DONE">Hoàn thành</option>
@@ -274,6 +315,7 @@ export default function DispatchTable({
                   className="input"
                   placeholder="Nhập ghi chú (không bắt buộc)"
                   rows={3}
+                  disabled={isViewOnly}
                   defaultValue={editingOrder?.note ?? ""}
                   style={{ resize: "vertical" }}
                 />
@@ -282,11 +324,13 @@ export default function DispatchTable({
               <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
                 <button type="button" className="btn" onClick={handleClose} disabled={isPending}
                   style={{ background: "rgba(255,255,255,0.08)", color: "inherit" }}>
-                  Thoát
+                  {isViewOnly ? "Đóng" : "Thoát"}
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={isPending} style={{ minWidth: "120px" }}>
-                  {isPending ? "Đang lưu..." : editingOrder ? "✅ Cập nhật" : "💾 Lưu lại"}
-                </button>
+                {!isViewOnly && (
+                  <button type="submit" className="btn btn-primary" disabled={isPending} style={{ minWidth: "120px" }}>
+                    {isPending ? "Đang lưu..." : editingOrder ? "✅ Cập nhật" : "💾 Lưu lại"}
+                  </button>
+                )}
               </div>
             </form>
           </div>

@@ -4,7 +4,8 @@ import React, { useState, useEffect, useTransition } from "react";
 import { 
   Plus, Search, Filter, ArrowUpRight, Clock, CheckCircle2, 
   FileText, User, Calendar, Tag, Info, ChevronRight, X, Save,
-  ShoppingCart, Building2, Package, History, RefreshCw
+  ShoppingCart, Building2, Package, History, RefreshCw,
+  Pencil, Trash2, Eye, MoreHorizontal
 } from "lucide-react";
 import { 
   getPendingPurchaseOrders, getPurchaseInvoices, 
@@ -13,6 +14,7 @@ import {
   getWarehouses, fixExistingInvoices
 } from "./actions";
 import HistoryModal from "../../HistoryModal";
+import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 
 export default function PurchaseInvoicePage() {
   const [pendingPOs, setPendingPOs] = useState<any[]>([]);
@@ -28,12 +30,25 @@ export default function PurchaseInvoicePage() {
 
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"pending" | "delivered">("pending");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">("down");
+  const [isAdmin, setIsAdmin] = useState(false);
 
-
-
+  useRealTimeSync("pending-purchase-orders", pendingPOs, setPendingPOs, 3000, isModalOpen || openMenuId !== null);
+  useRealTimeSync("purchase-invoices", invoices, setInvoices, 3000, isModalOpen || openMenuId !== null);
 
   useEffect(() => {
     fetchData();
+    fetch("/api/user-permissions")
+      .then(res => res.json())
+      .then(data => setIsAdmin(data.isAdmin || false))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
   }, []);
 
   async function fetchData() {
@@ -115,7 +130,7 @@ export default function PurchaseInvoicePage() {
     });
   };
   const handleRejectPO = (id: string) => {
-    if (!confirm("Bạn có chắc chắn muốn từ chối lệnh mua này? Trạng thái sẽ chuyển về 'Tạo mới'.")) return;
+    if (!confirm("Bạn có chắc chắn muốn từ chối đơn mua hàng này? Trạng thái sẽ chuyển về 'Tạo mới'.")) return;
     startTransition(async () => {
       await rejectPurchaseOrder(id);
       fetchData();
@@ -123,30 +138,30 @@ export default function PurchaseInvoicePage() {
   };
 
   return (
-    <div style={{ padding: "1.5rem", width: "100%", height: "calc(100vh - 60px)", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div style={{ padding: "1.5rem", width: "100%", minHeight: "calc(100vh - 140px)", height: "auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>🛒 Đơn mua (Purchase Orders)</h1>
-          <p style={{ color: "#64748b", marginTop: "0.25rem" }}>Tạo đơn mua hàng từ các lệnh mua đã duyệt</p>
+          <p style={{ color: "#64748b", marginTop: "0.25rem" }}>Tạo đơn mua hàng từ các đơn mua hàng đã duyệt</p>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: "1.5rem", flex: 1, overflow: "hidden" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: "1.5rem" }}>
         
         {/* Left Column: Pending POs */}
-        <div className="card" style={{ display: "flex", flexDirection: "column", padding: 0, overflow: "hidden" }}>
+        <div className="card" style={{ display: "flex", flexDirection: "column", padding: 0 }}>
           <div style={{ padding: "1rem", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h3 style={{ margin: 0, fontSize: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <Clock size={18} color="#f59e0b" /> Lệnh mua chờ thực hiện ({pendingPOs.length})
+              <Clock size={18} color="#f59e0b" /> Đơn mua hàng chờ thực hiện ({pendingPOs.length})
             </h3>
             <button className="btn-icon" onClick={fetchData} title="Làm mới" style={{ padding: "0.25rem" }}>
               <RefreshCw size={18} />
             </button>
           </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
+          <div style={{ padding: "1rem" }}>
             {pendingPOs.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem", color: "#94a3b8" }}>Không có lệnh mua nào đang chờ</div>
+              <div style={{ textAlign: "center", padding: "2rem", color: "#94a3b8" }}>Không có đơn mua hàng nào đang chờ</div>
             ) : (
               pendingPOs.map(po => (
                 <div 
@@ -203,7 +218,7 @@ export default function PurchaseInvoicePage() {
         </div>
 
         {/* Right Column: Invoices */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto", paddingRight: "0.5rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
               <button 
@@ -239,7 +254,7 @@ export default function PurchaseInvoicePage() {
               {invoices
                 .filter(inv => inv.status === "Chờ giao hàng")
                 .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-                .map(inv => (
+                .map((inv, index) => (
                   <div 
                     key={inv.id} 
                     className="card invoice-card" 
@@ -259,7 +274,7 @@ export default function PurchaseInvoicePage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
                       <InfoItem icon={<User size={14} />} label="Người tạo" value={inv.creator} />
                       <InfoItem icon={<Building2 size={14} />} label="Nhà cung cấp" value={inv.supplier} />
-                      <InfoItem icon={<FileText size={14} />} label="Số lệnh mua" value={inv.poCode || "—"} />
+                      <InfoItem icon={<FileText size={14} />} label="Số đơn mua hàng" value={inv.poCode || "—"} />
                       <InfoItem icon={<Calendar size={14} />} label="Ngày giao dự kiến" value={new Date(inv.deliveryDate).toLocaleDateString("vi-VN")} />
                       <InfoItem icon={<Tag size={14} />} label="Chi nhánh" value={inv.branch} />
                       <InfoItem icon={<Package size={14} />} label="Loại phiếu" value={inv.invoiceType || "Nhập kho"} />
@@ -274,10 +289,51 @@ export default function PurchaseInvoicePage() {
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem" }}>
                       <span style={{ fontSize: "0.85rem", color: "#64748b" }}>{inv.purchaseinvoicedetail.length} mặt hàng</span>
-                      <div style={{ display: "flex", gap: "0.5rem" }} onClick={(e) => e.stopPropagation()}>
-                        <button className="btn btn-sm btn-outline" onClick={() => setHistoryRecordId(inv.id)}>Lịch sử</button>
-                        <button className="btn btn-sm btn-outline" onClick={() => openEditModal(inv)}>Sửa</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDeleteInvoice(inv.id)}>Xóa</button>
+                      <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="action-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(openMenuId === inv.id ? null : inv.id);
+                            setDropdownDirection("up");
+                          }}
+                        >
+                          <MoreHorizontal size={18} />
+                        </button>
+
+                        {openMenuId === inv.id && (
+                          <div className="horizontal-action-dropdown open-up" style={{ right: 0 }} onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className="icon-action-btn"
+                              title="Xem chi tiết"
+                              onClick={() => { setViewDetailInv(inv); setOpenMenuId(null); }}
+                            >
+                              <Eye size={15} style={{ color: "#3b82f6" }} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-action-btn"
+                              title="Chỉnh sửa"
+                              onClick={() => { openEditModal(inv); setOpenMenuId(null); }}
+                            >
+                              <Pencil size={15} style={{ color: "#d97706" }} />
+                            </button>
+                            {isAdmin && (
+                              <>
+                                <div style={{ width: "1px", height: "16px", backgroundColor: "#e2e8f0" }}></div>
+                                <button
+                                  type="button"
+                                  className="icon-action-btn danger"
+                                  title="Xóa đơn mua"
+                                  onClick={() => { handleDeleteInvoice(inv.id); setOpenMenuId(null); }}
+                                >
+                                  <Trash2 size={15} style={{ color: "#ef4444" }} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -305,7 +361,7 @@ export default function PurchaseInvoicePage() {
                     {invoices
                       .filter(inv => inv.status === "Đã nhập kho")
                       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                      .map(inv => (
+                      .map((inv, index) => (
                         <tr key={inv.id} onClick={() => setViewDetailInv(inv)} style={{ cursor: "pointer" }}>
                           <td style={{ fontWeight: 700, color: "#2563eb" }}>{inv.invoiceCode}</td>
                           <td>{new Date(inv.createdAt).toLocaleDateString("vi-VN")}</td>
@@ -313,12 +369,55 @@ export default function PurchaseInvoicePage() {
                           <td>{inv.warehouseName}</td>
                           <td>{inv.creator}</td>
                           <td><span className="badge badge-success">{inv.status}</span></td>
-                          <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                            <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
-                              <button className="btn btn-sm btn-outline" onClick={() => setHistoryRecordId(inv.id)}>Lịch sử</button>
-                              <button className="btn btn-sm btn-outline" onClick={() => openEditModal(inv)}>Sửa</button>
-                              <button className="btn btn-sm btn-danger" onClick={() => handleDeleteInvoice(inv.id)}>Xóa</button>
+                          <td style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                              <button
+                                className="action-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const isLastRows = index >= invoices.filter(i => i.status === "Đã nhập kho").length - 2;
+                                  const isFirstRow = index === 0;
+                                  setDropdownDirection((isLastRows && !isFirstRow) ? "up" : "down");
+                                  setOpenMenuId(openMenuId === inv.id ? null : inv.id);
+                                }}
+                              >
+                                <MoreHorizontal size={18} />
+                              </button>
                             </div>
+
+                            {openMenuId === inv.id && (
+                              <div className={`horizontal-action-dropdown ${dropdownDirection === "up" ? "open-up" : ""}`} style={{ right: "1rem" }} onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  className="icon-action-btn"
+                                  title="Xem"
+                                  onClick={() => { setViewDetailInv(inv); setOpenMenuId(null); }}
+                                >
+                                  <Eye size={15} style={{ color: "#3b82f6" }} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="icon-action-btn"
+                                  title="Sửa"
+                                  onClick={() => { openEditModal(inv); setOpenMenuId(null); }}
+                                >
+                                  <Pencil size={15} style={{ color: "#d97706" }} />
+                                </button>
+                                {isAdmin && (
+                                  <>
+                                    <div style={{ width: "1px", height: "16px", backgroundColor: "#e2e8f0" }}></div>
+                                    <button
+                                      type="button"
+                                      className="icon-action-btn danger"
+                                      title="Xóa"
+                                      onClick={() => { handleDeleteInvoice(inv.id); setOpenMenuId(null); }}
+                                    >
+                                      <Trash2 size={15} style={{ color: "#ef4444" }} />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -338,7 +437,7 @@ export default function PurchaseInvoicePage() {
           <div className="card" style={{ width: "95%", maxWidth: "900px", height: "85vh", display: "flex", flexDirection: "column", padding: 0, borderTop: "6px solid #2563eb" }}>
             <div style={{ padding: "1.5rem", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
               <div>
-                <h2 style={{ margin: 0, color: "#1e293b" }}>Chi tiết Lệnh mua hàng</h2>
+                <h2 style={{ margin: 0, color: "#1e293b" }}>Chi tiết Đơn mua hàng</h2>
                 <div style={{ fontSize: "1.1rem", color: "#2563eb", fontWeight: 700, marginTop: "0.25rem" }}>{viewDetailPO.poCode}</div>
               </div>
               <button className="btn-icon" onClick={() => setViewDetailPO(null)}><X size={28} /></button>
@@ -374,7 +473,7 @@ export default function PurchaseInvoicePage() {
 
               {viewDetailPO.note && (
                 <div style={{ marginBottom: "2rem" }}>
-                  <label style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: "0.5rem" }}>Ghi chú lệnh mua</label>
+                  <label style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: "0.5rem" }}>Ghi chú đơn mua hàng</label>
                   <div style={{ padding: "1rem", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", color: "#92400e" }}>
                     {viewDetailPO.note}
                   </div>
@@ -461,7 +560,7 @@ export default function PurchaseInvoicePage() {
                   <div style={{ fontSize: "1rem", fontWeight: 600 }}>{viewDetailInv.creator}</div>
                 </div>
                 <div>
-                  <label style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: "0.25rem" }}>Lệnh mua liên quan</label>
+                  <label style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: "0.25rem" }}>Đơn mua hàng liên quan</label>
                   <div style={{ fontSize: "1rem", fontWeight: 600 }}>{viewDetailInv.poCode || "—"}</div>
                 </div>
                 <div>
@@ -537,7 +636,7 @@ export default function PurchaseInvoicePage() {
               <div>
                 <h3 style={{ margin: 0 }}>{editingInvoice ? "Chỉnh sửa đơn mua hàng" : "Tạo đơn mua hàng"}</h3>
                 <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>
-                  {editingInvoice ? `Mã đơn: ${editingInvoice.invoiceCode}` : `Từ lệnh mua: ${selectedPO?.poCode}`}
+                  {editingInvoice ? `Mã đơn: ${editingInvoice.invoiceCode}` : `Từ đơn mua hàng: ${selectedPO?.poCode}`}
                 </p>
               </div>
               <button className="btn-icon" onClick={() => setIsModalOpen(false)}><X size={24} /></button>

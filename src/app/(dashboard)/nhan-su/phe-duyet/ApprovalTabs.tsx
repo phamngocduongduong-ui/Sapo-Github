@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import React, { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { updateApprovalStatus } from "./actions";
-import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
-import { MoreHorizontal, CheckCircle, XCircle, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 
 interface ApprovalTabsProps {
   pending: any;
@@ -13,10 +12,17 @@ interface ApprovalTabsProps {
 
 export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"contract" | "leave" | "resignation" | "transfer" | "salary" | "all">("contract");
+  const [activeTab, setActiveTab] = useState<"contract" | "leave" | "resignation" | "transfer" | "salary" | "all" >("contract");
   const [isPending, startTransition] = useTransition();
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">("down");
+
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Clear selection on tab change
+  useEffect(() => {
+    setSelectedItemId(null);
+    setExpandedId(null);
+  }, [activeTab]);
 
   // Confirmation state
   const [confirmState, setConfirmState] = useState<{
@@ -33,13 +39,6 @@ export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
     label: ""
   });
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClick = () => setOpenMenuId(null);
-    window.addEventListener("click", handleClick);
-    return () => window.removeEventListener("click", handleClick);
-  }, []);
-
   // Helper to flatten and label data
   const flattenData = (data: any) => {
     const list: any[] = [];
@@ -49,7 +48,7 @@ export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
     if (data.transfers) data.transfers.forEach((item: any) => list.push({ ...item, moduleLabel: "Thuyên chuyển, bổ nhiệm", moduleType: "TransferPromotion" }));
     if (data.resignations) data.resignations.forEach((item: any) => list.push({ ...item, moduleLabel: "Nghỉ việc", moduleType: "Resignation" }));
     if (data.payrolls) data.payrolls.forEach((item: any) => list.push({ ...item, moduleLabel: "Bảng lương", moduleType: "Payroll" }));
-    if (data.purchaseOrders) data.purchaseOrders.forEach((item: any) => list.push({ ...item, moduleLabel: "Lệnh mua", moduleType: "PurchaseOrder" }));
+    if (data.purchaseOrders) data.purchaseOrders.forEach((item: any) => list.push({ ...item, moduleLabel: "Đơn mua hàng", moduleType: "PurchaseOrder" }));
 
     return list.sort((a, b) => new Date(b.createdAt || b.requestDate || b.planDate).getTime() - new Date(a.createdAt || a.requestDate || a.planDate).getTime());
   };
@@ -74,6 +73,8 @@ export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
   };
 
   const currentList = getFilteredList();
+  const selectedItemKey = selectedItemId;
+  const selectedItem = currentList.find(item => `${item.moduleType}-${item.id}` === selectedItemKey) || null;
 
   async function handleAction(id: string, type: string, action: string, label?: string) {
     setConfirmState({
@@ -93,14 +94,14 @@ export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
       try {
         const newStatus = action === 'approve' ? "Đã phê duyệt" : "Tạo mới";
         await updateApprovalStatus(id, type, newStatus);
+        setSelectedItemId(null);
+        setExpandedId(null);
         router.refresh();
       } catch (err: any) {
         alert(err.message);
       }
     });
   }
-
-  const [viewingItem, setViewingItem] = useState<any | null>(null);
 
   const getDetailText = (item: any) => {
     switch (item.moduleType) {
@@ -115,98 +116,330 @@ export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
     }
   };
 
+  function renderItemDetails(item: any) {
+    switch (item.moduleType) {
+      case "LaborContract":
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1rem", maxWidth: "800px" }}>
+            <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", color: "#003466" }}>THÔNG TIN HỢP ĐỒNG</div>
+            <div><span style={{ color: "#64748b" }}>Số HĐ:</span> <strong>{item.contractNumber}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Loại HĐ:</span> <strong>{item.contractType}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Vị trí:</span> <strong>{item.position}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Phòng ban:</span> <strong>{item.department}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Ngày ký:</span> <strong>{new Date(item.contractDate).toLocaleDateString("vi-VN")}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Ngày bắt đầu:</span> <strong>{new Date(item.startDate).toLocaleDateString("vi-VN")}</strong></div>
+            {item.endDate && <div><span style={{ color: "#64748b" }}>Ngày kết thúc:</span> <strong>{new Date(item.endDate).toLocaleDateString("vi-VN")}</strong></div>}
+
+            <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", marginTop: "0.5rem", color: "#003466" }}>LƯƠNG & PHỤ CẤP</div>
+            <div><span style={{ color: "#64748b" }}>Bậc lương:</span> <strong>{item.salaryLevel}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Lương CB:</span> <strong>{item.salaryBase?.toLocaleString("vi-VN")}đ</strong></div>
+            <div><span style={{ color: "#64748b" }}>Chuyên cần:</span> <strong>{item.attendanceAllowance?.toLocaleString("vi-VN")}đ</strong></div>
+            <div><span style={{ color: "#64748b" }}>Hiệu quả:</span> <strong>{item.performanceAllowance?.toLocaleString("vi-VN")}đ</strong></div>
+            <div><span style={{ color: "#64748b" }}>Trách nhiệm:</span> <strong>{item.responsibilityAllowance?.toLocaleString("vi-VN")}đ</strong></div>
+            <div><span style={{ color: "#64748b" }}>Thu hút:</span> <strong>{item.attractionAllowance?.toLocaleString("vi-VN")}đ</strong></div>
+            <div><span style={{ color: "#64748b" }}>Chức vụ:</span> <strong>{item.positionAllowance?.toLocaleString("vi-VN")}đ</strong></div>
+            <div><span style={{ color: "#64748b" }}>Khác:</span> <strong>{item.otherAllowance?.toLocaleString("vi-VN")}đ</strong></div>
+            <div><span style={{ color: "#64748b" }}>BHXH:</span> <strong>{item.socialInsurance?.toLocaleString("vi-VN")}đ</strong></div>
+            <div style={{ gridColumn: "span 2" }}><span style={{ color: "#64748b" }}>Ghi chú:</span> <strong>{item.note || "—"}</strong></div>
+          </div>
+        );
+      case "LeaveRequest":
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1rem", maxWidth: "800px" }}>
+            <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", color: "#003466" }}>ĐƠN NGHỈ PHÉP</div>
+            <div><span style={{ color: "#64748b" }}>Lý do nghỉ:</span> <strong>{item.reason}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Tổng số ngày:</span> <strong>{item.totalDays} ngày</strong></div>
+            <div><span style={{ color: "#64748b" }}>Từ ngày:</span> <strong>{new Date(item.startDate).toLocaleDateString("vi-VN")}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Đến ngày:</span> <strong>{new Date(item.endDate).toLocaleDateString("vi-VN")}</strong></div>
+            <div style={{ gridColumn: "span 2" }}><span style={{ color: "#64748b" }}>Ghi chú:</span> <strong>{item.note || "—"}</strong></div>
+          </div>
+        );
+      case "SalaryChange":
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1rem", maxWidth: "800px" }}>
+            <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", color: "#003466" }}>ĐỀ NGHỊ ĐỔI LƯƠNG</div>
+            <div><span style={{ color: "#64748b" }}>Loại đề nghị:</span> <strong>{item.type}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Lý do:</span> <strong>{item.reason}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Bậc lương cũ:</span> <strong>{item.currentSalaryLevel || "—"}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Bậc lương mới:</span> <strong>{item.proposedSalaryLevel}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Tháng áp dụng:</span> <strong>{item.effectiveMonth}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Năm áp dụng:</span> <strong>{item.effectiveYear}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Người lập:</span> <strong>{item.creator}</strong></div>
+            <div style={{ gridColumn: "span 2" }}><span style={{ color: "#64748b" }}>Ghi chú:</span> <strong>{item.note || "—"}</strong></div>
+          </div>
+        );
+      case "TransferPromotion":
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1rem", maxWidth: "800px" }}>
+            <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", color: "#003466" }}>THÔNG TIN THUYÊN CHUYỂN, BỔ NHIỆM</div>
+            <div><span style={{ color: "#64748b" }}>Chức vụ cũ:</span> <strong>{item.currentPosition}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Chức vụ mới:</span> <strong>{item.newPosition}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Phòng ban cũ:</span> <strong>{item.currentDepartment}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Phòng ban mới:</span> <strong>{item.newDepartment}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Bậc lương cũ:</span> <strong>{item.currentSalaryLevel || "—"}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Bậc lương mới:</span> <strong>{item.newSalaryLevel || "—"}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Ngày hiệu lực:</span> <strong>{new Date(item.effectiveDate).toLocaleDateString("vi-VN")}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Người lập:</span> <strong>{item.creator}</strong></div>
+            <div style={{ gridColumn: "span 2" }}><span style={{ color: "#64748b" }}>Ghi chú:</span> <strong>{item.note || "—"}</strong></div>
+          </div>
+        );
+      case "Resignation":
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1rem", maxWidth: "800px" }}>
+            <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", color: "#003466" }}>ĐƠN XIN NGHỈ VIỆC</div>
+            <div><span style={{ color: "#64748b" }}>Ngày đăng ký:</span> <strong>{new Date(item.requestDate).toLocaleDateString("vi-VN")}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Ngày nghỉ việc:</span> <strong>{new Date(item.resignationDate).toLocaleDateString("vi-VN")}</strong></div>
+            <div style={{ gridColumn: "span 2" }}><span style={{ color: "#64748b" }}>Lý do nghỉ:</span> <strong>{item.reason}</strong></div>
+            <div style={{ gridColumn: "span 2" }}><span style={{ color: "#64748b" }}>Ghi chú:</span> <strong>{item.note || "—"}</strong></div>
+          </div>
+        );
+      case "Payroll":
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1rem", maxWidth: "800px" }}>
+            <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", color: "#003466" }}>THÔNG TIN BẢNG LƯƠNG</div>
+            <div><span style={{ color: "#64748b" }}>Kỳ lương:</span> <strong>Tháng {item.month}/{item.year}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Người lập:</span> <strong>{item.creator}</strong></div>
+            <div><span style={{ color: "#64748b" }}>Chi nhánh:</span> <strong>{item.branch || "Tất cả"}</strong></div>
+            <div style={{ gridColumn: "span 2" }}><span style={{ color: "#64748b" }}>Ghi chú:</span> <strong>{item.note || "—"}</strong></div>
+          </div>
+        );
+      case "PurchaseOrder":
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "800px" }}>
+            <div style={{ fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", color: "#003466" }}>ĐƠN MUA HÀNG</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1rem" }}>
+              <div><span style={{ color: "#64748b" }}>Người lập:</span> <strong>{item.creator}</strong></div>
+              <div><span style={{ color: "#64748b" }}>Chi nhánh:</span> <strong>{item.branch || "—"}</strong></div>
+              <div><span style={{ color: "#64748b" }}>Ngày đề nghị:</span> <strong>{new Date(item.requestedDate).toLocaleDateString("vi-VN")}</strong></div>
+              <div><span style={{ color: "#64748b" }}>Mục đích:</span> <strong>{item.purpose}</strong></div>
+              <div style={{ gridColumn: "span 2" }}><span style={{ color: "#64748b" }}>Ghi chú:</span> <strong>{item.note || "—"}</strong></div>
+            </div>
+            
+            <div style={{ fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", marginTop: "0.5rem", color: "#003466" }}>CHI TIẾT HÀNG HÓA</div>
+            <table className="base-table" style={{ fontSize: "12px", border: "1px solid #cbd5e1" }}>
+              <thead>
+                <tr style={{ background: "#f8fafc" }}>
+                  <th style={{ color: "#003466", padding: "4px" }}>Mã hàng</th>
+                  <th style={{ color: "#003466", padding: "4px" }}>Tên hàng</th>
+                  <th style={{ color: "#003466", padding: "4px" }}>Số lượng</th>
+                  <th style={{ color: "#003466", padding: "4px" }}>Nơi giao</th>
+                </tr>
+              </thead>
+              <tbody>
+                {item.details?.map((d: any) => (
+                  <tr key={d.id}>
+                    <td style={{ padding: "4px" }}>{d.productCode}</td>
+                    <td style={{ padding: "4px" }}>{d.productName}</td>
+                    <td style={{ padding: "4px" }}>{d.requestedQuantity}</td>
+                    <td style={{ padding: "4px" }}>{d.deliveryLocation}</td>
+                  </tr>
+                ))}
+                {(!item.details || item.details.length === 0) && (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: "center", padding: "4px", color: "#64748b" }}>Không có chi tiết hàng hóa</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        );
+      default:
+        return null;
+    }
+  }
+
   return (
     <>
       <style dangerouslySetInnerHTML={{
         __html: `
-        .base-table th {
-          background: #f1f5f9 !important;
-          padding: 0px 0.75rem !important;
+        .breadcrumb-banner {
+          background: #003466 !important;
+          color: white !important;
+          padding: 6px 15px !important;
+          font-size: 13px !important;
           font-weight: 700 !important;
-          color: #334155 !important;
-          border-bottom: 1px solid #e0e6ed !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.5px !important;
+          margin-top: 0px !important;
+          margin-bottom: 10px !important;
+          font-family: "Segoe UI", sans-serif !important;
+        }
+        .sapo-btn {
+          background: #003466 !important;
+          color: white !important;
+          border: none !important;
+          padding: 6px 12px !important;
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          border-radius: 4px !important;
+          cursor: pointer !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          height: 32px !important;
+          font-family: "Segoe UI", sans-serif !important;
+          transition: background-color 0.2s !important;
+        }
+        .sapo-btn:hover {
+          background: #002447 !important;
+        }
+        .sapo-btn.btn-outline {
+          background: white !important;
+          color: #003466 !important;
+          border: 1px solid #003466 !important;
+        }
+        .sapo-btn.btn-outline:hover {
+          background: #f0f7ff !important;
+        }
+        .base-table-wrapper {
+          background: white !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 6px !important;
+          overflow-x: auto !important;
+          margin-top: 10px !important;
+        }
+        .base-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          font-family: "Segoe UI", sans-serif !important;
+          font-size: 13px !important;
+        }
+        .base-table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
           text-align: center !important;
           height: 35px !important;
-          font-family: "Segoe UI", sans-serif !important;
-          font-size: 13px !important;
+          padding: 6px 12px !important;
         }
         .base-table td {
-          padding: 0px 0.75rem !important;
+          padding: 6px 12px !important;
           vertical-align: middle !important;
-          font-family: "Segoe UI", sans-serif !important;
-          font-size: 13px !important;
+          color: #000 !important;
+          font-weight: 600 !important;
+          border-bottom: 1px solid #e2e8f0 !important;
         }
-        .base-table tbody tr {
-          height: 45px !important;
+        .base-table tbody tr.row-hoverable:hover {
+          background-color: #f0f7ff !important;
+        }
+        .base-table tbody tr.row-selected {
+          background-color: #eff6ff !important;
+        }
+        .code-pill {
+          background: #e2e8f0 !important;
+          color: #475569 !important;
+          padding: 2px 6px !important;
+          border-radius: 4px !important;
+          font-weight: 700 !important;
+          font-family: monospace !important;
+        }
+        .avatar-base {
+          width: 28px !important;
+          height: 28px !important;
+          border-radius: 50% !important;
+          background: #003466 !important;
+          color: white !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          font-weight: 700 !important;
+          font-size: 12px !important;
+          margin-right: 8px !important;
+        }
+        .employee-info-base {
+          display: flex !important;
+          align-items: center !important;
         }
       ` }} />
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+
+      <div className="breadcrumb-banner">
+        PHÊ DUYỆT HỒ SƠ
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0px" }}>
+        
         {/* Module Tabs */}
-        <div style={{ display: "flex", gap: "0.25rem", flexWrap: "nowrap", background: "transparent", padding: "0px", alignItems: "center", overflowX: "auto" }}>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "nowrap", alignItems: "center", overflowX: "auto" }}>
           <button
             onClick={() => setActiveTab("contract")}
-            className={`btn ${activeTab === "contract" ? "btn-primary" : "btn-outline"}`}
-            style={{ padding: "0.375rem 0.75rem", borderRadius: "6px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}
+            className={`sapo-btn ${activeTab === "contract" ? "" : "btn-outline"}`}
+            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
           >
-            📄 Hợp đồng <span style={{ background: activeTab === "contract" ? "rgba(255,255,255,0.2)" : "#f1f5f9", color: activeTab === "contract" ? "#fff" : "#475569", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: 700 }}>{pending.contracts?.length || 0}</span>
+            📄 Hợp đồng <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.contracts?.length || 0})</span>
           </button>
           <button
             onClick={() => setActiveTab("leave")}
-            className={`btn ${activeTab === "leave" ? "btn-primary" : "btn-outline"}`}
-            style={{ padding: "0.375rem 0.75rem", borderRadius: "6px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}
+            className={`sapo-btn ${activeTab === "leave" ? "" : "btn-outline"}`}
+            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
           >
-            🏖️ Nghỉ phép <span style={{ background: activeTab === "leave" ? "rgba(255,255,255,0.2)" : "#f1f5f9", color: activeTab === "leave" ? "#fff" : "#475569", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: 700 }}>{pending.leaves?.length || 0}</span>
+            🏖️ Nghỉ phép <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.leaves?.length || 0})</span>
           </button>
           <button
             onClick={() => setActiveTab("resignation")}
-            className={`btn ${activeTab === "resignation" ? "btn-primary" : "btn-outline"}`}
-            style={{ padding: "0.375rem 0.75rem", borderRadius: "6px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}
+            className={`sapo-btn ${activeTab === "resignation" ? "" : "btn-outline"}`}
+            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
           >
-            🚪 Nghỉ việc <span style={{ background: activeTab === "resignation" ? "rgba(255,255,255,0.2)" : "#f1f5f9", color: activeTab === "resignation" ? "#fff" : "#475569", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: 700 }}>{pending.resignations?.length || 0}</span>
+            🚪 Nghỉ việc <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.resignations?.length || 0})</span>
           </button>
           <button
             onClick={() => setActiveTab("transfer")}
-            className={`btn ${activeTab === "transfer" ? "btn-primary" : "btn-outline"}`}
-            style={{ padding: "0.375rem 0.75rem", borderRadius: "6px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}
+            className={`sapo-btn ${activeTab === "transfer" ? "" : "btn-outline"}`}
+            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
           >
-            🔄 Thuyên chuyển, bổ nhiệm <span style={{ background: activeTab === "transfer" ? "rgba(255,255,255,0.2)" : "#f1f5f9", color: activeTab === "transfer" ? "#fff" : "#475569", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: 700 }}>{pending.transfers?.length || 0}</span>
+            🔄 Thuyên chuyển, bổ nhiệm <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.transfers?.length || 0})</span>
           </button>
           <button
             onClick={() => setActiveTab("salary")}
-            className={`btn ${activeTab === "salary" ? "btn-primary" : "btn-outline"}`}
-            style={{ padding: "0.375rem 0.75rem", borderRadius: "6px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}
+            className={`sapo-btn ${activeTab === "salary" ? "" : "btn-outline"}`}
+            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
           >
-            💰 Tăng, giảm lương <span style={{ background: activeTab === "salary" ? "rgba(255,255,255,0.2)" : "#f1f5f9", color: activeTab === "salary" ? "#fff" : "#475569", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: 700 }}>{pending.salaryChanges?.length || 0}</span>
+            💰 Tăng, giảm lương <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.salaryChanges?.length || 0})</span>
           </button>
-          <div style={{ flex: 1, minWidth: "0.5rem" }} />
+          
+          <div style={{ flex: 1 }} />
+          
           <button
             onClick={() => setActiveTab("all")}
-            className={`btn ${activeTab === "all" ? "btn-success" : "btn-outline"}`}
-            style={{ padding: "0.375rem 0.75rem", borderRadius: "6px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px", color: activeTab === "all" ? "#fff" : "", flexShrink: 0 }}
+            className={`sapo-btn ${activeTab === "all" ? "" : "btn-outline"}`}
+            style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
           >
-            ✅ Tất cả <span style={{ background: activeTab === "all" ? "rgba(255,255,255,0.2)" : "#e2e8f0", color: activeTab === "all" ? "#fff" : "#475569", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: 700 }}>{flattenData(approved).length}</span>
+            ✅ Tất cả <span style={{ marginLeft: "4px", opacity: 0.85 }}>({flattenData(approved).length})</span>
           </button>
-          <button
-            onClick={() => router.refresh()}
-            className="btn btn-outline"
-            style={{
-              padding: "0.375rem 0.75rem",
-              borderRadius: "6px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "6px",
-              fontSize: "13px",
-              fontWeight: 500,
-              cursor: "pointer",
-              background: "#fff",
-              border: "1px solid #cbd5e1",
-              color: "#64748b",
-              flexShrink: 0
-            }}
-          >
-            <RotateCcw size={16} style={{ color: "#64748b" }} /> Làm mới
-          </button>
+        </div>
+
+        {/* Toolbar Container */}
+        <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "5px" }}>
+          {selectedItem && activeTab !== "all" && (
+            <>
+              <button
+                type="button"
+                className="sapo-btn"
+                onClick={() => handleAction(selectedItem.id, selectedItem.moduleType, 'approve', `${selectedItem.moduleLabel} - ${selectedItem.employeeName || selectedItem.fullName}`)}
+              >
+                Phê duyệt
+              </button>
+              <button
+                type="button"
+                className="sapo-btn"
+                style={{ backgroundColor: "#ef4444" }}
+                onClick={() => handleAction(selectedItem.id, selectedItem.moduleType, 'reject', `${selectedItem.moduleLabel} - ${selectedItem.employeeName || selectedItem.fullName}`)}
+              >
+                Từ chối
+              </button>
+            </>
+          )}
+
+          <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <button
+              type="button"
+              className="sapo-btn"
+              onClick={() => router.refresh()}
+            >
+              Làm mới
+            </button>
+          </div>
         </div>
 
         <div className="base-table-wrapper" style={{ overflow: "visible" }}>
@@ -219,14 +452,13 @@ export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
                 <th>Nhân viên</th>
                 <th>Ngày tạo</th>
                 <th>Chi tiết</th>
-                <th>Trạng thái</th>
-                {activeTab !== "all" && <th className="th-last" style={{ width: "100px", textAlign: "right" }}>Thao tác</th>}
+                <th className="th-last" style={{ textAlign: "center" }}>Trạng thái</th>
               </tr>
             </thead>
             <tbody>
               {currentList.length === 0 ? (
                 <tr>
-                  <td colSpan={activeTab !== "all" ? 8 : 7} style={{ textAlign: "center", padding: "4rem", color: "#64748b" }}>
+                  <td colSpan={7} style={{ textAlign: "center", padding: "4rem", color: "#64748b" }}>
                     <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>{activeTab !== "all" ? "🎉" : "📋"}</div>
                     <div style={{ fontSize: "1.1rem", fontWeight: "600" }}>
                       {activeTab !== "all" ? "Tất cả hồ sơ đã được xử lý xong!" : "Chưa có hồ sơ nào được phê duyệt"}
@@ -234,281 +466,95 @@ export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
                   </td>
                 </tr>
               ) : (
-                currentList.map((item, idx) => (
-                  <tr
-                    key={`${item.moduleType}-${item.id}`}
-                    onClick={() => setViewingItem(item)}
-                    style={{ cursor: "pointer" }}
-                    className="table-row-hover"
-                  >
-                    <td style={{ textAlign: "center", color: "#94a3b8" }}>{idx + 1}</td>
-                    <td>
-                      <span className="badge-count" style={{ background: "#f1f5f9", color: "#475569", fontWeight: 700, fontSize: "11px", padding: "2px 8px" }}>{item.moduleLabel}</span>
-                    </td>
-                    <td>
-                      <span className="code-pill">
-                        {item.contractNumber ||
-                          item.leaveCode ||
-                          item.resignationCode ||
-                          item.payrollCode ||
-                          item.changeCode ||
-                          item.planNumber ||
-                          item.employeeCode ||
-                          item.orderCode ||
-                          item.poCode || "—"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="employee-info-base">
-                        <div className="avatar-base">
-                          {(item.employeeName || item.fullName || "H").split(" ").pop()?.charAt(0)}
-                        </div>
-                        <span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{item.employeeName || item.fullName || "Hệ thống"}</span>
-                      </div>
-                    </td>
-                    <td style={{ color: "#64748b", whiteSpace: "nowrap" }}>{new Date(item.createdAt || item.requestDate || item.planDate).toLocaleDateString("vi-VN")}</td>
-                    <td style={{ fontWeight: 500, whiteSpace: "nowrap" }}>{getDetailText(item)}</td>
-                    <td>
-                      <div className={`status-pill ${item.status === "Đã phê duyệt" ? "status-active" : "status-pending"}`}>
-                        {item.status}
-                      </div>
-                    </td>
-                    {activeTab !== "all" && (
-                      <td style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                          <button
-                            className="action-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              const spaceBelow = window.innerHeight - rect.bottom;
-                              setDropdownDirection(spaceBelow < 180 ? "up" : "down");
-                              setOpenMenuId(openMenuId === `${item.moduleType}-${item.id}` ? null : `${item.moduleType}-${item.id}`);
-                            }}
-                          >
-                            <MoreHorizontal size={18} />
-                          </button>
-                        </div>
+                currentList.map((item, idx) => {
+                  const itemKey = `${item.moduleType}-${item.id}`;
+                  const isSelected = selectedItemId === itemKey;
+                  const isExpanded = expandedId === itemKey;
 
-                        {openMenuId === `${item.moduleType}-${item.id}` && (
-                          <div className={`action-dropdown ${dropdownDirection === "up" ? "open-up" : ""}`} onClick={(e) => e.stopPropagation()}>
-                            <div className="dropdown-item success"
-                              onClick={() => { handleAction(item.id, item.moduleType, 'approve', `${item.moduleLabel} - ${item.employeeName || item.fullName}`); setOpenMenuId(null); }}
-                            >
-                              <CheckCircle size={14} /> Phê duyệt
+                  let statusColor = "#f59e0b"; // Pending/Tạo mới
+                  if (item.status === "Chờ phê duyệt") statusColor = "#2563eb";
+                  if (item.status === "Đã phê duyệt") statusColor = "#10b981";
+                  if (item.status === "Đã hủy" || item.status === "Từ chối") statusColor = "#ef4444";
+
+                  return (
+                    <React.Fragment key={itemKey}>
+                      <tr
+                        onClick={() => {
+                          const nextKey = selectedItemId === itemKey ? null : itemKey;
+                          setSelectedItemId(nextKey);
+                          setExpandedId(nextKey);
+                        }}
+                        style={{ cursor: "pointer" }}
+                        className={`row-hoverable ${isSelected ? "row-selected" : ""}`}
+                      >
+                        <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{idx + 1}</td>
+                        <td>
+                          <span style={{ color: "#003466", fontWeight: 700, fontSize: "12px" }}>{item.moduleLabel}</span>
+                        </td>
+                        <td>
+                          <span className="code-pill">
+                            {item.contractNumber ||
+                              item.leaveCode ||
+                              item.resignationCode ||
+                              item.payrollCode ||
+                              item.changeCode ||
+                              item.planNumber ||
+                              item.employeeCode ||
+                              item.orderCode ||
+                              item.poCode || "—"}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="employee-info-base">
+                            <div className="avatar-base">
+                              {(item.employeeName || item.fullName || "H").split(" ").pop()?.charAt(0)}
                             </div>
-                            <div className="dropdown-item danger"
-                              onClick={() => { handleAction(item.id, item.moduleType, 'reject', `${item.moduleLabel} - ${item.employeeName || item.fullName}`); setOpenMenuId(null); }}
-                            >
-                              <XCircle size={14} /> Từ chối
-                            </div>
+                            <span style={{ fontWeight: 600, whiteSpace: "nowrap", color: "#000" }}>{item.employeeName || item.fullName || "Hệ thống"}</span>
                           </div>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))
+                        </td>
+                        <td style={{ color: "#000", whiteSpace: "nowrap", fontWeight: 600 }}>{new Date(item.createdAt || item.requestDate || item.planDate).toLocaleDateString("vi-VN")}</td>
+                        <td style={{ fontWeight: 600, whiteSpace: "nowrap", color: "#000" }}>{getDetailText(item)}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <span style={{ color: statusColor, fontWeight: 700 }}>
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={7} style={{ padding: "0", background: "#f8fafc" }}>
+                            <div style={{
+                              padding: "1rem",
+                              position: "sticky",
+                              left: 0,
+                              width: "min-content",
+                              minWidth: "100%",
+                              maxWidth: "calc(100vw - 280px)",
+                              borderBottom: "2px solid var(--primary-color)",
+                              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)"
+                            }}>
+                              <div style={{ background: "white", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                                {renderItemDetails(item)}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
-
-        {/* Detail Modal */}
-        {viewingItem && (
-          <div
-            className="modal-overlay"
-            onClick={() => setViewingItem(null)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: "1rem"
-            }}
-          >
-            <div
-              className="card"
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: "100%",
-                maxWidth: "700px",
-                maxHeight: "90vh",
-                overflowY: "auto",
-                margin: "auto",
-                padding: "2rem",
-                position: "relative",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", borderBottom: "1px solid #eee", paddingBottom: "1rem", position: "sticky", top: 0, background: "#fff", zIndex: 10 }}>
-                <h3 style={{ margin: 0 }}>🔍 Chi tiết phê duyệt</h3>
-                <button className="btn-icon" onClick={() => setViewingItem(null)} style={{ fontSize: "1.5rem" }}>×</button>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.5rem" }}>
-                <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Phân hệ</label>
-                  <div style={{ fontWeight: 600, marginTop: "0.25rem" }}>{viewingItem.moduleLabel}</div>
-                </div>
-                <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Mã/Số hồ sơ</label>
-                  <div style={{ fontWeight: 600, marginTop: "0.25rem", color: "var(--primary-color)" }}>
-                    {viewingItem.contractNumber ||
-                      viewingItem.leaveCode ||
-                      viewingItem.resignationCode ||
-                      viewingItem.payrollCode ||
-                      viewingItem.changeCode ||
-                      viewingItem.planNumber ||
-                      viewingItem.employeeCode ||
-                      viewingItem.orderCode ||
-                      viewingItem.poCode || "—"}
-                  </div>
-                </div>
-                <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Nhân viên liên quan</label>
-                  <div style={{ fontWeight: 600, marginTop: "0.25rem" }}>{viewingItem.employeeName || viewingItem.fullName || "—"}</div>
-                </div>
-                <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Ngày tạo</label>
-                  <div style={{ marginTop: "0.25rem" }}>{new Date(viewingItem.createdAt || viewingItem.requestDate || viewingItem.planDate || viewingItem.requestedDate).toLocaleString("vi-VN")}</div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: "1.5rem", padding: "1.25rem", background: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
-                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", display: "block", marginBottom: "0.75rem" }}>Nội dung chi tiết</label>
-                <div style={{ fontSize: "0.95rem", lineHeight: "1.6" }}>
-                  {viewingItem.moduleType === "LaborContract" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                      <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.5rem" }}>Thông tin hợp đồng</div>
-                      <div><strong>Số HĐ:</strong> {viewingItem.contractNumber}</div>
-                      <div><strong>Loại HĐ:</strong> {viewingItem.contractType}</div>
-                      <div><strong>Vị trí:</strong> {viewingItem.position}</div>
-                      <div><strong>Phòng ban:</strong> {viewingItem.department}</div>
-                      <div><strong>Ngày ký:</strong> {new Date(viewingItem.contractDate).toLocaleDateString("vi-VN")}</div>
-                      <div><strong>Ngày bắt đầu:</strong> {new Date(viewingItem.startDate).toLocaleDateString("vi-VN")}</div>
-                      {viewingItem.endDate && <div><strong>Ngày kết thúc:</strong> {new Date(viewingItem.endDate).toLocaleDateString("vi-VN")}</div>}
-
-                      <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.5rem", marginTop: "1rem" }}>Lương & Phụ cấp</div>
-                      <div><strong>Bậc lương:</strong> {viewingItem.salaryLevel}</div>
-                      <div><strong>Lương CB:</strong> {viewingItem.salaryBase?.toLocaleString("vi-VN")}</div>
-                      <div><strong>Chuyên cần:</strong> {viewingItem.attendanceAllowance?.toLocaleString("vi-VN")}</div>
-                      <div><strong>Hiệu quả:</strong> {viewingItem.performanceAllowance?.toLocaleString("vi-VN")}</div>
-                      <div><strong>Trách nhiệm:</strong> {viewingItem.responsibilityAllowance?.toLocaleString("vi-VN")}</div>
-                      <div><strong>Thu hút:</strong> {viewingItem.attractionAllowance?.toLocaleString("vi-VN")}</div>
-                      <div><strong>Chức vụ:</strong> {viewingItem.positionAllowance?.toLocaleString("vi-VN")}</div>
-                      <div><strong>Khác:</strong> {viewingItem.otherAllowance?.toLocaleString("vi-VN")}</div>
-                      <div><strong>BHXH:</strong> {viewingItem.socialInsurance?.toLocaleString("vi-VN")}</div>
-                      <div style={{ gridColumn: "span 2" }}><strong>Ghi chú:</strong> {viewingItem.note || "—"}</div>
-                    </div>
-                  )}
-                  {viewingItem.moduleType === "LeaveRequest" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                      <div><strong>Lý do nghỉ:</strong> {viewingItem.reason}</div>
-                      <div><strong>Tổng số ngày:</strong> {viewingItem.totalDays} ngày</div>
-                      <div><strong>Từ ngày:</strong> {new Date(viewingItem.startDate).toLocaleDateString("vi-VN")}</div>
-                      <div><strong>Đến ngày:</strong> {new Date(viewingItem.endDate).toLocaleDateString("vi-VN")}</div>
-                      <div style={{ gridColumn: "span 2" }}><strong>Ghi chú:</strong> {viewingItem.note || "—"}</div>
-                    </div>
-                  )}
-                  {viewingItem.moduleType === "SalaryChange" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                      <div><strong>Loại đề nghị:</strong> {viewingItem.type}</div>
-                      <div><strong>Lý do:</strong> {viewingItem.reason}</div>
-                      <div><strong>Bậc lương cũ:</strong> {viewingItem.currentSalaryLevel || "—"}</div>
-                      <div><strong>Bậc lương mới:</strong> {viewingItem.proposedSalaryLevel}</div>
-                      <div><strong>Tháng áp dụng:</strong> {viewingItem.effectiveMonth}</div>
-                      <div><strong>Năm áp dụng:</strong> {viewingItem.effectiveYear}</div>
-                      <div><strong>Người lập:</strong> {viewingItem.creator}</div>
-                      <div style={{ gridColumn: "span 2" }}><strong>Ghi chú:</strong> {viewingItem.note || "—"}</div>
-                    </div>
-                  )}
-                  {viewingItem.moduleType === "TransferPromotion" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                      <div><strong>Chức vụ cũ:</strong> {viewingItem.currentPosition}</div>
-                      <div><strong>Chức vụ mới:</strong> {viewingItem.newPosition}</div>
-                      <div><strong>Phòng ban cũ:</strong> {viewingItem.currentDepartment}</div>
-                      <div><strong>Phòng ban mới:</strong> {viewingItem.newDepartment}</div>
-                      <div><strong>Bậc lương cũ:</strong> {viewingItem.currentSalaryLevel || "—"}</div>
-                      <div><strong>Bậc lương mới:</strong> {viewingItem.newSalaryLevel || "—"}</div>
-                      <div><strong>Ngày hiệu lực:</strong> {new Date(viewingItem.effectiveDate).toLocaleDateString("vi-VN")}</div>
-                      <div><strong>Người lập:</strong> {viewingItem.creator}</div>
-                      <div style={{ gridColumn: "span 2" }}><strong>Ghi chú:</strong> {viewingItem.note || "—"}</div>
-                    </div>
-                  )}
-                  {viewingItem.moduleType === "Resignation" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                      <div><strong>Ngày đăng ký:</strong> {new Date(viewingItem.requestDate).toLocaleDateString("vi-VN")}</div>
-                      <div><strong>Ngày nghỉ việc:</strong> {new Date(viewingItem.resignationDate).toLocaleDateString("vi-VN")}</div>
-                      <div style={{ gridColumn: "span 2" }}><strong>Lý do nghỉ:</strong> {viewingItem.reason}</div>
-                      <div style={{ gridColumn: "span 2" }}><strong>Ghi chú:</strong> {viewingItem.note || "—"}</div>
-                    </div>
-                  )}
-                  {viewingItem.moduleType === "Payroll" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                      <div><strong>Kỳ lương:</strong> Tháng {viewingItem.month}/{viewingItem.year}</div>
-                      <div><strong>Người lập:</strong> {viewingItem.creator}</div>
-                      <div><strong>Chi nhánh:</strong> {viewingItem.branch || "Tất cả"}</div>
-                      <div style={{ gridColumn: "span 2" }}><strong>Ghi chú:</strong> {viewingItem.note || "—"}</div>
-                    </div>
-                  )}
-                  {viewingItem.moduleType === "PurchaseOrder" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                      <div><strong>Người lập:</strong> {viewingItem.creator}</div>
-                      <div><strong>Chi nhánh:</strong> {viewingItem.branch || "—"}</div>
-                      <div><strong>Ngày đề nghị:</strong> {new Date(viewingItem.requestedDate).toLocaleDateString("vi-VN")}</div>
-                      <div><strong>Mục đích:</strong> {viewingItem.purpose}</div>
-                      <div style={{ gridColumn: "span 2" }}><strong>Ghi chú:</strong> {viewingItem.note || "—"}</div>
-
-                      <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.5rem", marginTop: "1rem" }}>Chi tiết hàng hóa</div>
-                      <div style={{ gridColumn: "span 2" }}>
-                        <table className="table" style={{ fontSize: "0.85rem" }}>
-                          <thead>
-                            <tr>
-                              <th>Mã hàng</th>
-                              <th>Tên hàng</th>
-                              <th>Số lượng</th>
-                              <th>Nơi giao</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {viewingItem.details?.map((d: any) => (
-                              <tr key={d.id}>
-                                <td>{d.productCode}</td>
-                                <td>{d.productName}</td>
-                                <td>{d.requestedQuantity}</td>
-                                <td>{d.deliveryLocation}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "flex-end", gap: "1rem", position: "sticky", bottom: 0, background: "#fff", paddingTop: "1rem", borderTop: "1px solid #eee" }}>
-                <button className="btn" onClick={() => setViewingItem(null)}>Đóng</button>
-                {activeTab !== "all" && (
-                  <>
-                    <button className="btn btn-danger" style={{ background: "#ef4444", border: "none", fontWeight: 700 }} onClick={() => { handleAction(viewingItem.id, viewingItem.moduleType, 'reject', `${viewingItem.moduleLabel} - ${viewingItem.employeeName || viewingItem.fullName}`); setViewingItem(null); }}>Từ chối</button>
-                    <button className="btn btn-primary" style={{ background: "#2563eb", border: "none", fontWeight: 700 }} onClick={() => { handleAction(viewingItem.id, viewingItem.moduleType, 'approve', `${viewingItem.moduleLabel} - ${viewingItem.employeeName || viewingItem.fullName}`); setViewingItem(null); }}>Phê duyệt</button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Action Confirmation Modal */}
         {confirmState.show && (
           <div className="modal-overlay" style={{
             position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.65)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 9999, backdropFilter: "blur(4px)"
+            zIndex: 9999, backdropFilter: "blur(2px)"
           }}>
             <div className="card" style={{
               width: "100%", maxWidth: "400px", padding: "2rem", textAlign: "center",
@@ -525,18 +571,18 @@ export default function ApprovalTabs({ pending, approved }: ApprovalTabsProps) {
               </p>
               <div style={{ display: "flex", gap: "1rem" }}>
                 <button
-                  className="btn btn-outline"
-                  style={{ flex: 1, height: "42px", borderRadius: "10px", fontWeight: 600, border: "1px solid #e2e8f0" }}
+                  className="sapo-btn btn-outline"
+                  style={{ flex: 1, height: "42px", borderRadius: "10px", fontWeight: 600 }}
                   onClick={() => setConfirmState(prev => ({ ...prev, show: false }))}
                 >
                   Hủy
                 </button>
                 <button
-                  className="btn btn-primary"
+                  className="sapo-btn"
                   style={{
                     flex: 1, height: "42px", borderRadius: "10px", fontWeight: 700,
-                    background: confirmState.action === 'approve' ? "#2563eb" : "#ef4444",
-                    border: "none", boxShadow: confirmState.action === 'approve' ? "0 4px 6px -1px rgba(37, 99, 235, 0.2)" : "0 4px 6px -1px rgba(239, 68, 68, 0.2)"
+                    backgroundColor: confirmState.action === 'approve' ? "#003466" : "#ef4444",
+                    border: "none"
                   }}
                   onClick={executeAction}
                 >

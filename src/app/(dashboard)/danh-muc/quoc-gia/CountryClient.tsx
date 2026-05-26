@@ -1,14 +1,8 @@
 "use client";
-
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createCountry, updateCountry, deleteCountry } from "./actions";
 import HistoryModal from "../../HistoryModal";
-import { 
-  Pencil, Trash2, History, Plus, RotateCcw, 
-  Globe, Hash, Type, Info, AlertTriangle, CheckCircle2, Search,
-  FileSpreadsheet, Upload, Download
-} from "lucide-react";
 
 type Country = {
   id: string;
@@ -18,354 +12,424 @@ type Country = {
 
 export default function CountryClient({ initialCountries }: { initialCountries: Country[] }) {
   const router = useRouter();
-  const [countries, setCountries] = useState(initialCountries);
-  const [showModal, setShowModal] = useState(false);
-  const [editingCountry, setEditingCountry] = useState<Country | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const formRef = useRef<HTMLFormElement>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
-  useEffect(() => {
-    setCountries(initialCountries);
-  }, [initialCountries]);
-
-  const filteredCountries = countries.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filteredCountries.length / itemsPerPage);
-  const paginatedCountries = filteredCountries.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Form states
+  const [formCode, setFormCode] = useState("");
+  const [formName, setFormName] = useState("");
+  const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isViewOnly, setIsViewOnly] = useState(false);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+    fetch("/api/user-permissions")
+      .then(res => res.json())
+      .then(data => setIsAdmin(data.isAdmin || false))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   function handleEdit(country: Country) {
-    setEditingCountry(country);
+    setSelectedCountryId(country.id);
+    setFormCode(country.code);
+    setFormName(country.name);
+    setIsEditing(true);
+    setIsViewOnly(false);
     setError(null);
-    setShowModal(true);
+    setSuccess(null);
   }
 
-  function handleAddNew() {
-    setEditingCountry(null);
-    setError(null);
-    setShowModal(true);
-    // Focus the first input after a short delay
-    setTimeout(() => {
-      const codeInput = document.querySelector('input[name="code"]') as HTMLInputElement;
-      if (codeInput) codeInput.focus();
-    }, 100);
-  }
-
-  function handleReset() {
-    setError(null);
-    formRef.current?.reset();
-  }
-
-  function handleClose() {
-    setShowModal(false);
-    setEditingCountry(null);
+  function handleResetForm() {
+    setSelectedCountryId(null);
+    setFormCode("");
+    setFormName("");
+    setIsEditing(false);
+    setIsViewOnly(false);
     setError(null);
   }
 
-  async function handleFormSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    setError(null);
+  function handleDelete(id: string) {
+    if (!confirm("Bạn có chắc chắn muốn xóa quốc gia này?")) return;
     startTransition(async () => {
       try {
-        if (editingCountry) {
-          await updateCountry(editingCountry.id, formData);
-        } else {
-          await createCountry(formData);
-        }
-        handleClose();
+        await deleteCountry(id);
+        setSuccess("Xóa quốc gia thành công!");
+        handleResetForm();
         router.refresh();
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Có lỗi xảy ra.");
+      } catch (err: any) {
+        setError(err.message);
       }
     });
   }
 
-  async function handleDelete(id: string, name: string) {
-    if (confirm(`Bạn có chắc chắn muốn xóa quốc gia "${name}"?`)) {
-      startTransition(async () => {
-        try {
-          await deleteCountry(id);
-          router.refresh();
-        } catch (err: unknown) {
-          alert(err instanceof Error ? err.message : "Không thể xóa quốc gia này.");
-        }
-      });
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    
+    if (!formCode.trim() || !formName.trim()) {
+      setError("Mã và tên quốc gia là bắt buộc.");
+      return;
     }
+
+    const formData = new FormData();
+    formData.append("code", formCode.trim());
+    formData.append("name", formName.trim());
+
+    startTransition(async () => {
+      try {
+        if (isEditing && selectedCountryId) {
+          await updateCountry(selectedCountryId, formData);
+          setSuccess("Cập nhật thông tin quốc gia thành công!");
+          handleResetForm();
+          router.refresh();
+        } else {
+          await createCountry(formData);
+          setSuccess("Thêm quốc gia mới thành công!");
+          handleResetForm();
+          router.refresh();
+        }
+      } catch (err: any) {
+        setError(err.message);
+      }
+    });
   }
 
+  const filteredCountries = initialCountries;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", paddingBottom: "1rem" }}>
-      {/* Toolbar */}
-      <div className="base-toolbar" style={{ marginBottom: "0.5rem" }}>
-        <div className="toolbar-left">
-          <h3 className="page-title-base">🌍 Danh mục Quốc gia</h3>
-          <span className="badge-count">{initialCountries.length}</span>
-          <div className="search-box-base">
-            <Search size={16} className="search-icon" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm quốc gia..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: "35px" }}
-            />
-          </div>
-        </div>
-        <div className="toolbar-right">
-          <button className="btn-base btn-outline" title="Tải file mẫu">
-            <FileSpreadsheet size={18} />
-          </button>
-          <button className="btn-base btn-outline" title="Import Excel">
-            <Upload size={18} />
-          </button>
-          <button className="btn-base btn-outline" title="Xuất file Excel">
-            <Download size={18} />
-          </button>
-          <button className="btn-base btn-primary" onClick={handleAddNew}>
-            <Plus size={18} style={{ marginRight: "6px" }} /> Thêm mới
-          </button>
-        </div>
+    <div className="country-page-container">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .country-page-container {
+          width: 100%;
+        }
+        .country-layout {
+          display: flex;
+          gap: 1.5rem;
+          width: 100%;
+          font-family: "Segoe UI", -apple-system, sans-serif;
+          font-size: 13px;
+          padding: 10px 0px 10px 0px;
+        }
+        .country-layout input,
+        .country-layout select,
+        .country-layout textarea,
+        .country-layout button,
+        .country-layout table,
+        .country-layout td,
+        .country-layout th,
+        .country-layout label,
+        .country-layout .blue-panel-header,
+        .country-page-container .breadcrumb-banner {
+          font-size: 13px !important;
+        }
+        .breadcrumb-banner {
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          display: block;
+          border-radius: 0 !important;
+          margin-top: 0;
+          margin-left: -10px;
+          margin-right: -10px;
+        }
+        .panel-left {
+          flex: 1 1 60%;
+          min-width: 300px;
+        }
+        .panel-right {
+          flex: 0 0 35%;
+          min-width: 320px;
+        }
+        @media (max-width: 1024px) {
+          .country-layout {
+            flex-direction: column;
+          }
+          .panel-right {
+            flex: 1 1 100%;
+          }
+        }
+        .blue-panel {
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          background: #ffffff;
+          overflow: hidden;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        }
+        .blue-panel-header {
+          background-color: #003466;
+          color: #ffffff;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          font-size: 0.95rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          border-bottom: 2px solid #ff5c00;
+        }
+        .blue-panel-body {
+          padding: 10px;
+        }
+        .search-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 5px 0px 10px 0px;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+        .form-btn-group {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+          margin-top: 0.5rem;
+          padding-bottom: 15px;
+        }
+        .sapo-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          border-radius: 4px;
+          font-weight: 400;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: background-color 0.2s, transform 0.1s;
+        }
+        .sapo-btn:hover {
+          background-color: #002244;
+        }
+        .sapo-btn:active {
+          transform: scale(0.98);
+        }
+        .sapo-btn-secondary {
+          background-color: #475569;
+        }
+        .sapo-btn-secondary:hover {
+          background-color: #334155;
+        }
+        .sapo-btn-danger {
+          background-color: #ef4444;
+        }
+        .sapo-btn-danger:hover {
+          background-color: #dc2626;
+        }
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          margin-bottom: 0.75rem;
+        }
+        .form-group label {
+          font-weight: 700;
+          font-size: 0.85rem;
+          color: #003466;
+          text-transform: uppercase;
+        }
+        .form-group input, .form-group textarea {
+          width: 100%;
+          padding: 6px 10px;
+          border: 1px solid #cbd5e1;
+          border-radius: 4px;
+          font-size: 0.9rem;
+          font-weight: 500;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+          outline: none;
+          border-color: #2b6cb0;
+          box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15);
+        }
+        .row-selected {
+          background-color: #eff6ff !important;
+        }
+        .row-hoverable:hover {
+          background-color: #f8fafc;
+          cursor: pointer;
+        }
+        .required-star {
+          color: #ef4444;
+          font-weight: bold;
+        }
+        .form-desc {
+          font-size: 0.8rem;
+          font-style: italic;
+          color: #64748b;
+          margin-bottom: 0.5rem;
+          font-weight: 600;
+        }
+        .table th,
+        .table td {
+          text-align: center !important;
+          padding-top: 6px !important;
+          padding-bottom: 6px !important;
+        }
+        .table-container {
+          margin-left: 0px;
+        }
+        .table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+        }
+      ` }} />
+
+      <div className="breadcrumb-banner">
+        DANH MỤC QUỐC GIA
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "350px 1fr", gap: "1.5rem", alignItems: "start" }}>
-        {/* Left: Form */}
-        <div className="card" style={{ padding: "1.25rem", position: "sticky", top: "10px" }}>
-          <div style={{ marginBottom: "1rem" }}>
-            <h4 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
-              {editingCountry ? <Pencil size={17} /> : <Plus size={17} />}
-              {editingCountry ? "Cập nhật quốc gia" : "Thêm quốc gia mới"}
-            </h4>
-            <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>
-              {editingCountry ? `Đang chỉnh sửa: ${editingCountry.code}` : "Nhập thông tin quốc gia vào các trường dưới đây"}
-            </p>
-          </div>
-
-          {error && (
-            <div className="error-alert" style={{ marginBottom: "1rem" }}>
-              <AlertTriangle size={16} /> {error}
-            </div>
-          )}
-
-          <form ref={formRef} onSubmit={handleFormSubmit} className="drawer-form" style={{ padding: 0 }} key={editingCountry?.id || 'new'}>
-            <div className="form-group-base full-width">
-              <label>Mã quốc gia <span className="required">*</span></label>
-              <input 
-                type="text" 
-                name="code" 
-                className="input-base" 
-                defaultValue={editingCountry?.code || ""}
-                placeholder="VD: VN, US, JP..." 
-                required 
-              />
-            </div>
-
-            <div className="form-group-base full-width" style={{ marginTop: "0.75rem" }}>
-              <label>Tên quốc gia <span className="required">*</span></label>
-              <input 
-                type="text" 
-                name="name" 
-                className="input-base" 
-                defaultValue={editingCountry?.name || ""}
-                placeholder="VD: Việt Nam, Hoa Kỳ..." 
-                required 
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1.25rem" }}>
-              <button 
-                type="button" 
-                className="btn-base btn-outline" 
-                style={{ flex: 1 }}
-                onClick={handleReset}
-              >
-                <RotateCcw size={16} /> Làm lại
-              </button>
-              <button 
-                type="submit" 
-                className="btn-base btn-primary" 
-                style={{ flex: 1.5 }}
-                disabled={isPending}
-              >
-                {isPending ? "Đang xử lý..." : (editingCountry ? "Cập nhật" : "Lưu quốc gia")}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Right: Table Area */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <div className="base-table-wrapper">
-          <table className="base-table">
-            <thead>
-              <tr>
-                <th className="th-first" style={{ width: "60px", textAlign: "center", padding: "6px 10px", lineHeight: "1" }}>STT</th>
-                <th style={{ width: "150px", padding: "6px 10px", lineHeight: "1" }}>Mã quốc gia</th>
-                <th style={{ padding: "6px 10px", lineHeight: "1" }}>Tên quốc gia</th>
-                <th className="th-last" style={{ width: "120px", textAlign: "right", padding: "6px 10px", lineHeight: "1" }}>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedCountries.map((country, index) => (
-                <tr key={country.id}>
-                  <td style={{ textAlign: "center", color: "#64748b", padding: "4px 10px", lineHeight: "1.2" }}>
-                    {(currentPage - 1) * itemsPerPage + index + 1}
-                  </td>
-                  <td style={{ padding: "4px 10px", lineHeight: "1.2" }}>
-                    <span className="code-pill" style={{ background: "#e0f2fe", color: "#0369a1", fontWeight: 600 }}>
-                      {country.code}
-                    </span>
-                  </td>
-                  <td style={{ fontWeight: 600, color: "#1e293b", textAlign: "center", padding: "4px 10px", lineHeight: "1.2" }}>{country.name}</td>
-                  <td style={{ textAlign: "right", padding: "4px 10px", lineHeight: "1.2" }}>
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "4px" }}>
-                      <button 
-                        className="action-btn" 
-                        title="Chỉnh sửa"
-                        onClick={() => handleEdit(country)}
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button 
-                        className="action-btn" 
-                        title="Lịch sử"
-                        onClick={() => setHistoryRecordId(country.id)}
-                      >
-                        <History size={16} />
-                      </button>
-                      <button 
-                        className="action-btn" 
-                        title="Xóa"
-                        style={{ color: "#ef4444" }}
-                        onClick={() => handleDelete(country.id, country.name)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredCountries.length === 0 && (
-                <tr>
-                  <td colSpan={4} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-                      <Info size={40} strokeWidth={1.5} />
-                      <span>Không tìm thấy quốc gia nào</span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          </div>
-        
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="base-pagination" style={{ marginTop: "0" }}>
-              <div className="pagination-info">
-                Hiển thị <strong>{paginatedCountries.length}</strong> / {filteredCountries.length} quốc gia
-              </div>
-              <div className="pagination-controls">
-                <button
-                  className="page-btn"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => prev - 1)}
-                >
-                  Trước
-                </button>
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i}
-                    className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`}
-                    onClick={() => setCurrentPage(i + 1)}
+      <div className="country-layout">
+        {/* Left Panel: List */}
+        <div className="panel-left">
+          <div className="blue-panel">
+            <div className="blue-panel-header">Danh sách Quốc gia</div>
+            <div className="blue-panel-body">
+              
+              <div className="search-container">
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                  <button 
+                    type="button" 
+                    className="sapo-btn" 
+                    onClick={handleResetForm}
                   >
-                    {i + 1}
+                    Tạo mới
                   </button>
-                ))}
-                <button
-                  className="page-btn"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(prev => prev + 1)}
-                >
-                  Sau
-                </button>
+
+                  {selectedCountryId && isAdmin && (
+                    <button 
+                      type="button" 
+                      className="sapo-btn sapo-btn-danger" 
+                      onClick={() => handleDelete(selectedCountryId)}
+                      disabled={isPending}
+                    >
+                      Xóa
+                    </button>
+                  )}
+                </div>
               </div>
+
+              <div className="table-container">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: "60px", textAlign: "center" }}>STT</th>
+                      <th>Mã quốc gia</th>
+                      <th>Tên quốc gia</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCountries.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} style={{ textAlign: "center", color: "#888", padding: "2rem" }}>
+                          Không tìm thấy quốc gia nào
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredCountries.map((country, idx) => {
+                        const isSelected = selectedCountryId === country.id;
+                        return (
+                          <tr 
+                            key={country.id} 
+                            className={`row-hoverable ${isSelected ? "row-selected" : ""}`}
+                            onClick={() => handleEdit(country)}
+                          >
+                            <td style={{ textAlign: "center" }}>{idx + 1}</td>
+                            <td style={{ fontWeight: 700, color: "#003466" }}>{country.code}</td>
+                            <td>{country.name}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
             </div>
-          )}
+          </div>
         </div>
-      </div>
 
-      {/* Side Drawer for Add/Edit */}
-      {showModal && (
-        <div className="drawer-overlay" onClick={handleClose}>
-          <div className="drawer-content animate-drawer-in" onClick={(e) => e.stopPropagation()}>
-            <div className="drawer-header">
-              <div className="header-titles">
-                <h3>{editingCountry ? "✏️ Hiệu chỉnh quốc gia" : "🌍 Thêm quốc gia mới"}</h3>
-                <p className="header-sub">Danh mục quốc gia • {editingCountry ? editingCountry.code : "Mới"}</p>
-              </div>
-              <button onClick={handleClose} className="drawer-close-btn">&times;</button>
+        {/* Right Panel: Form */}
+        <div className="panel-right">
+          <div className="blue-panel">
+            <div className="blue-panel-header">
+              {isViewOnly ? "Chi tiết Quốc gia" : (isEditing ? "Sửa Quốc gia" : "Thêm Quốc gia")}
             </div>
+            <div className="blue-panel-body">
 
-            <div className="drawer-body">
-              {error && <div className="error-alert">⚠️ {error}</div>}
+              <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                  <label>
+                    Mã quốc gia <span className="required-star">(*)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    name="code" 
+                    value={formCode}
+                    onChange={(e) => setFormCode(e.target.value.toUpperCase())}
+                    disabled={isViewOnly || isEditing} 
+                    placeholder="Ví dụ: VN"
+                    required 
+                  />
+                </div>
 
-              <form id="country-form" onSubmit={handleFormSubmit} className="drawer-form">
-                <div className="form-section">
-                  <h4 className="section-title">Thông tin cơ bản</h4>
-                  <div className="form-group-base full-width">
-                    <label>Mã quốc gia <span className="required">*</span></label>
-                    <input 
-                      type="text" 
-                      name="code" 
-                      className="input-base" 
-                      defaultValue={editingCountry?.code || ""}
-                      placeholder="VD: VN, US, JP..." 
-                      required 
-                    />
-                  </div>
+                <div className="form-group">
+                  <label>
+                    Tên quốc gia <span className="required-star">(*)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    name="name" 
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    disabled={isViewOnly} 
+                    placeholder="Ví dụ: Việt Nam"
+                    required 
+                  />
+                </div>
 
-                  <div className="form-group-base full-width" style={{ marginTop: "1rem" }}>
-                    <label>Tên quốc gia <span className="required">*</span></label>
-                    <input 
-                      type="text" 
-                      name="name"
-                      className="input-base"
-                      defaultValue={editingCountry?.name || ""}
-                      placeholder="Tên đầy đủ của quốc gia"
-                      required
-                    />
-                  </div>
+                <div className="form-desc">
+                  (*) Các trường có dấu sao đỏ là bắt buộc nhập.
+                </div>
+
+                <div className="form-btn-group">
+                  {!isViewOnly && (
+                    <button type="submit" className="sapo-btn" disabled={isPending}>
+                      {isPending ? "Đang lưu..." : "Lưu thông tin"}
+                    </button>
+                  )}
+                  
+                  <button 
+                    type="button" 
+                    className="sapo-btn sapo-btn-secondary" 
+                    onClick={handleResetForm}
+                  >
+                    Làm mới
+                  </button>
                 </div>
               </form>
-            </div>
 
-            <div className="drawer-footer">
-              <button type="button" className="btn-base btn-outline" onClick={handleClose}>Hủy bỏ</button>
-              <button type="submit" form="country-form" className="btn-base btn-primary" disabled={isPending}>
-                {isPending ? "Đang xử lý..." : (editingCountry ? "Cập nhật" : "Lưu quốc gia")}
-              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {historyRecordId && (
         <HistoryModal 
@@ -373,6 +437,60 @@ export default function CountryClient({ initialCountries }: { initialCountries: 
           recordId={historyRecordId} 
           onClose={() => setHistoryRecordId(null)} 
         />
+      )}
+
+      {/* Floating Toast Notification */}
+      {(success || error) && (
+        <div style={{
+          position: "fixed",
+          top: "80px",
+          right: "20px",
+          zIndex: 9999,
+          pointerEvents: "none"
+        }}>
+          {success && (
+            <div style={{
+              background: "#ecfdf5",
+              color: "#065f46",
+              border: "1px solid #a7f3d0",
+              padding: "0.75rem 1.25rem",
+              borderRadius: "6px",
+              boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              pointerEvents: "auto",
+              marginBottom: "10px",
+              minWidth: "250px"
+            }}>
+              <span>✅</span>
+              <div>{success}</div>
+            </div>
+          )}
+          {error && (
+            <div style={{
+              background: "#fef2f2",
+              color: "#991b1b",
+              border: "1px solid #fecaca",
+              padding: "0.75rem 1.25rem",
+              borderRadius: "6px",
+              boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              pointerEvents: "auto",
+              marginBottom: "10px",
+              minWidth: "250px"
+            }}>
+              <span>⚠️</span>
+              <div>{error}</div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

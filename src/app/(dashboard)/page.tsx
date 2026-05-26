@@ -1,188 +1,200 @@
-import { prisma } from "@/lib/db";
-import { 
-  Users, 
-  FileText, 
-  TrendingUp, 
-  Bell, 
-  CheckCircle2, 
-  Clock,
-  ArrowRight,
-  Edit3
-} from "lucide-react";
-import Link from "next/link";
+"use client";
 
-export default async function OverviewPage() {
-  let pendingLeaveCount = 0;
-  let activeEmployeeCount = 0;
-  let pendingContractCount = 0;
+import { useState } from "react";
+import { Search, Ship, Truck, Activity, LayoutDashboard, BarChart3 } from "lucide-react";
 
-  try {
-    pendingLeaveCount = await (prisma as any).leaverequest.count({
-      where: { status: "Chờ phê duyệt" }
-    });
-
-    activeEmployeeCount = await prisma.employee.count({
-      where: { status: "ACTIVE" }
-    });
-
-    pendingContractCount = await (prisma as any).laborcontract.count({
-      where: { status: "Chờ phê duyệt" }
-    });
-  } catch (error) {
-    console.error("Overview data fetch failed:", error);
-  }
-
-  const stats = [
-    {
-      title: "Nhân viên",
-      value: activeEmployeeCount,
-      label: "Đang làm việc",
-      icon: <Users size={24} />,
-      color: "#2563eb",
-      bg: "#eff6ff",
-      link: "/nhan-su/nhan-vien"
-    },
-    {
-      title: "Nghỉ phép",
-      value: pendingLeaveCount,
-      label: "Chờ phê duyệt",
-      icon: <Clock size={24} />,
-      color: "#f59e0b",
-      bg: "#fffbeb",
-      link: "/nhan-su/phe-duyet"
-    },
-    {
-      title: "Hợp đồng",
-      value: pendingContractCount,
-      label: "Chờ ký duyệt",
-      icon: <FileText size={24} />,
-      color: "#10b981",
-      bg: "#ecfdf5",
-      link: "/nhan-su/hop-dong"
-    }
-  ];
+export default function OverviewPage() {
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <header style={{ marginBottom: "2.5rem" }}>
-        <h1 style={{ fontSize: "1.75rem", fontWeight: "800", color: "#1e293b", margin: 0 }}>
-          Chào buổi sáng! 👋
-        </h1>
-        <p style={{ color: "#64748b", marginTop: "0.5rem", fontSize: "1rem" }}>
-          Hệ thống đang hoạt động ổn định. Đây là tóm tắt công việc hôm nay.
-        </p>
-      </header>
+    <div className="authenticated-dashboard-container">
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        .stat-card {
-          padding: 1.5rem;
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-          position: relative;
-          overflow: hidden;
-          border: 1px solid #f1f5f9;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          cursor: pointer;
-          background-color: #fff;
-          border-radius: 0.5rem;
-          text-decoration: none;
-        }
-        .stat-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-          border-color: #e2e8f0;
-        }
-        .quick-action-link {
-          text-decoration: none;
-          background: rgba(255,255,255,0.1);
-          padding: 0.75rem 1rem;
-          border-radius: 8px;
-          color: #fff;
-          font-size: 0.875rem;
-          font-weight: 600;
-          transition: all 0.2s;
-          display: block;
-        }
-        .quick-action-link:hover {
-          background: rgba(255,255,255,0.2);
-        }
-      ` }} />
+      {/* Dashboard Bar */}
+      <div className="dashboard-header">
+        <h2 className="dashboard-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <LayoutDashboard size={18} color="#2b6cb0" />
+          Bảng điều khiển hệ thống
+        </h2>
+        
+        <button 
+          type="button"
+          className="mobile-search-toggle" 
+          onClick={() => setSearchOpen(!searchOpen)}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "8px",
+            color: "#2b6cb0",
+            display: "none",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+          title="Tìm kiếm"
+        >
+          <Search size={18} />
+        </button>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
-        {stats.map((stat, idx) => (
-          <Link href={stat.link} key={idx} className="stat-card">
-            <div style={{ 
-              width: "48px", 
-              height: "48px", 
-              borderRadius: "12px", 
-              background: stat.bg, 
-              color: stat.color,
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center"
-            }}>
-              {stat.icon}
-            </div>
-            <div>
-              <div style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b" }}>{stat.value}</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.25rem" }}>
-                <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#64748b" }}>{stat.title} - {stat.label}</span>
-                <ArrowRight size={16} color="#94a3b8" />
-              </div>
-            </div>
-          </Link>
-        ))}
+        <div className={`search-wrapper ${searchOpen ? "mobile-show" : "mobile-hide"}`}>
+          <input type="text" className="search-input" placeholder="Nhập nội dung cần tìm..." />
+          <button className="search-btn" title="Tìm kiếm">
+            <Search size={16} />
+          </button>
+        </div>
       </div>
 
-      <div style={{ marginTop: "3rem", display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2rem" }}>
-        {/* Activity Feed */}
-        <div className="card" style={{ padding: "1.5rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: "800", color: "#1e293b", margin: 0 }}>Hoạt động gần đây</h3>
-            <button style={{ background: "none", border: "none", color: "#2563eb", fontWeight: "700", fontSize: "0.85rem", cursor: "pointer" }}>Xem tất cả</button>
-          </div>
-          
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ecfdf5", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <CheckCircle2 size={18} />
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: "0.9rem", color: "#1e293b", fontWeight: "500" }}>
-                  <strong>Admin</strong> đã phê duyệt <strong>2 đơn nghỉ phép</strong> mới.
-                </p>
-                <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>10 phút trước</span>
-              </div>
+      {/* Dashboard Widgets Content */}
+      <div className="dashboard-content">
+        {/* Stats Grid */}
+        <div className="stats-grid">
+          {/* Stat 1 */}
+          <div className="stat-widget">
+            <div className="stat-icon-wrapper" style={{ background: "#e0f2fe", color: "#0284c7" }}>
+              <Ship size={24} />
             </div>
-            
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#eff6ff", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <TrendingUp size={18} />
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: "0.9rem", color: "#1e293b", fontWeight: "500" }}>
-                  Hệ thống đã tự động đồng bộ dữ liệu <strong>Chấm công tháng 5</strong>.
-                </p>
-                <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>1 giờ trước</span>
-              </div>
+            <div className="stat-details">
+              <span className="stat-label">Tàu đang cập cảng</span>
+              <span className="stat-val">12 tàu</span>
+              <span className="stat-desc">▲ +2 tàu so với hôm qua</span>
+            </div>
+          </div>
+
+          {/* Stat 2 */}
+          <div className="stat-widget">
+            <div className="stat-icon-wrapper" style={{ background: "#ecfdf5", color: "#059669" }}>
+              <BarChart3 size={24} />
+            </div>
+            <div className="stat-details">
+              <span className="stat-label">Container thông qua</span>
+              <span className="stat-val">85,240 TEU</span>
+              <span className="stat-desc" style={{ color: "#059669" }}>▲ +8% tuần này</span>
+            </div>
+          </div>
+
+          {/* Stat 3 */}
+          <div className="stat-widget">
+            <div className="stat-icon-wrapper" style={{ background: "#fef3c7", color: "#d97706" }}>
+              <Truck size={24} />
+            </div>
+            <div className="stat-details">
+              <span className="stat-label">Lượt xe cổng cảng</span>
+              <span className="stat-val">3,150 lượt</span>
+              <span className="stat-desc" style={{ color: "#d97706" }}>▼ -3% giờ cao điểm</span>
+            </div>
+          </div>
+
+          {/* Stat 4 */}
+          <div className="stat-widget">
+            <div className="stat-icon-wrapper" style={{ background: "#f3e8ff", color: "#7c3aed" }}>
+              <Activity size={24} />
+            </div>
+            <div className="stat-details">
+              <span className="stat-label">Hiệu suất vận hành</span>
+              <span className="stat-val">98.4%</span>
+              <span className="stat-desc" style={{ color: "#7c3aed" }}>▲ Tối ưu công suất</span>
             </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="card" style={{ padding: "1.5rem", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", border: "none" }}>
-          <h3 style={{ fontSize: "1.1rem", fontWeight: "800", color: "#fff", marginBottom: "1.5rem", marginTop: 0 }}>Thao tác nhanh</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <Link href="/nhan-su/nhan-vien" className="quick-action-link">
-              ➕ Thêm nhân viên mới
-            </Link>
-            <Link href="/nhan-su/hop-dong" className="quick-action-link">
-              📄 Tạo hợp đồng lao động
-            </Link>
-            <Link href="/nhan-su/phe-duyet" className="quick-action-link">
-              ✔️ Phê duyệt yêu cầu
-            </Link>
+        {/* Dashboard Row */}
+        <div className="dashboard-row">
+          {/* Chart widget */}
+          <div className="chart-card">
+            <div className="chart-header">
+              <span className="chart-title">Sản lượng hàng hóa qua cảng (6 tháng gần đây)</span>
+              <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: "700" }}>Đơn vị: Nghìn TEU</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px" }}>
+              <svg viewBox="0 0 500 200" style={{ width: "100%", height: "100%" }}>
+                <defs>
+                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4"/>
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/>
+                  </linearGradient>
+                </defs>
+                {/* Grid lines */}
+                <line x1="40" y1="20" x2="480" y2="20" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="40" y1="60" x2="480" y2="60" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="40" y1="100" x2="480" y2="100" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="40" y1="140" x2="480" y2="140" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="40" y1="180" x2="480" y2="180" stroke="#cbd5e1" strokeWidth="1.5" />
+
+                {/* Chart labels */}
+                <text x="15" y="24" fill="#64748b" fontSize="9" fontWeight="700">100</text>
+                <text x="15" y="64" fill="#64748b" fontSize="9" fontWeight="700">75</text>
+                <text x="15" y="104" fill="#64748b" fontSize="9" fontWeight="700">50</text>
+                <text x="15" y="144" fill="#64748b" fontSize="9" fontWeight="700">25</text>
+                <text x="20" y="184" fill="#64748b" fontSize="9" fontWeight="700">0</text>
+
+                <text x="65" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T12</text>
+                <text x="145" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T01</text>
+                <text x="225" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T02</text>
+                <text x="305" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T03</text>
+                <text x="385" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T04</text>
+                <text x="465" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T05</text>
+
+                {/* Path and Gradient */}
+                <path d="M 65 140 L 145 110 L 225 130 L 305 70 L 385 50 L 465 30 L 465 180 L 65 180 Z" fill="url(#chartGrad)" />
+                <path d="M 65 140 L 145 110 L 225 130 L 305 70 L 385 50 L 465 30" fill="none" stroke="#2b6cb0" strokeWidth="3" />
+
+                {/* Data Points */}
+                <circle cx="65" cy="140" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
+                <circle cx="145" cy="110" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
+                <circle cx="225" cy="130" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
+                <circle cx="305" cy="70" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
+                <circle cx="385" cy="50" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
+                <circle cx="465" cy="30" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Vessel Schedules widget */}
+          <div className="vessels-card">
+            <span className="chart-title">Lịch tàu cập cảng (Hôm nay)</span>
+            <div className="table-wrapper">
+              <table className="db-table">
+                <thead>
+                  <tr>
+                    <th>Tên Tàu</th>
+                    <th>Cảng cập</th>
+                    <th>Thời gian</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>ASIAN BRIDGE V.24</td>
+                    <td>Tân Cảng Cát Lái</td>
+                    <td>08:30</td>
+                    <td><span className="status-badge status-active">Đang làm hàng</span></td>
+                  </tr>
+                  <tr>
+                    <td>GREEN HORIZON V.12</td>
+                    <td>Cái Mép Terminal</td>
+                    <td>11:45</td>
+                    <td><span className="status-badge status-active">Đang làm hàng</span></td>
+                  </tr>
+                  <tr>
+                    <td>PACIFIC VOYAGER 06</td>
+                    <td>Tân Cảng Hiệp Phước</td>
+                    <td>15:20</td>
+                    <td><span className="status-badge status-pending">Đang neo chờ</span></td>
+                  </tr>
+                  <tr>
+                    <td>OOCL BANGKOK 09</td>
+                    <td>Tân Cảng Cát Lái</td>
+                    <td>18:00</td>
+                    <td><span className="status-badge status-pending">Đang neo chờ</span></td>
+                  </tr>
+                  <tr>
+                    <td>WAN HAI 203 V.10</td>
+                    <td>Tân Cảng Cát Lái</td>
+                    <td>05:30</td>
+                    <td><span className="status-badge status-closed">Đã rời cảng</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

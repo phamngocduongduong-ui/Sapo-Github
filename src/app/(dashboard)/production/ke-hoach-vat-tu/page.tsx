@@ -15,11 +15,11 @@ export default async function KeHoachVatTuPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  // Lấy danh sách chi tiết hàng hóa của các đơn hàng "Chờ kế hoạch sản xuất" và chưa có kế hoạch
+  // Lấy danh sách chi tiết hàng hóa của các đơn hàng "Chờ kế hoạch" và chưa có kế hoạch
   const pendingItems = await (prisma as any).orderitem.findMany({
     where: {
       order: {
-        status: "Chờ kế hoạch sản xuất",
+        status: "Chờ kế hoạch",
         materialPlanId: null
       }
     },

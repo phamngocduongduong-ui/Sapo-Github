@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Search, Trash2, Edit2, Loader2, Calendar, LogIn } from "lucide-react";
+import { Plus, Search, Trash2, Edit2, Loader2, Calendar, LogIn, MoreHorizontal, Eye, Pencil, PowerOff, AlertTriangle } from "lucide-react";
 
 interface Location {
   id: string;
@@ -23,12 +23,19 @@ export default function LocationCategory() {
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [isViewOnly, setIsViewOnly] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">("down");
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const [formData, setFormData] = useState({
     row: "",
     bin: "",
     level: "",
     capacity: 900,
-    note: ""
+    note: "",
+    status: "ACTIVE"
   });
 
   const fetchLocations = async () => {
@@ -48,6 +55,61 @@ export default function LocationCategory() {
   useEffect(() => {
     fetchLocations();
   }, []);
+
+  useEffect(() => {
+    fetch("/api/user-permissions")
+      .then(res => res.json())
+      .then(data => setIsAdmin(data.isAdmin || false))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, []);
+
+  const handleAddNew = () => {
+    setEditingLocation(null);
+    setFormData({ row: "", bin: "", level: "", capacity: 900, note: "", status: "ACTIVE" });
+    setIsViewOnly(false);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (loc: Location) => {
+    setEditingLocation(loc);
+    setFormData({
+      row: loc.row,
+      bin: loc.bin,
+      level: loc.level,
+      capacity: loc.capacity,
+      note: loc.note || "",
+      status: loc.status
+    });
+    setIsViewOnly(false);
+    setIsModalOpen(true);
+  };
+
+  const handleView = (loc: Location) => {
+    setEditingLocation(loc);
+    setFormData({
+      row: loc.row,
+      bin: loc.bin,
+      level: loc.level,
+      capacity: loc.capacity,
+      note: loc.note || "",
+      status: loc.status
+    });
+    setIsViewOnly(true);
+    setIsModalOpen(true);
+  };
+
+  const handleClose = () => {
+    setIsModalOpen(false);
+    setEditingLocation(null);
+    setIsViewOnly(false);
+    setError("");
+  };
 
   const downloadTemplate = () => {
     const headers = ["Day (Row)", "O (Bin)", "Tang (Level)", "Suc chua (Capacity)", "Trang thai (Status)"];
@@ -145,24 +207,72 @@ export default function LocationCategory() {
     setError("");
 
     try {
-      const res = await fetch("/api/warehouse/finished-goods/locations", {
-        method: "POST",
+      const url = "/api/warehouse/finished-goods/locations";
+      const method = editingLocation ? "PUT" : "POST";
+      const bodyData = editingLocation ? { id: editingLocation.id, ...formData } : formData;
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(bodyData)
       });
 
       if (res.ok) {
-        setIsModalOpen(false);
-        setFormData({ row: "", bin: "", level: "", capacity: 900, note: "" });
+        handleClose();
         fetchLocations();
       } else {
         const data = await res.json();
-        setError(data.error || "Có lỗi xảy ra khi tạo vị trí");
+        setError(data.error || "Có lỗi xảy ra khi lưu vị trí");
       }
     } catch (err) {
       setError("Không thể kết nối đến máy chủ");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleStatusToggle = async (loc: Location) => {
+    const newStatus = loc.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    if (!confirm(`Bạn có chắc chắn muốn ${newStatus === "ACTIVE" ? "ngưng kích hoạt" : "kích hoạt"} vị trí này?`)) return;
+    try {
+      const res = await fetch("/api/warehouse/finished-goods/locations", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: loc.id,
+          row: loc.row,
+          bin: loc.bin,
+          level: loc.level,
+          capacity: loc.capacity,
+          note: loc.note,
+          status: newStatus
+        })
+      });
+      if (res.ok) {
+        fetchLocations();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Lỗi thay đổi trạng thái");
+      }
+    } catch (err) {
+      alert("Không thể kết nối đến máy chủ");
+    }
+  };
+
+  const handleDelete = async (loc: Location) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa vị trí ${loc.row}-${loc.bin}-${loc.level}?`)) return;
+    try {
+      const res = await fetch(`/api/warehouse/finished-goods/locations?id=${loc.id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        fetchLocations();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Lỗi khi xóa vị trí");
+      }
+    } catch (err) {
+      alert("Không thể kết nối đến máy chủ");
     }
   };
 
@@ -177,8 +287,68 @@ export default function LocationCategory() {
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 className="page-title">Danh mục Vị trí kho</h1>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .mobile-blocked-message {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .mobile-blocked-message {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin: 20px auto;
+            max-width: 400px;
+            font-family: "Segoe UI", -apple-system, sans-serif;
+          }
+          .warning-icon-wrapper {
+            background-color: #fef3c7;
+            padding: 1rem;
+            border-radius: 50%;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .blocked-title {
+            color: #0f172a;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .blocked-desc {
+            color: #475569;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin: 0;
+          }
+          .location-page-content {
+            display: none !important;
+          }
+        }
+      ` }} />
+
+      <div className="mobile-blocked-message">
+        <div className="warning-icon-wrapper">
+          <AlertTriangle size={48} style={{ color: "#f59e0b" }} />
+        </div>
+        <h3 className="blocked-title">Không hỗ trợ trên điện thoại</h3>
+        <p className="blocked-desc">
+          Danh mục <strong>Vị trí kho</strong> yêu cầu màn hình lớn để hiển thị sơ đồ và thao tác chính xác. Vui lòng truy cập tính năng này bằng máy tính (PC / Laptop).
+        </p>
+      </div>
+
+      <div className="location-page-content">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h1 className="page-title">Danh mục Vị trí kho</h1>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="btn btn-outline" onClick={downloadTemplate}>
             <Calendar size={18} style={{ marginRight: '0.5rem' }} /> Tải file mẫu
@@ -194,7 +364,7 @@ export default function LocationCategory() {
             accept=".csv,.xlsx" 
             onChange={handleImport} 
           />
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+          <button className="btn btn-primary" onClick={handleAddNew}>
             <Plus size={18} style={{ marginRight: '0.5rem' }} />
             Thêm vị trí
           </button>
@@ -228,19 +398,19 @@ export default function LocationCategory() {
               <th>Sức chứa</th>
               <th>Ghi chú</th>
               <th>Trạng thái</th>
-              <th>Thao tác</th>
+              <th style={{ textAlign: "center" }}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '2rem' }}>
                   <Loader2 className="spin" />
                 </td>
               </tr>
             ) : filteredLocations.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>Không có dữ liệu</td>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '2rem' }}>Không có dữ liệu</td>
               </tr>
             ) : filteredLocations.map((loc, index) => (
               <tr key={loc.id}>
@@ -256,11 +426,63 @@ export default function LocationCategory() {
                     {loc.status === 'ACTIVE' ? 'Hoạt động' : 'Khóa'}
                   </span>
                 </td>
-                <td>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn-icon"><Edit2 size={16} /></button>
-                    <button className="btn-icon btn-icon--danger"><Trash2 size={16} /></button>
+                <td style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ display: "flex", justifyContent: "center" }}>
+                    <button
+                      className="action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const isLastRows = index >= filteredLocations.length - 2;
+                        const isFirstRow = index === 0;
+                        setDropdownDirection((isLastRows && !isFirstRow) ? "up" : "down");
+                        setOpenMenuId(openMenuId === loc.id ? null : loc.id);
+                      }}
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
                   </div>
+
+                  {openMenuId === loc.id && (
+                    <div className={`horizontal-action-dropdown ${dropdownDirection === "up" ? "open-up" : ""}`} style={{ right: "calc(50% - 80px)" }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="icon-action-btn"
+                        title="Xem"
+                        onClick={() => { handleView(loc); setOpenMenuId(null); }}
+                      >
+                        <Eye size={15} style={{ color: "#3b82f6" }} />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="icon-action-btn"
+                        title="Chỉnh sửa"
+                        onClick={() => { handleEdit(loc); setOpenMenuId(null); }}
+                      >
+                        <Pencil size={15} style={{ color: "#d97706" }} />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="icon-action-btn"
+                        title={loc.status === "ACTIVE" ? "Ngưng kích hoạt" : "Kích hoạt"}
+                        onClick={() => { handleStatusToggle(loc); setOpenMenuId(null); }}
+                      >
+                        <PowerOff size={15} style={{ color: loc.status === "ACTIVE" ? "#64748b" : "#22c55e" }} />
+                      </button>
+
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          className="icon-action-btn danger"
+                          title="Xóa"
+                          onClick={() => { handleDelete(loc); setOpenMenuId(null); }}
+                        >
+                          <Trash2 size={15} style={{ color: "#ef4444" }} />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -272,8 +494,10 @@ export default function LocationCategory() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '600' }}>Thêm vị trí mới</h2>
-              <button onClick={() => setIsModalOpen(false)}>&times;</button>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '600' }}>
+                {isViewOnly ? "👁️ Chi tiết vị trí" : (editingLocation ? "✏️ Sửa vị trí" : "Thêm vị trí mới")}
+              </h2>
+              <button type="button" onClick={handleClose}>&times;</button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
@@ -288,6 +512,7 @@ export default function LocationCategory() {
                     placeholder="VD: A, B, C..."
                     value={formData.row}
                     onChange={(e) => setFormData({...formData, row: e.target.value.toUpperCase()})}
+                    disabled={isViewOnly || !!editingLocation}
                   />
                 </div>
                 <div className="form-group">
@@ -299,6 +524,7 @@ export default function LocationCategory() {
                     placeholder="VD: 01, 01.01, A1..."
                     value={formData.bin}
                     onChange={(e) => setFormData({...formData, bin: e.target.value})}
+                    disabled={isViewOnly || !!editingLocation}
                   />
                 </div>
                 <div className="form-group">
@@ -310,6 +536,7 @@ export default function LocationCategory() {
                     placeholder="VD: T1, T2..."
                     value={formData.level}
                     onChange={(e) => setFormData({...formData, level: e.target.value.toUpperCase()})}
+                    disabled={isViewOnly || !!editingLocation}
                   />
                 </div>
                 <div className="form-group">
@@ -320,7 +547,20 @@ export default function LocationCategory() {
                     required 
                     value={formData.capacity}
                     onChange={(e) => setFormData({...formData, capacity: parseInt(e.target.value) || 0})}
+                    disabled={isViewOnly}
                   />
+                </div>
+                <div className="form-group">
+                  <label>Trạng thái</label>
+                  <select 
+                    className="form-control" 
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    disabled={isViewOnly}
+                  >
+                    <option value="ACTIVE">Hoạt động</option>
+                    <option value="INACTIVE">Khóa</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Ghi chú</label>
@@ -329,19 +569,23 @@ export default function LocationCategory() {
                     rows={3}
                     value={formData.note}
                     onChange={(e) => setFormData({...formData, note: e.target.value})}
+                    disabled={isViewOnly}
                   ></textarea>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)}>Hủy</button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? <Loader2 className="spin" size={18} /> : "Lưu vị trí"}
-                </button>
+                <button type="button" className="btn btn-outline" onClick={handleClose}>{isViewOnly ? "Đóng" : "Hủy"}</button>
+                {!isViewOnly && (
+                  <button type="submit" className="btn btn-primary" disabled={submitting}>
+                    {submitting ? <Loader2 className="spin" size={18} /> : "Lưu vị trí"}
+                  </button>
+                )}
               </div>
             </form>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

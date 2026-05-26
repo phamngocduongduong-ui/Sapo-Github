@@ -14,7 +14,21 @@ export async function ensureDefaultAdmin() {
       });
     }
 
-    // 2. Kiểm tra và tạo quyền Admin mặc định
+    // 2. Kiểm tra và tạo/cập nhật quyền Admin mặc định
+    const ALL_MODULE_KEYS = [
+      "CA_NHAN", "CN_HO_SO", "CN_CHAM_CONG", "CN_NGHI_PHEP", "CN_NGHI_VIEC", "CN_TRA_CUU_LUONG",
+      "DANH_MUC", "DM_BO_PHAN", "DM_CHI_NHANH", "DM_CHUC_VU", "DM_KHACH_HANG", "DM_NHA_CUNG_CAP", "DM_NHOM_SP", "DM_QUOC_GIA", "DM_SAN_PHAM", "DM_DON_VI_TINH", "DM_KHO_HANG", "DM_VI_TRI",
+      "NHAN_SU", "NS_NHAN_VIEN", "NS_HOP_DONG", "NS_DIEU_DONG", "NS_APPROVE", "NS_BAO_CAO",
+      "LUONG_BHXH", "LB_CHAM_CONG", "LB_KHU_VUC", "NS_BANG_LUONG", "NS_TANG_GIAM_LUONG", "NS_BAC_LUONG",
+      "KINH_DOANH", "KD_HOP_DONG", "KD_DON_HANG",
+      "THU_MUA", "TM_LENH_MUA", "TM_APPROVE", "TM_DON_MUA", "TM_DIEU_DONG", "TM_BAO_CAO",
+      "SAN_XUAT", "SX_DON_SAN_XUAT", "SX_KE_HOACH_GIAO", "SX_VAT_TU",
+      "BAO_TRI", "BT_DE_NGHI_MUA", "BT_PHE_DUYET",
+      "THU_KHO", "TK_KHO_VAT_TU", "TK_KHO_THANH_PHAM",
+      "QUAN_TRI", "QT_TAI_KHOAN", "QT_MUC_QUYEN", "QT_PHAN_QUYEN",
+      "AN_NINH", "AN_DANG_KY", "AN_DANH_SACH", "AN_KIEM_TRA"
+    ];
+
     let adminPermission = await prisma.permission.findUnique({ where: { code: "ADMIN_FULL" } });
     if (!adminPermission) {
       adminPermission = await prisma.permission.create({
@@ -22,26 +36,54 @@ export async function ensureDefaultAdmin() {
           id: crypto.randomUUID(),
           code: "ADMIN_FULL",
           name: "Quản trị hệ thống (Toàn quyền)",
-          permissiondetail: {
-            create: [
-              { moduleKey: "NS_EMPLOYEE", canAccess: true },
-              { moduleKey: "NS_CONTRACT", canAccess: true },
-              { moduleKey: "NS_LEAVE", canAccess: true },
-              { moduleKey: "NS_ATTENDANCE", canAccess: true },
-              { moduleKey: "NS_PAYROLL", canAccess: true },
-              { moduleKey: "NS_SALARY_CHANGE", canAccess: true },
-              { moduleKey: "NS_DIEU_DONG", canAccess: true },
-              { moduleKey: "NS_BAC_LUONG", canAccess: true },
-              { moduleKey: "NS_APPROVE", canAccess: true },
-              { moduleKey: "NS_NGHI_VIEC", canAccess: true },
-              { moduleKey: "LUONG_BHXH", canAccess: true },
-              { moduleKey: "LB_CHAM_CONG", canAccess: true },
-              { moduleKey: "SALES_ORDER", canAccess: true },
-              { moduleKey: "PROD_MATERIAL_PLAN", canAccess: true },
-            ]
-          }
         }
       });
+    }
+
+    // Dọn dẹp các moduleKey cũ/lỗi thời không còn tồn tại trong hệ thống
+    await (prisma as any).permissiondetail.deleteMany({
+      where: {
+        moduleKey: {
+          notIn: ALL_MODULE_KEYS
+        }
+      }
+    });
+
+    // Đồng bộ chi tiết quyền cho ADMIN_FULL (đảm bảo luôn có đủ tất cả các moduleKey mới với canAccess = true)
+    const existingAdminDetails = await (prisma as any).permissiondetail.findMany({
+      where: { permissionId: adminPermission.id }
+    });
+    const existingAdminKeys = new Set(existingAdminDetails.map((d: any) => d.moduleKey));
+    const adminKeysToInsert = ALL_MODULE_KEYS.filter(key => !existingAdminKeys.has(key));
+    
+    if (adminKeysToInsert.length > 0) {
+      await (prisma as any).permissiondetail.createMany({
+        data: adminKeysToInsert.map(key => ({
+          permissionId: adminPermission.id,
+          moduleKey: key,
+          canAccess: true
+        }))
+      });
+    }
+
+    // Đồng bộ các moduleKey mới (canAccess = false) cho tất cả các Mục quyền khác
+    const allPermissions = await prisma.permission.findMany();
+    for (const perm of allPermissions) {
+      if (perm.id === adminPermission.id) continue;
+      const existingDetails = await (prisma as any).permissiondetail.findMany({
+        where: { permissionId: perm.id }
+      });
+      const existingKeys = new Set(existingDetails.map((d: any) => d.moduleKey));
+      const keysToInsert = ALL_MODULE_KEYS.filter(key => !existingKeys.has(key));
+      if (keysToInsert.length > 0) {
+        await (prisma as any).permissiondetail.createMany({
+          data: keysToInsert.map(key => ({
+            permissionId: perm.id,
+            moduleKey: key,
+            canAccess: false
+          }))
+        });
+      }
     }
 
     // 3. Kiểm tra và tạo tài khoản admin
@@ -155,3 +197,52 @@ export async function deleteUser(id: string) {
   await prisma.user.delete({ where: { id } });
   revalidatePath("/admin/tai-khoan");
 }
+
+export async function approveDeviceChange(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("Tài khoản không tồn tại");
+  if (!user.pendingDeviceSecret) throw new Error("Không có yêu cầu đổi thiết bị nào");
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      deviceSecret: user.pendingDeviceSecret,
+      pendingDeviceSecret: null,
+      deviceStatus: "APPROVED"
+    }
+  });
+
+  revalidatePath("/admin/tai-khoan");
+}
+
+export async function rejectDeviceChange(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("Tài khoản không tồn tại");
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      pendingDeviceSecret: null,
+      deviceStatus: "APPROVED"
+    }
+  });
+
+  revalidatePath("/admin/tai-khoan");
+}
+
+export async function resetUserDevice(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("Tài khoản không tồn tại");
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      deviceSecret: null,
+      pendingDeviceSecret: null,
+      deviceStatus: "APPROVED"
+    }
+  });
+
+  revalidatePath("/admin/tai-khoan");
+}
+

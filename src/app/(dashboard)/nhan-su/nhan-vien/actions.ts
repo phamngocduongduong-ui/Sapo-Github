@@ -235,11 +235,11 @@ export async function updateEmployee(id: string, formData: FormData) {
 
   revalidatePath("/nhan-su/nhan-vien");
   revalidatePath("/admin");
-  revalidatePath("/nhan-su/nghi-phep");
+  revalidatePath("/ca-nhan/nghi-phep");
   revalidatePath("/nhan-su/hop-dong");
   revalidatePath("/nhan-su/tang-giam-luong");
   revalidatePath("/nhan-su/thuyen-chuyen-bo-nhiem");
-  revalidatePath("/nhan-su/nghi-viec");
+  revalidatePath("/ca-nhan/nghi-viec");
   revalidatePath("/nhan-su/ky-luat");
   revalidatePath("/sales");
   revalidatePath("/purchasing/dispatch");

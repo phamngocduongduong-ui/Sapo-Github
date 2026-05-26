@@ -38,3 +38,11 @@ export async function updateDepartmentStatus(id: string, status: string) {
   });
   revalidatePath("/danh-muc/bo-phan");
 }
+
+export async function deleteDepartment(id: string) {
+  await prisma.department.delete({
+    where: { id }
+  });
+  revalidatePath("/danh-muc/bo-phan");
+}
+

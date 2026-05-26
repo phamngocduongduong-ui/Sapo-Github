@@ -1,0 +1,218 @@
+﻿diff --git a/src/app/(dashboard)/Header.tsx b/src/app/(dashboard)/Header.tsx
+index 1baec4a..d19ee5f 100644
+--- a/src/app/(dashboard)/Header.tsx
++++ b/src/app/(dashboard)/Header.tsx
+@@ -78,8 +78,21 @@ export default function Header({
+   const unreadCount = notifications.filter(n => !n.isRead).length;
+ 
+   return (
+-    <header className="main-header" style={{ height: "60px", background: "#fff", borderBottom: "1px solid #e5e7eb", padding: "0 1.5rem", display: "flex", alignItems: "center", position: "sticky", top: 0, zIndex: 900, boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)", justifyContent: "space-between" }}>
+-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
++    <header className="login-header" style={{
++      height: "140px",
++      backgroundImage: "linear-gradient(rgba(0, 52, 102, 0.6), rgba(0, 52, 102, 0.6)), url('/images/login_banner.png')",
++      backgroundSize: "100% 100%",
++      backgroundPosition: "center",
++      display: "flex",
++      alignItems: "center",
++      justifyContent: "space-between",
++      padding: "0 2rem",
++      color: "white",
++      borderBottom: "4px solid #ff5c00"
++    }}>
++
++      {/* Header Left: Sapo Logo & Title */}
++      <div className="header-left">
+         <button
+           onClick={onToggleSidebar}
+           className="mobile-menu-toggle header-icon-btn"
+@@ -90,97 +103,108 @@ export default function Header({
+             display: "none",
+             padding: "8px",
+             alignItems: "center",
+-            justifyContent: "center"
++            justifyContent: "center",
++            marginRight: "8px"
+           }}
+         >
+-          <MenuIcon size={20} color="#65676b" />
++          <MenuIcon size={24} color="white" />
+         </button>
++        <img src="/images/sapo_logo.png" alt="Sapo Logo" className="logo-img" />
++        <div className="header-titles">
++          <h1>Hß╗å THß╗ÉNG QUß║óN L├¥ SAPO GROUP</h1>
++          <p>Ch├áo mß╗½ng bß║ín ─æß║┐n vß╗¢i hß╗ç thß╗æng quß║ún l├╜ doanh nghiß╗çp</p>
++        </div>
+       </div>
+ 
+-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+-        {/* Notifications */}
+-        <div ref={notifRef} style={{ position: "relative" }}>
+-          <button
+-            onClick={() => setNotifOpen(!notifOpen)}
+-            className="header-icon-btn"
+-          >
+-            <Bell size={20} color="#65676b" />
+-            {unreadCount > 0 && (
+-              <span className="notif-badge">
+-                {unreadCount}
+-              </span>
+-            )}
+-          </button>
+-
+-          {notifOpen && (
+-            <div className="notif-dropdown">
+-              <div className="notif-header">
+-                Th├┤ng b├ío
+-                <span>{unreadCount} ch╞░a xem</span>
+-              </div>
+-              {notifications.length === 0 ? (
+-                <div style={{ padding: "2rem", textAlign: "center", color: "#888", fontSize: "0.9rem" }}>Kh├┤ng c├│ th├┤ng b├ío n├áo</div>
+-              ) : (
+-                <>
+-                  {notifications.map(n => (
+-                    <div
+-                      key={n.id}
+-                      onClick={() => handleMarkRead(n.id)}
+-                      className="notif-item"
+-                      style={{ background: n.isRead ? "transparent" : "#f0f7ff" }}
+-                    >
+-                      <div style={{ fontWeight: n.isRead ? "500" : "bold", fontSize: "0.85rem", marginBottom: "2px" }}>{n.title}</div>
+-                      <div style={{ fontSize: "0.8rem", color: "#555" }}>{n.message}</div>
+-                      <div style={{ fontSize: "0.7rem", color: "#888", marginTop: "4px" }}>{new Date(n.createdAt).toLocaleString("vi-VN")}</div>
+-                    </div>
+-                  ))}
+-                  {unreadCount > 3 && notifLimit === 3 && (
+-                    <button onClick={() => setNotifLimit(20)} className="view-all-notif">
+-                      Xem tß║Ñt cß║ú
+-                    </button>
+-                  )}
+-                </>
++      {/* Header Right: Slogan & User utilities */}
++      <div className="header-right">
++        {/* Row 1: Actions */}
++        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
++          {/* Notifications */}
++          <div ref={notifRef} style={{ position: "relative" }}>
++            <button
++              onClick={() => setNotifOpen(!notifOpen)}
++              className="header-icon-btn"
++            >
++              <Bell size={22} color="white" />
++              {unreadCount > 0 && (
++                <span className="notif-badge">
++                  {unreadCount}
++                </span>
+               )}
+-            </div>
+-          )}
+-        </div>
+-
+-        <div ref={dropdownRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+-          {userInfo && (
+-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginRight: "0.25rem" }} className="user-info-hide-mobile">
+-              <span style={{ fontSize: "0.85rem", fontWeight: "700", color: "#1c1e21" }}>{userInfo.name}</span>
+-              <span style={{ fontSize: "0.75rem", color: "#65676b" }}>{userInfo.branch}</span>
+-            </div>
+-          )}
+-          <button
+-            onClick={() => setDropdownOpen(!dropdownOpen)}
+-            className="header-user-btn"
+-          >
+-            <div className="user-avatar-circle">
+-              <User size={20} />
+-            </div>
+-            <ChevronDown size={16} color="#65676b" className="chevron-hide-mobile" />
+-          </button>
+-
+-          {dropdownOpen && (
+-            <div className="user-dropdown">
+-              <Link href="/profile" onClick={() => setDropdownOpen(false)} className="dropdown-item">Hß╗ô s╞í c├í nh├ón</Link>
+-              <Link href="/nhan-su/nghi-phep" onClick={() => setDropdownOpen(false)} className="dropdown-item">Nghß╗ë ph├⌐p</Link>
+-              <Link href="/nhan-su/nghi-viec" onClick={() => setDropdownOpen(false)} className="dropdown-item">Nghß╗ë viß╗çc</Link>
+-              <Link href="/nhan-su/tra-cuu-luong" onClick={() => setDropdownOpen(false)} className="dropdown-item">Tra cß╗⌐u l╞░╞íng</Link>
+-            </div>
+-          )}
+-        </div>
++            </button>
+ 
+-        <div style={{ marginLeft: "0.5rem", borderLeft: "1px solid #eee", paddingLeft: "0.5rem" }}>
+-          <form action={logout}>
+-            <button type="submit" className="header-icon-btn" title="─É─âng xuß║Ñt" style={{ color: "#e74c3c" }}>
+-              <LogOut size={20} />
++            {notifOpen && (
++              <div className="notif-dropdown">
++                <div className="notif-header">
++                  Th├┤ng b├ío
++                  <span>{unreadCount} ch╞░a xem</span>
++                </div>
++                {notifications.length === 0 ? (
++                  <div style={{ padding: "2rem", textAlign: "center", color: "#888", fontSize: "0.9rem" }}>Kh├┤ng c├│ th├┤ng b├ío n├áo</div>
++                ) : (
++                  <>
++                    {notifications.map(n => (
++                      <div
++                        key={n.id}
++                        onClick={() => handleMarkRead(n.id)}
++                        className="notif-item"
++                        style={{ background: n.isRead ? "transparent" : "#f0f7ff" }}
++                      >
++                        <div style={{ fontWeight: n.isRead ? "500" : "bold", fontSize: "0.85rem", marginBottom: "2px" }}>{n.title}</div>
++                        <div style={{ fontSize: "0.8rem", color: "#555" }}>{n.message}</div>
++                        <div style={{ fontSize: "0.7rem", color: "#888", marginTop: "4px" }}>{new Date(n.createdAt).toLocaleString("vi-VN")}</div>
++                      </div>
++                    ))}
++                    {unreadCount > 3 && notifLimit === 3 && (
++                      <button onClick={() => setNotifLimit(20)} className="view-all-notif">
++                        Xem tß║Ñt cß║ú
++                      </button>
++                    )}
++                  </>
++                )}
++              </div>
++            )}
++          </div>
++
++          {/* User profile details & Avatar */}
++          <div ref={dropdownRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.75rem" }}>
++            {userInfo && (
++              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }} className="user-info-hide-mobile">
++                <span style={{ fontSize: "0.9rem", fontWeight: "700", color: "white" }}>{userInfo.name}</span>
++                <span style={{ fontSize: "0.75rem", color: "#cbd5e1" }}>{userInfo.branch}</span>
++              </div>
++            )}
++            <button
++              onClick={() => setDropdownOpen(!dropdownOpen)}
++              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
++            >
++              <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "white", color: "#003466", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
++                <User size={20} color="#003466" />
++              </div>
++              <ChevronDown size={16} color="white" />
+             </button>
+-          </form>
++
++            {dropdownOpen && (
++              <div className="user-dropdown">
++                <Link href="/profile" onClick={() => setDropdownOpen(false)} className="dropdown-item">Hß╗ô s╞í c├í nh├ón</Link>
++                <Link href="/nhan-su/nghi-phep" onClick={() => setDropdownOpen(false)} className="dropdown-item">Nghß╗ë ph├⌐p</Link>
++                <Link href="/nhan-su/nghi-viec" onClick={() => setDropdownOpen(false)} className="dropdown-item">Nghß╗ë viß╗çc</Link>
++                <Link href="/nhan-su/tra-cuu-luong" onClick={() => setDropdownOpen(false)} className="dropdown-item">Tra cß╗⌐u l╞░╞íng</Link>
++              </div>
++            )}
++          </div>
++
++          {/* Logout separator and button */}
++          <div style={{ marginLeft: "0.5rem", borderLeft: "1px solid rgba(255, 255, 255, 0.3)", paddingLeft: "0.75rem" }}>
++            <form action={logout}>
++              <button type="submit" className="header-icon-btn" title="─É─âng xuß║Ñt" style={{ color: "#ff5c00" }}>
++                <LogOut size={22} color="#ff5c00" />
++              </button>
++            </form>
++          </div>
+         </div>
+       </div>
+-
+     </header>
+   );
+ }

@@ -25,6 +25,7 @@ export default function SecurityListView({ initialData }: { initialData: Registr
   const [currentlySpeakingPlate, setCurrentlySpeakingPlate] = useState<string | null>(null);
   const [callCounts, setCallCounts] = useState<Record<string, number>>({});
   const [activeCallModalPlate, setActiveCallModalPlate] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const clientIdRef = useRef<string>("");
 
   useEffect(() => {
@@ -74,11 +75,15 @@ export default function SecurityListView({ initialData }: { initialData: Registr
   const filteredData = data
     .filter(item => {
       // Tab filtering
-      if (activeTab === 1) return item.status === "Đã đăng ký" || item.status === "Đã gọi xe" || item.status === "Đã vào cổng" || item.status === "Đã vào";
+      if (activeTab === 1) return item.status === "Đã vào cổng";
       if (activeTab === 2) return item.status === "Đã hoàn thành";
       return false;
     })
-    .sort((a, b) => new Date(a.timeIn).getTime() - new Date(b.timeIn).getTime());
+    .sort((a, b) => {
+      const timeA = a.timeIn ? new Date(a.timeIn).getTime() : 0;
+      const timeB = b.timeIn ? new Date(b.timeIn).getTime() : 0;
+      return timeA - timeB;
+    });
 
   const playVoiceAnnouncement = (licensePlate: string, type: 'can-xe' | 'kho-vat-tu' | 'kho-nguyen-lieu-cua-1' | 'kho-nguyen-lieu-cua-2' = 'can-xe') => {
     // 1. Standardize license plate reading by inserting spaces between letters/numbers
@@ -338,8 +343,23 @@ export default function SecurityListView({ initialData }: { initialData: Registr
         .mobile-list {
           display: none;
         }
+        .breadcrumb-banner {
+          background-color: #003466;
+          color: white;
+          padding: 10px 15px;
+          font-weight: 700;
+          display: block;
+          margin-top: -20px;
+          margin-left: -10px;
+          margin-right: -10px;
+          margin-bottom: 15px;
+          text-transform: uppercase;
+          font-size: 1.5rem !important;
+          text-align: center;
+          letter-spacing: 0.5px;
+        }
         .tab-btn {
-          padding: 1rem 2rem;
+          padding: 10px 20px;
           background: none;
           border: none;
           border-bottom: 3px solid transparent;
@@ -347,17 +367,18 @@ export default function SecurityListView({ initialData }: { initialData: Registr
           font-weight: 700;
           transition: all 0.2s;
           cursor: pointer;
+          font-size: 17px !important;
         }
         .tab-btn.active {
-          border-bottom-color: var(--primary-color);
-          color: var(--primary-color);
+          border-bottom-color: #ff5c00;
+          color: #ff5c00;
         }
         .call-btn {
           background: #eff6ff !important;
           border: 1px solid #bfdbfe !important;
           border-radius: 50% !important;
-          width: 40px !important;
-          height: 40px !important;
+          width: 48px !important;
+          height: 48px !important;
           display: inline-flex !important;
           align-items: center !important;
           justify-content: center !important;
@@ -400,6 +421,85 @@ export default function SecurityListView({ initialData }: { initialData: Registr
           animation: row-speak-flash-blue 1.2s 10 ease-in-out !important;
           font-weight: 600 !important;
         }
+        .row-hoverable:hover {
+          background-color: #f8fafc;
+        }
+        .row-selected {
+          background-color: #f0f7ff !important;
+        }
+        .row-selected td {
+          background-color: #f0f7ff !important;
+          border-top: 1px solid #b9d5f0 !important;
+          border-bottom: 1px solid #b9d5f0 !important;
+        }
+        .row-selected td:first-child {
+          border-left: 6px solid #003466 !important;
+        }
+        .row-selected td:last-child {
+          border-right: 1px solid #b9d5f0 !important;
+        }
+        .base-table-wrapper {
+          max-height: 68vh !important;
+          height: auto !important;
+          overflow-y: auto !important;
+          overflow-x: auto !important;
+          padding-bottom: 60px !important;
+        }
+        .base-table {
+          height: auto !important;
+          width: 100% !important;
+          table-layout: auto !important;
+          border-collapse: collapse !important;
+          font-family: "Segoe UI", -apple-system, sans-serif;
+          font-size: 17px !important;
+        }
+        .base-table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 3px solid #ff5c00 !important;
+          text-align: center !important;
+          height: 45px !important;
+          padding: 8px 10px !important;
+          font-size: 17px !important;
+        }
+        .base-table td {
+          padding: 10px 10px !important;
+          vertical-align: middle !important;
+          white-space: normal !important;
+          word-break: break-word !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          font-size: 17px !important;
+          color: #000;
+        }
+        .base-table tbody tr {
+          height: 55px !important;
+          cursor: pointer;
+        }
+        .status-pill {
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          font-weight: 700 !important;
+          font-size: 17px !important;
+          border-radius: 0 !important;
+          display: inline-block !important;
+          text-align: center !important;
+          white-space: nowrap !important;
+        }
+        .status-pill.status-registered {
+          color: #d97706 !important;
+        }
+        .status-pill.status-called {
+          color: #0284c7 !important;
+        }
+        .status-pill.status-entered {
+          color: #7c3aed !important;
+        }
+        .status-pill.status-completed {
+          color: #15803d !important;
+        }
 
         @keyframes speak-card-pulse-blue {
           0%, 100% { 
@@ -421,17 +521,88 @@ export default function SecurityListView({ initialData }: { initialData: Registr
             display: none !important;
           }
           .mobile-list {
-            display: block !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
             padding-bottom: 130px !important;
+            margin-top: 10px !important;
+            width: 100% !important;
+          }
+          .proposal-card {
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 10px !important;
+            padding: 12px 16px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            user-select: none !important;
+          }
+          .proposal-card:hover {
+            background: #f8fafc !important;
+          }
+          .proposal-card.selected {
+            border: 2px solid #b9d5f0 !important;
+            border-left: 6px solid #003466 !important;
+            background-color: #f0f7ff !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 52, 102, 0.08) !important;
+          }
+          .card-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+          }
+          .card-header {
+            border-bottom: 1px solid #f1f5f9 !important;
+            padding-bottom: 6px !important;
+            margin-bottom: 8px !important;
+          }
+          .code-box {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+          }
+          .idx-pill {
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            padding: 3px 8px !important;
+            border-radius: 5px !important;
+          }
+          .proposal-code {
+            font-size: 22px !important;
+            font-weight: 700 !important;
+            color: var(--primary-color) !important;
+          }
+          .card-body {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+          .info-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: flex-start !important;
+            font-size: 16px !important;
+          }
+          .info-label {
+            color: #64748b !important;
+            font-weight: 500 !important;
+          }
+          .info-val {
+            color: #000 !important;
+            font-weight: 700 !important;
+            text-align: right !important;
           }
           .page-title {
-            font-size: 1.2rem !important;
+            font-size: 1.56rem !important;
             margin: 0.25rem 0 !important;
             text-align: center;
           }
           .tab-btn {
-            padding: 0.75rem 0.5rem !important;
-            font-size: 0.85rem !important;
+            padding: 10px 8px !important;
+            font-size: 18px !important;
             flex: 1;
             text-align: center;
           }
@@ -442,8 +613,12 @@ export default function SecurityListView({ initialData }: { initialData: Registr
             margin-bottom: 0.5rem !important;
           }
           .test-audio-btn {
-            font-size: 0.8rem !important;
-            padding: 0.3rem 0.8rem !important;
+            font-size: 18px !important;
+            padding: 0.5rem 1rem !important;
+          }
+          .call-btn {
+            width: 42px !important;
+            height: 42px !important;
           }
         }
       `}</style>
@@ -493,31 +668,26 @@ export default function SecurityListView({ initialData }: { initialData: Registr
         </div>
       )}
 
-      <div className="content-wrapper">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.5rem" }} className="header-row">
-          <h2 className="page-title" style={{ 
-            margin: "0.25rem 0", 
-            color: "var(--primary-color)",
-            fontSize: "1.8rem",
-            fontWeight: 800,
-            textTransform: "uppercase"
-          }}>
-            {activeTab === 1 ? "Danh sách xe đang tại đơn vị" : "Danh sách xe đã ra khỏi đơn vị"}
-          </h2>
+      <div className="breadcrumb-banner">
+        {activeTab === 1 ? "Danh sách xe đang tại đơn vị" : "Danh sách xe đã ra khỏi đơn vị"}
+      </div>
+
+      <div className="content-wrapper" style={{ padding: "0 10px" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "0.5rem" }}>
           <button
             onClick={playTestVoice}
             style={{
               background: "#eff6ff",
               border: "1px solid #bfdbfe",
-              borderRadius: "20px",
-              padding: "0.4rem 1.2rem",
-              fontSize: "0.9rem",
+              borderRadius: "30px",
+              padding: "0.5rem 1.2rem",
+              fontSize: "17px",
               fontWeight: 700,
               color: "#2563eb",
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
-              gap: "0.4rem",
+              gap: "0.5rem",
               transition: "all 0.2s"
             }}
             className="test-audio-btn"
@@ -526,35 +696,34 @@ export default function SecurityListView({ initialData }: { initialData: Registr
           </button>
         </div>
 
-        <div style={{ display: "flex", borderBottom: "2px solid #e2e8f0", marginBottom: "1rem" }}>
+        <div style={{ display: "flex", borderBottom: "2px solid #e2e8f0", marginBottom: "1rem", gap: "10px" }}>
           <button 
             onClick={() => setActiveTab(1)}
             className={`tab-btn ${activeTab === 1 ? "active" : ""}`}
           >
-            Xe chưa có giờ ra ({data.filter(i => i.status === "Đã đăng ký" || i.status === "Đã gọi xe" || i.status === "Đã vào cổng" || i.status === "Đã vào").length})
+            XE ĐANG TẠI ĐƠN VỊ ({data.filter(i => i.status === "Đã vào cổng").length})
           </button>
           <button 
             onClick={() => setActiveTab(2)}
             className={`tab-btn ${activeTab === 2 ? "active" : ""}`}
           >
-            Xe đã có giờ ra ({data.filter(i => i.status === "Đã hoàn thành").length})
+            XE ĐÃ HOÀN THÀNH ({data.filter(i => i.status === "Đã hoàn thành").length})
           </button>
         </div>
  
         {/* Desktop Table View */}
-        <div className="desktop-only table-container" style={{ fontSize: "1rem" }}>
-          <table className="table">
+        <div className="desktop-only base-table-wrapper">
+          <table className="base-table">
             <thead>
               <tr>
-                <th style={{ fontSize: "16px", fontWeight: 700, textAlign: "center", width: "140px" }}>Số xe</th>
-                <th style={{ fontSize: "16px", fontWeight: 700, textAlign: "center" }}>Tên tài xế</th>
-                <th style={{ fontSize: "16px", fontWeight: 700, textAlign: "center", width: "100px" }}>Số điện thoại</th>
-                <th style={{ fontSize: "16px", fontWeight: 700, textAlign: "center", width: "280px" }}>Đơn vị</th>
-                <th style={{ fontSize: "16px", fontWeight: 700, textAlign: "center" }}>Mục đích</th>
-                <th style={{ fontSize: "16px", fontWeight: 700, textAlign: "center" }}>Giờ vào</th>
-                {activeTab === 2 && <th style={{ fontSize: "16px", fontWeight: 700, textAlign: "center" }}>Giờ ra</th>}
-                <th style={{ fontSize: "16px", fontWeight: 700, textAlign: "center", width: "80px" }}>Trạng thái</th>
-                <th style={{ fontSize: "16px", fontWeight: 700, textAlign: "center", width: "160px" }}>Gọi xe</th>
+                <th style={{ width: "160px", textAlign: "center" }}>Số xe</th>
+                <th style={{ textAlign: "center" }}>Tên tài xế</th>
+                <th style={{ width: "180px", textAlign: "center" }}>Số điện thoại</th>
+                <th style={{ width: "300px", textAlign: "center" }}>Đơn vị</th>
+                <th style={{ width: "220px", textAlign: "center", whiteSpace: "nowrap" }}>Mục đích</th>
+                {activeTab === 2 && <th style={{ width: "150px", textAlign: "center" }}>Giờ ra</th>}
+                <th style={{ width: "180px", textAlign: "center" }}>Trạng thái</th>
+                <th style={{ width: "160px", textAlign: "center" }}>Gọi xe</th>
               </tr>
             </thead>
             <tbody>
@@ -566,83 +735,76 @@ export default function SecurityListView({ initialData }: { initialData: Registr
                   const speakingPlate = currentlySpeakingPlate.substring(0, underscoreIndex);
                   return normalizePlate(speakingPlate) === normalizePlate(item.licensePlate);
                 })();
+                const isSelected = selectedId === item.id;
 
                 return (
-                  <tr key={item.id} className={isRowSpeaking ? "row-speaking-flash-blue" : ""}>
-                  <td style={{ fontWeight: 700, fontSize: "16px", color: "var(--primary-color)", textAlign: "center", textTransform: "uppercase" }}>{item.licensePlate}</td>
-                  <td style={{ fontSize: "16px", textAlign: "center" }}>{item.driverName}</td>
-                  <td style={{ fontSize: "16px", textAlign: "center" }}>{item.phoneNumber || "—"}</td>
-                  <td style={{ fontSize: "16px", textAlign: "center" }}>{item.unit}</td>
-                  <td style={{ fontSize: "16px", textAlign: "center" }}>{item.purpose}</td>
-                  <td style={{ fontSize: "16px", textAlign: "center" }}>
-                    {item.status === "Đã đăng ký" || item.status === "Đã vào" 
-                      ? "—" 
-                      : new Date(item.timeIn).toLocaleTimeString("vi-VN")}
-                  </td>
-                  {activeTab === 2 && <td style={{ fontSize: "16px", textAlign: "center" }}>{item.timeOut ? new Date(item.timeOut).toLocaleTimeString("vi-VN") : "—"}</td>}
-                  <td style={{ textAlign: "center" }}>
-                    <span 
-                      style={{ 
-                        fontSize: "14px", 
-                        padding: "0.2rem 0.6rem",
-                        borderRadius: "6px",
-                        fontWeight: 700,
-                        background: (item.status === "Đã đăng ký" || item.status === "Đã vào") 
-                          ? "#fef3c7" 
-                          : (item.status === "Đã vào cổng")
-                            ? "#f5f3ff"
-                            : (item.status === "Đã gọi xe" ? "#e0f2fe" : "#dcfce7"),
-                        color: (item.status === "Đã đăng ký" || item.status === "Đã vào") 
-                          ? "#d97706" 
-                          : (item.status === "Đã vào cổng")
-                            ? "#7c3aed"
-                            : (item.status === "Đã gọi xe" ? "#0284c7" : "#166534"),
-                        border: `1px solid ${(item.status === "Đã đăng ký" || item.status === "Đã vào") 
-                          ? "#fde68a" 
-                          : (item.status === "Đã vào cổng")
-                            ? "#ddd6fe" 
-                            : (item.status === "Đã gọi xe" ? "#bae6fd" : "#bbf7d0")}`
-                      }}
-                    >
-                      {item.status === "Đã vào" ? "Đã đăng ký" : item.status}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                      <button 
-                        onClick={() => handleMainCallClick(item.licensePlate)}
-                        className={`call-btn ${currentlySpeakingPlate && currentlySpeakingPlate.startsWith(item.licensePlate) ? "speaking" : ""}`}
-                        title={currentlySpeakingPlate && currentlySpeakingPlate.startsWith(item.licensePlate) ? "Dừng gọi" : "Gọi xe"}
-                      >
-                        {currentlySpeakingPlate && currentlySpeakingPlate.startsWith(item.licensePlate) ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                      </button>
-                      {(() => {
-                        const totalCalls = (callCounts[`${item.licensePlate}_can-xe`] || 0) +
-                                           (callCounts[`${item.licensePlate}_kho-vat-tu`] || 0) +
-                                           (callCounts[`${item.licensePlate}_kho-nguyen-lieu-cua-1`] || 0) +
-                                           (callCounts[`${item.licensePlate}_kho-nguyen-lieu-cua-2`] || 0);
-                        if (totalCalls === 0) return null;
-                        return (
-                          <span style={{ 
-                            fontSize: "1rem", 
-                            fontWeight: 800, 
-                            color: "#ef4444", 
-                            background: "#fee2e2", 
-                            padding: "2px 8px", 
-                            borderRadius: "999px", 
-                            border: "1px solid #fca5a5" 
-                          }}>
-                            {totalCalls}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                  </td>
-                </tr>
-              );
-            }) : (
+                  <tr 
+                    key={item.id} 
+                    onClick={() => setSelectedId(isSelected ? null : item.id)}
+                    className={`row-hoverable ${isSelected ? "row-selected" : ""} ${isRowSpeaking ? "row-speaking-flash-blue" : ""}`}
+                  >
+                    <td style={{ fontWeight: 800, fontSize: "40px", color: "#ff5c00", textAlign: "center", textTransform: "uppercase" }}>{item.licensePlate}</td>
+                    <td style={{ textAlign: "center", fontWeight: 700 }}>{item.driverName}</td>
+                    <td style={{ textAlign: "center" }}>{item.phoneNumber || "—"}</td>
+                    <td style={{ textAlign: "center" }}>{item.unit}</td>
+                    <td style={{ textAlign: "center", whiteSpace: "nowrap" }}>{item.purpose}</td>
+                    {activeTab === 2 && (
+                      <td style={{ textAlign: "center" }}>
+                        {item.timeOut ? new Date(item.timeOut).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "—"}
+                      </td>
+                    )}
+                    <td style={{ textAlign: "center" }}>
+                      <span className={`status-pill ${
+                        item.status === "Đã hoàn thành"
+                          ? "status-completed"
+                          : item.status === "Đã đăng ký" || item.status === "Đã vào"
+                          ? "status-registered"
+                          : item.status === "Đã gọi xe"
+                          ? "status-called"
+                          : "status-entered"
+                      }`}>
+                        {item.status === "Đã vào" ? "Đã đăng ký" : item.status}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMainCallClick(item.licensePlate);
+                          }}
+                          className={`call-btn ${currentlySpeakingPlate && currentlySpeakingPlate.startsWith(item.licensePlate) ? "speaking" : ""}`}
+                          title={currentlySpeakingPlate && currentlySpeakingPlate.startsWith(item.licensePlate) ? "Dừng gọi" : "Gọi xe"}
+                        >
+                          {currentlySpeakingPlate && currentlySpeakingPlate.startsWith(item.licensePlate) ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                        </button>
+                        {(() => {
+                          const totalCalls = (callCounts[`${item.licensePlate}_can-xe`] || 0) +
+                                             (callCounts[`${item.licensePlate}_kho-vat-tu`] || 0) +
+                                             (callCounts[`${item.licensePlate}_kho-nguyen-lieu-cua-1`] || 0) +
+                                             (callCounts[`${item.licensePlate}_kho-nguyen-lieu-cua-2`] || 0);
+                          if (totalCalls === 0) return null;
+                          return (
+                            <span style={{ 
+                              fontSize: "15px", 
+                              fontWeight: 800, 
+                              color: "#ef4444", 
+                              background: "#fee2e2", 
+                              padding: "2px 8px", 
+                              borderRadius: "999px", 
+                              border: "1px solid #fca5a5" 
+                            }}>
+                              {totalCalls}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }) : (
                 <tr>
-                  <td colSpan={activeTab === 2 ? 9 : 8} style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>
+                  <td colSpan={activeTab === 2 ? 8 : 7} style={{ textAlign: "center", padding: "2rem", color: "#64748b", fontWeight: 600 }}>
                     Không có dữ liệu phù hợp
                   </td>
                 </tr>
@@ -653,7 +815,7 @@ export default function SecurityListView({ initialData }: { initialData: Registr
 
         {/* Mobile Card list View */}
         <div className="mobile-list">
-          {filteredData.length > 0 ? filteredData.map((item) => {
+          {filteredData.length > 0 ? filteredData.map((item, idx) => {
             const normalizePlate = (p: string) => p.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
             const isRowSpeaking = currentlySpeakingPlate && (() => {
               const underscoreIndex = currentlySpeakingPlate.lastIndexOf('_');
@@ -661,34 +823,76 @@ export default function SecurityListView({ initialData }: { initialData: Registr
               const speakingPlate = currentlySpeakingPlate.substring(0, underscoreIndex);
               return normalizePlate(speakingPlate) === normalizePlate(item.licensePlate);
             })();
+            const isSelected = selectedId === item.id;
 
             return (
               <div 
                 key={item.id} 
-                className={isRowSpeaking ? "mobile-card-speaking-pulse-blue" : ""}
-                style={{ 
-                  background: "white", 
-                  padding: "0.8rem 1rem", 
-                  borderRadius: "8px", 
-                  marginBottom: "0.75rem", 
-                  border: "1px solid #e2e8f0",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
-                  position: "relative"
-                }}
+                onClick={() => setSelectedId(isSelected ? null : item.id)}
+                className={`proposal-card ${isSelected ? "selected" : ""} ${isRowSpeaking ? "mobile-card-speaking-pulse-blue" : ""}`}
               >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: "1.3rem", color: "var(--primary-color)", lineHeight: 1.3, textTransform: "uppercase" }}>{item.licensePlate}</div>
-                  <div style={{ fontWeight: 600, fontSize: "1.0rem", color: "#1e293b", marginTop: "4px" }}>{item.driverName}</div>
+                {/* Header: STT, License Plate and Status */}
+                <div className="card-row card-header">
+                  <div className="code-box">
+                    <span className="idx-pill">#{idx + 1}</span>
+                    <span className="proposal-code" style={{ textTransform: "uppercase" }}>{item.licensePlate}</span>
+                  </div>
+                  <span className={`status-pill ${
+                    item.status === "Đã hoàn thành"
+                      ? "status-completed"
+                      : item.status === "Đã đăng ký" || item.status === "Đã vào"
+                      ? "status-registered"
+                      : item.status === "Đã gọi xe"
+                      ? "status-called"
+                      : "status-entered"
+                  }`}>
+                    {item.status === "Đã vào" ? "Đã đăng ký" : item.status}
+                  </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+
+                {/* Card Body */}
+                <div className="card-body">
+                  <div className="info-row">
+                    <span className="info-label">Tài xế:</span>
+                    <span className="info-val" style={{ fontWeight: 700 }}>{item.driverName}</span>
+                  </div>
+                  {item.phoneNumber && (
+                    <div className="info-row">
+                      <span className="info-label">Số điện thoại:</span>
+                      <span className="info-val">{item.phoneNumber}</span>
+                    </div>
+                  )}
+                  <div className="info-row">
+                    <span className="info-label">Đơn vị:</span>
+                    <span className="info-val">{item.unit}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Mục đích:</span>
+                    <span className="info-val">{item.purpose}</span>
+                  </div>
+                  
+                  <div className="info-row" style={{ marginTop: "4px", borderTop: "1px solid #f1f5f9", paddingTop: "6px" }}>
+                    <span className="info-label">Thời gian:</span>
+                    <span className="info-val" style={{ fontSize: "11px", color: "#64748b" }}>
+                      Vào: {item.status === "Đã đăng ký" || item.status === "Đã vào" ? "—" : new Date(item.timeIn).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
+                      {activeTab === 2 && item.timeOut && ` - Ra: ${new Date(item.timeOut).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Floating/Bottom Action Call Area for Mobile Card */}
+                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "8px", marginTop: "8px", borderTop: "1px solid #f1f5f9", paddingTop: "8px" }}>
+                  <span style={{ fontSize: "14px", color: "#64748b", marginRight: "auto" }}>Gọi phát thanh:</span>
                   <button 
-                    onClick={() => handleMainCallClick(item.licensePlate)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMainCallClick(item.licensePlate);
+                    }}
                     className={`call-btn ${currentlySpeakingPlate && currentlySpeakingPlate.startsWith(item.licensePlate) ? "speaking" : ""}`}
-                    style={{ width: "36px", height: "36px" }}
                     title={currentlySpeakingPlate && currentlySpeakingPlate.startsWith(item.licensePlate) ? "Dừng gọi" : "Gọi xe"}
+                    style={{ width: "36px", height: "36px" }}
                   >
-                    {currentlySpeakingPlate && currentlySpeakingPlate.startsWith(item.licensePlate) ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                    {currentlySpeakingPlate && currentlySpeakingPlate.startsWith(item.licensePlate) ? <VolumeX size={20} /> : <Volume2 size={20} />}
                   </button>
                   {(() => {
                     const totalCalls = (callCounts[`${item.licensePlate}_can-xe`] || 0) +
@@ -698,7 +902,7 @@ export default function SecurityListView({ initialData }: { initialData: Registr
                     if (totalCalls === 0) return null;
                     return (
                       <span style={{ 
-                        fontSize: "0.85rem", 
+                        fontSize: "13px", 
                         fontWeight: 800, 
                         color: "#ef4444", 
                         background: "#fee2e2", 
@@ -712,59 +916,13 @@ export default function SecurityListView({ initialData }: { initialData: Registr
                   })()}
                 </div>
               </div>
-              
-              <div style={{ fontSize: "0.85rem", color: "#475569", marginBottom: "0.25rem" }}>
-                <span style={{ fontWeight: 600 }}>ĐƠN VỊ:</span> {item.unit}
-              </div>
-              <div style={{ fontSize: "0.85rem", color: "#475569", marginBottom: "0.5rem" }}>
-                <span style={{ fontWeight: 600 }}>MỤC ĐÍCH:</span> {item.purpose}
-              </div>
-              
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: "0.5rem", fontSize: "0.8rem", color: "#64748b" }}>
-                <div>
-                  <span 
-                    style={{ 
-                      fontSize: "0.75rem", 
-                      padding: "2px 8px",
-                      borderRadius: "6px",
-                      fontWeight: 700,
-                      background: (item.status === "Đã đăng ký" || item.status === "Đã vào") 
-                        ? "#fef3c7" 
-                        : (item.status === "Đã vào cổng")
-                          ? "#f5f3ff"
-                          : (item.status === "Đã gọi xe" ? "#e0f2fe" : "#dcfce7"),
-                      color: (item.status === "Đã đăng ký" || item.status === "Đã vào") 
-                        ? "#d97706" 
-                        : (item.status === "Đã vào cổng")
-                          ? "#7c3aed"
-                          : (item.status === "Đã gọi xe" ? "#0284c7" : "#166534"),
-                      border: `1px solid ${(item.status === "Đã đăng ký" || item.status === "Đã vào") 
-                        ? "#fde68a" 
-                        : (item.status === "Đã vào cổng")
-                          ? "#ddd6fe" 
-                          : (item.status === "Đã gọi xe" ? "#bae6fd" : "#bbf7d0")}`,
-                      display: "inline-block"
-                    }}
-                  >
-                    {item.status === "Đã vào" ? "Đã đăng ký" : item.status}
-                  </span>
-                </div>
-                <div>
-                  <span>Vào: {item.status === "Đã đăng ký" || item.status === "Đã vào" ? "—" : new Date(item.timeIn).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</span>
-                  {activeTab === 2 && item.timeOut && (
-                    <span style={{ marginLeft: "0.5rem" }}>- Ra: {new Date(item.timeOut).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        }) : (
+            );
+          }) : (
             <div style={{ textAlign: "center", padding: "3rem 1rem", color: "#64748b", background: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
               Không có dữ liệu phù hợp
             </div>
           )}
         </div>
-
       </div>
 
       {/* Premium Glassmorphism Call Modal Overlay */}

@@ -43,6 +43,8 @@ export default function EmployeeTable({
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">("down");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const selectedEmployee = employees.find(e => e.id === selectedEmployeeId) || null;
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
     title: string;
@@ -68,6 +70,7 @@ export default function EmployeeTable({
     const matchSearch =
       emp.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (emp.cardCode || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (emp.branch || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (emp.department || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (emp.position || "").toLowerCase().includes(searchTerm.toLowerCase());
@@ -116,9 +119,9 @@ export default function EmployeeTable({
   function handleStatusChange(id: string, status: string, name: string) {
     setConfirmDialog({
       show: true,
-      title: status === "Nghỉ việc" ? "Cho nghỉ việc" : "Kích hoạt lại",
+      title: status === "Nghỉ việc" ? "Ngưng hoạt động" : "Kích hoạt lại",
       message: status === "Nghỉ việc"
-        ? `Bạn có chắc chắn muốn cho nhân viên "${name}" nghỉ việc không?`
+        ? `Bạn có chắc chắn muốn cho nhân viên "${name}" ngưng hoạt động không?`
         : `Bạn có chắc chắn muốn kích hoạt lại nhân viên "${name}" không?`,
       type: status === "Nghỉ việc" ? "danger" : "success",
       confirmText: status === "Nghỉ việc" ? "Xác nhận" : "Kích hoạt",
@@ -354,14 +357,142 @@ export default function EmployeeTable({
   };
 
   return (
-    <>
+    <div className="employee-page-container">
       <style dangerouslySetInnerHTML={{
         __html: `
+        .employee-page-container {
+          width: 100%;
+          min-width: 0;
+        }
+        .employee-layout {
+          display: flex;
+          gap: 1.5rem;
+          width: 100%;
+          min-width: 0;
+          font-family: "Segoe UI", -apple-system, sans-serif;
+          font-size: 13px;
+          padding: 10px 0px 10px 0px;
+        }
+        .employee-layout input,
+        .employee-layout select,
+        .employee-layout textarea,
+        .employee-layout button,
+        .employee-layout table,
+        .employee-layout td,
+        .employee-layout th,
+        .employee-layout label,
+        .employee-layout .badge,
+        .employee-page-container .breadcrumb-banner {
+          font-size: 13px !important;
+        }
+        .breadcrumb-banner {
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          display: block;
+          border-radius: 0 !important;
+          margin-top: 0;
+          margin-left: -10px;
+          margin-right: -10px;
+        }
+        .panel-full {
+          flex: 1 1 100%;
+          width: 100%;
+          min-width: 0;
+        }
+        .search-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 5px 0px 10px 0px;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+        .sapo-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          border-radius: 4px;
+          font-weight: 400;
+          font-size: 13px !important;
+          cursor: pointer;
+          transition: background-color 0.2s, transform 0.1s;
+          border: none;
+        }
+        .sapo-btn:hover {
+          background-color: #002244;
+        }
+        .sapo-btn:active {
+          transform: scale(0.98);
+        }
+        .sapo-btn-secondary {
+          background-color: #475569;
+        }
+        .sapo-btn-secondary:hover {
+          background-color: #334155;
+        }
+        .sapo-btn-success {
+          background-color: #22c55e;
+        }
+        .sapo-btn-success:hover {
+          background-color: #16a34a;
+        }
+        .sapo-btn-danger {
+          background-color: #ef4444;
+        }
+        .sapo-btn-danger:hover {
+          background-color: #dc2626;
+        }
+        .sapo-btn-sm {
+          padding: 4px 8px !important;
+          font-size: 12px !important;
+          border-radius: 4px !important;
+          font-weight: 400 !important;
+        }
+        .sapo-btn-sm svg {
+          width: 14px !important;
+          height: 14px !important;
+        }
+        .row-hoverable:hover {
+          background-color: #f8fafc;
+        }
+        .row-selected {
+          background-color: #eff6ff !important;
+        }
+        .resigned-row {
+          background-color: #fff5f5 !important;
+        }
+        .resigned-row td {
+          border-top: 1px solid #fca5a5 !important;
+          border-bottom: 1px solid #fca5a5 !important;
+        }
+        .resigned-row .avatar-base {
+          background-color: #ef4444 !important;
+          border: 2px solid #b91c1c !important;
+          color: #ffffff !important;
+        }
+        .resigned-row .info-text .name {
+          background-color: #fee2e2 !important;
+          border: 1px solid #fca5a5 !important;
+          color: #b91c1c !important;
+          padding: 2px 6px !important;
+          border-radius: 4px !important;
+          display: inline-block !important;
+        }
+        .resigned-row .code-pill {
+          background-color: #fee2e2 !important;
+          border: 1px solid #ef4444 !important;
+          color: #b91c1c !important;
+        }
         .base-toolbar {
           display: flex !important;
           justify-content: space-between !important;
           align-items: center !important;
-          margin-bottom: 0.75rem !important;
+          margin-bottom: 4px !important;
           padding: 0 !important;
           gap: 1rem !important;
           flex-wrap: nowrap !important;
@@ -385,7 +516,7 @@ export default function EmployeeTable({
         .page-title-base {
           font-size: 1.25rem !important;
           font-weight: 700 !important;
-          color: #1e293b !important;
+          color: #000000 !important;
           display: flex !important;
           align-items: center !important;
           gap: 0.5rem !important;
@@ -393,37 +524,77 @@ export default function EmployeeTable({
         }
         .badge-count {
           background: #e2e8f0 !important;
-          color: #475569 !important;
+          color: #000000 !important;
           font-size: 0.75rem !important;
-          font-weight: 600 !important;
+          font-weight: 700 !important;
           padding: 2px 8px !important;
           border-radius: 999px !important;
           margin-left: 0.25rem !important;
         }
         .base-table-wrapper {
-          max-height: 485px !important;
           height: auto !important;
-          overflow-y: auto !important;
-          padding-bottom: 60px !important;
+          min-height: unset !important;
+          overflow-y: hidden !important;
+          padding-bottom: 0px !important;
         }
         .base-table {
           height: auto !important;
+          width: 100% !important;
+          table-layout: auto !important;
         }
         .base-table th {
-          background: #f1f5f9 !important;
-          padding: 0px 0.75rem !important;
+          text-transform: uppercase !important;
           font-weight: 700 !important;
-          color: #334155 !important;
-          border-bottom: 1px solid #e0e6ed !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
           text-align: center !important;
           height: 35px !important;
+          padding-top: 6px !important;
+          padding-bottom: 6px !important;
         }
         .base-table td {
-          padding: 0px 0.75rem !important;
+          padding: 2px 0.75rem !important;
           vertical-align: middle !important;
+          color: #000 !important;
+          font-weight: 600 !important;
         }
         .base-table tbody tr {
           height: 45px !important;
+        }
+        .nowrap, .base-table .nowrap {
+          white-space: nowrap !important;
+        }
+        .search-box-base {
+          position: relative !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+        .search-box-base input {
+          width: 220px !important;
+          padding: 6px 10px 6px 30px !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 4px !important;
+          outline: none !important;
+          font-weight: 500 !important;
+        }
+        .search-box-base .search-icon {
+          position: absolute !important;
+          left: 10px !important;
+          color: #94a3b8 !important;
+        }
+        .base-filters {
+          background: #f8fafc !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 6px !important;
+          padding: 10px !important;
+        }
+        .form-control {
+          padding: 6px 10px !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 4px !important;
+          outline: none !important;
+          background: white !important;
         }
         /* Optimize Drawer Form spacing to prevent cardCode from being obscured */
         .drawer-header {
@@ -471,229 +642,239 @@ export default function EmployeeTable({
         }
       ` }} />
       {/* Header Toolbar */}
-      <div className="base-toolbar">
-        <div className="toolbar-left">
-          <h3 className="page-title-base">👥 Danh sách nhân viên</h3>
-          <span className="badge-count">{employees.length}</span>
-          <div className="search-box-base">
-            <Search size={16} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button className="btn-base btn-outline" onClick={(e) => { e.stopPropagation(); setShowFilters(!showFilters); }}>
-            <Filter size={18} />
-          </button>
-        </div>
-        <div className="toolbar-right">
-          <div className="btn-group-base">
-            <button className="btn-base btn-outline" onClick={handleDownloadTemplate} title="Tải file mẫu">
-              <FileSpreadsheet size={18} style={{ marginRight: "5px" }} /> <span>File mẫu</span>
-            </button>
-            <label className="btn-base btn-outline" style={{ cursor: "pointer" }} title="Import Excel">
-              <Upload size={18} style={{ marginRight: "5px" }} /> <span>Nhập Excel</span>
-              <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
-            </label>
-            <button className="btn-base btn-outline" onClick={handleExportExcel} title="Xuất file Excel">
-              <Download size={18} style={{ marginRight: "5px" }} /> <span>Xuất Excel</span>
-            </button>
-          </div>
-          <button className="btn-base btn-primary" onClick={() => setShowModal(true)}>
-            <Plus size={18} style={{ marginRight: "6px" }} /> Thêm mới
-          </button>
-        </div>
+      <div className="breadcrumb-banner">
+        DANH SÁCH NHÂN VIÊN
       </div>
 
-      {showFilters && (
-        <div className="base-filters animate-fade-in" style={{ marginBottom: "0.75rem" }} onClick={(e) => e.stopPropagation()}>
-          <div style={{ display: "flex", gap: "0.75rem" }}>
-            <select
-              className="form-control"
-              style={{ maxWidth: "200px" }}
-              value={filterBranch}
-              onChange={(e) => setFilterBranch(e.target.value)}
-            >
-              <option value="">Tất cả chi nhánh</option>
-              {branches.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-            <select
-              className="form-control"
-              style={{ maxWidth: "200px" }}
-              value={filterDepartment}
-              onChange={(e) => setFilterDepartment(e.target.value)}
-            >
-              <option value="">Tất cả bộ phận</option>
-              {activeDepartments.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <select
-              className="form-control"
-              style={{ maxWidth: "200px" }}
-              value={filterGender}
-              onChange={(e) => setFilterGender(e.target.value)}
-            >
-              <option value="">Tất cả giới tính</option>
-              <option value="Nam">Nam</option>
-              <option value="Nữ">Nữ</option>
-            </select>
+      <div className="employee-layout">
+        <div className="panel-full">
+          <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center" }}>
             <button
-              className="btn-base btn-outline"
+              type="button"
+              className="sapo-btn"
               onClick={() => {
-                setSearchTerm("");
-                setFilterBranch("");
-                setFilterDepartment("");
-                setFilterGender("");
+                setEditingEmployee(null);
+                setShowModal(true);
               }}
             >
-              <RotateCcw size={16} /> Đặt lại
+              Thêm mới
             </button>
-          </div>
-        </div>
-      )}
 
-      {/* Main Table */}
-      <div className="base-table-wrapper" style={paginatedEmployees.length === 0 ? { height: "auto" } : undefined}>
-        <table className="base-table">
-          <thead>
-            <tr>
-              <th className="th-first" style={{ width: "50px", textAlign: "center" }}>STT</th>
-              <th>Nhân viên</th>
-              <th>Mã NV</th>
-              <th>Đơn vị / Chức vụ</th>
-              <th>Ngày gia nhập</th>
-              <th style={{ textAlign: "center" }}>Mã thẻ</th>
-              <th>Thâm niên</th>
-              <th>Trạng thái</th>
-              <th className="th-last" style={{ textAlign: "right" }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedEmployees.map((emp, index) => (
-              <tr key={emp.id}>
-                <td style={{ textAlign: "center", color: "#64748b" }}>
-                  {(currentPage - 1) * itemsPerPage + index + 1}
-                </td>
-                <td>
-                  <div className="employee-info-base">
-                    <div className="avatar-base" style={{ backgroundColor: getRandomColor(emp.fullName) }}>
-                      {getInitials(emp.fullName)}
-                    </div>
-                    <div className="info-text">
-                      <div className="name">{emp.fullName}</div>
-                      <div className="email">{emp.email || "Chưa có email"}</div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <span className="code-pill">{emp.employeeCode}</span>
-                </td>
-                <td>
-                  <div className="unit-info">
-                    <div className="dept">{emp.department}</div>
-                    <div className="pos">{emp.position}</div>
-                  </div>
-                </td>
-                <td>
-                  <span className="date-text">{emp.startDate ? new Date(emp.startDate).toLocaleDateString("vi-VN") : "—"}</span>
-                </td>
-                <td style={{ textAlign: "center" }}>
-                  {emp.cardCode ? (
-                    <span className="code-pill" style={{ background: "#f1f5f9", color: "#334155", fontWeight: 600 }}>{emp.cardCode}</span>
-                  ) : (
-                    <span style={{ color: "#94a3b8" }}>—</span>
-                  )}
-                </td>
-                <td>
-                  {renderSeniorityHierarchy(emp.startDate)}
-                </td>
-                <td>
-                  <div className={`status-pill ${(emp.status === "Đang làm việc" || emp.status === "ACTIVE") ? "status-active" : "status-inactive"}`}>
-                    {(emp.status === "Đang làm việc" || emp.status === "ACTIVE") ? "Đang làm việc" : "Nghỉ việc"}
-                  </div>
-                </td>
-                <td style={{ textAlign: "right", position: "relative", zIndex: openMenuId === emp.id ? 50 : 1 }}>
+            {selectedEmployee && (
+              <>
+                <button
+                  type="button"
+                  className="sapo-btn"
+                  onClick={() => handleEdit(selectedEmployee)}
+                >
+                  Sửa
+                </button>
+                {(selectedEmployee.status === "Đang làm việc" || selectedEmployee.status === "ACTIVE") ? (
                   <button
-                    className="action-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const isLastRows = index >= paginatedEmployees.length - 2;
-                      const isFirstRow = index === 0;
-                      setDropdownDirection((isLastRows && !isFirstRow) ? "up" : "down");
-                      setOpenMenuId(openMenuId === emp.id ? null : emp.id);
-                    }}
+                    type="button"
+                    className="sapo-btn"
+                    onClick={() => handleStatusChange(selectedEmployee.id, "Nghỉ việc", selectedEmployee.fullName)}
                   >
-                    <MoreHorizontal size={18} />
+                    Ngưng kích hoạt
                   </button>
-
-                  {openMenuId === emp.id && (
-                    <div className={`action-dropdown ${dropdownDirection === "up" ? "open-up" : ""}`} onClick={(e) => e.stopPropagation()}>
-                      <div className="dropdown-item" onClick={() => { handleEdit(emp); setOpenMenuId(null); }}>
-                        <Pencil size={14} /> Chỉnh sửa
-                      </div>
-                      <div className="dropdown-item" onClick={() => { setHistoryRecordId(emp.id); setOpenMenuId(null); }}>
-                        <History size={14} /> Lịch sử
-                      </div>
-                      <div className="divider"></div>
-                      {(emp.status === "Đang làm việc" || emp.status === "ACTIVE") ? (
-                        <div className="dropdown-item danger" onClick={() => { handleStatusChange(emp.id, "Nghỉ việc", emp.fullName); setOpenMenuId(null); }}>
-                          <PowerOff size={14} /> Cho nghỉ việc
-                        </div>
-                      ) : (
-                        <div className="dropdown-item success" onClick={() => { handleStatusChange(emp.id, "Đang làm việc", emp.fullName); setOpenMenuId(null); }}>
-                          <CheckCircle size={14} /> Kích hoạt lại
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {paginatedEmployees.length === 0 && (
-              <tr style={{ height: "45px" }}>
-                <td colSpan={9} style={{ textAlign: "center", color: "#64748b", verticalAlign: "middle", height: "45px" }}>
-                  Chưa có dữ liệu
-                </td>
-              </tr>
+                ) : (
+                  <button
+                    type="button"
+                    className="sapo-btn"
+                    onClick={() => handleStatusChange(selectedEmployee.id, "Đang làm việc", selectedEmployee.fullName)}
+                  >
+                    Kích hoạt
+                  </button>
+                )}
+              </>
             )}
-          </tbody>
-        </table>
-      </div>
 
-      {/* Modern Pagination */}
-      {totalPages > 1 && (
-        <div className="base-pagination">
-          <div className="pagination-info">
-            Hiển thị <strong>{paginatedEmployees.length}</strong> / {filteredEmployees.length} nhân viên
-          </div>
-          <div className="pagination-controls">
-            <button
-              className="page-btn"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(prev => prev - 1)}
-            >
-              Trước
-            </button>
-            {[...Array(totalPages)].map((_, i) => (
+            <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem", alignItems: "center" }}>
               <button
-                key={i}
-                className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`}
-                onClick={() => setCurrentPage(i + 1)}
+                type="button"
+                className="sapo-btn"
+                onClick={(e) => { e.stopPropagation(); setShowFilters(!showFilters); }}
               >
-                {i + 1}
+                Lọc
               </button>
-            ))}
-            <button
-              className="page-btn"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(prev => prev + 1)}
-            >
-              Sau
-            </button>
+
+              <button className="sapo-btn" onClick={handleDownloadTemplate} title="Tải file mẫu">
+                Tải mẫu
+              </button>
+              <label className="sapo-btn" style={{ cursor: "pointer", margin: 0 }} title="Import Excel">
+                Nhập Excel
+                <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
+              </label>
+              <button className="sapo-btn" onClick={handleExportExcel} title="Xuất file Excel">
+                Xuất Excel
+              </button>
+
+
+            </div>
           </div>
+
+          {showFilters && (
+            <div className="base-filters animate-fade-in" style={{ marginBottom: "0.75rem" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <select
+                  className="form-control"
+                  style={{ maxWidth: "200px" }}
+                  value={filterBranch}
+                  onChange={(e) => setFilterBranch(e.target.value)}
+                >
+                  <option value="">Tất cả chi nhánh</option>
+                  {branches.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+                <select
+                  className="form-control"
+                  style={{ maxWidth: "200px" }}
+                  value={filterDepartment}
+                  onChange={(e) => setFilterDepartment(e.target.value)}
+                >
+                  <option value="">Tất cả bộ phận</option>
+                  {activeDepartments.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <select
+                  className="form-control"
+                  style={{ maxWidth: "200px" }}
+                  value={filterGender}
+                  onChange={(e) => setFilterGender(e.target.value)}
+                >
+                  <option value="">Tất cả giới tính</option>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                </select>
+                <button
+                  className="btn-base btn-outline"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setFilterBranch("");
+                    setFilterDepartment("");
+                    setFilterGender("");
+                  }}
+                >
+                  <RotateCcw size={16} /> Đặt lại
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Main Table */}
+          <div className="base-table-wrapper" style={paginatedEmployees.length === 0 ? { height: "auto" } : undefined}>
+            <table className="base-table">
+              <thead>
+                <tr>
+                  <th className="th-first nowrap" style={{ width: "50px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>STT</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Nhân viên</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Mã NV</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Đơn vị / Chức vụ</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Ngày gia nhập</th>
+                  <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Mã thẻ</th>
+                  <th className="nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Thâm niên</th>
+                  <th className="th-last nowrap" style={{ color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedEmployees.map((emp, index) => (
+                  <tr
+                    key={emp.id}
+                    onClick={() => setSelectedEmployeeId(selectedEmployeeId === emp.id ? null : emp.id)}
+                    className={`row-hoverable ${selectedEmployeeId === emp.id ? "row-selected" : ""} ${!(emp.status === "Đang làm việc" || emp.status === "ACTIVE") ? "resigned-row" : ""}`}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>
+                      {(currentPage - 1) * itemsPerPage + index + 1}
+                    </td>
+                    <td>
+                      <div className="employee-info-base">
+                        <div className="avatar-base" style={{ backgroundColor: getRandomColor(emp.fullName) }}>
+                          {getInitials(emp.fullName)}
+                        </div>
+                        <div className="info-text">
+                          <div className="name">{emp.fullName}</div>
+                          <div className="email">{emp.email || "Chưa có email"}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="code-pill">{emp.employeeCode}</span>
+                    </td>
+                    <td>
+                      <div className="unit-info">
+                        <div className="dept">{emp.department}</div>
+                        <div className="pos">{emp.position}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="date-text">{emp.startDate ? new Date(emp.startDate).toLocaleDateString("vi-VN") : "—"}</span>
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {emp.cardCode ? (
+                        <span className="code-pill" style={{ background: "#f1f5f9", color: "#334155", fontWeight: 600 }}>{emp.cardCode}</span>
+                      ) : (
+                        <span style={{ color: "#94a3b8" }}>—</span>
+                      )}
+                    </td>
+                    <td>
+                      {renderSeniorityHierarchy(emp.startDate)}
+                    </td>
+                    <td className="nowrap" style={{ textAlign: "center" }}>
+                      <span style={{
+                        color: (emp.status === "Đang làm việc" || emp.status === "ACTIVE") ? "#10b981" : "#ef4444",
+                        fontWeight: 600
+                      }}>
+                        {(emp.status === "Đang làm việc" || emp.status === "ACTIVE") ? "Hoạt động" : "Ngưng hoạt động"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {paginatedEmployees.length === 0 && (
+                  <tr style={{ height: "45px" }}>
+                    <td colSpan={8} style={{ textAlign: "center", color: "#64748b", verticalAlign: "middle", height: "45px" }}>
+                      Chưa có dữ liệu
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Modern Pagination */}
+          {totalPages > 1 && (
+            <div className="base-pagination">
+              <div className="pagination-info">
+                Hiển thị <strong>{paginatedEmployees.length}</strong> / {filteredEmployees.length} nhân viên
+              </div>
+              <div className="pagination-controls">
+                <button
+                  className="page-btn"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                >
+                  Trước
+                </button>
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(i + 1)}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  className="page-btn"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
-      )}
+      </div>
 
       {/* Modern Side Drawer for Add/Edit */}
       {showModal && (
@@ -859,7 +1040,7 @@ export default function EmployeeTable({
               <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>{confirmDialog.message}</p>
               {confirmDialog.type === "danger" && (
                 <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
-                  <PowerOff size={16} /> Dữ liệu hồ sơ sẽ được chuyển sang trạng thái nghỉ việc.
+                  <PowerOff size={16} /> Dữ liệu hồ sơ sẽ được chuyển sang trạng thái ngưng hoạt động.
                 </p>
               )}
               {confirmDialog.type === "success" && (
@@ -883,6 +1064,6 @@ export default function EmployeeTable({
         </div>
       )}
 
-    </>
+    </div>
   );
 }

@@ -37,6 +37,15 @@ export async function updateBranch(id: string, formData: FormData) {
   revalidatePath("/danh-muc/chi-nhanh");
 }
 
+export async function updateBranchStatus(id: string, status: string) {
+  await prisma.branch.update({
+    where: { id },
+    data: { status }
+  });
+  await syncAdminBranches();
+  revalidatePath("/danh-muc/chi-nhanh");
+}
+
 async function syncAdminBranches() {
   const allBranches = await prisma.branch.findMany({
     where: { status: "ACTIVE" },

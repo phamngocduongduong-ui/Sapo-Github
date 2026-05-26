@@ -3,10 +3,12 @@
 import React, { useState, useEffect, useTransition } from "react";
 import { 
   CheckCircle2, X, Clock, FileText, Search, 
-  ChevronRight, Calendar, User, Building2, Package, History, RefreshCw
+  ChevronRight, Calendar, User, Building2, Package, History, RefreshCw,
+  MoreHorizontal, Eye, Check
 } from "lucide-react";
 import { getPheDuyetPurchaseOrders, updatePOStatus } from "../lenh-mua/actions";
 import HistoryModal from "../../HistoryModal";
+import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 
 export default function PurchasingApprovalPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -15,10 +17,24 @@ export default function PurchasingApprovalPage() {
   const [isPending, startTransition] = useTransition();
   const [selectedPO, setSelectedPO] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  useRealTimeSync("purchase-orders", items, (newData: any[]) => {
+    const filtered = newData.filter((po: any) => 
+      ["Chờ phê duyệt", "Chờ thực hiện", "Đã phê duyệt"].includes(po.status)
+    );
+    setItems(filtered);
+  }, 3000, openMenuId !== null);
 
   useEffect(() => {
     fetchData();
     fetchUser();
+  }, []);
+
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
   }, []);
 
   async function fetchData() {
@@ -34,7 +50,7 @@ export default function PurchasingApprovalPage() {
 
   const handleAction = (id: string, status: string) => {
     const actionText = status === "Chờ thực hiện" ? "phê duyệt" : "từ chối";
-    if (!confirm(`Bạn có chắc chắn muốn ${actionText} lệnh mua này?`)) return;
+    if (!confirm(`Bạn có chắc chắn muốn ${actionText} đơn mua hàng này?`)) return;
     
     startTransition(async () => {
       await updatePOStatus(id, status);
@@ -48,10 +64,10 @@ export default function PurchasingApprovalPage() {
   const currentItems = activeTab === "pending" ? pendingItems : processedItems;
 
   return (
-    <div style={{ padding: "1.5rem", width: "100%", height: "calc(100vh - 60px)", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div style={{ padding: "1.5rem", width: "100%", minHeight: "calc(100vh - 140px)", height: "auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h1 className="page-title" style={{ margin: 0 }}>✅ Phê duyệt Lệnh mua</h1>
+          <h1 className="page-title" style={{ margin: 0 }}>✅ Phê duyệt Đơn mua hàng</h1>
           <p style={{ color: "#64748b", marginTop: "0.25rem" }}>Xét duyệt các yêu cầu mua hàng từ các chi nhánh</p>
         </div>
         <button className="btn btn-outline" onClick={() => fetchData()} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -100,10 +116,10 @@ export default function PurchasingApprovalPage() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: selectedPO ? "1fr 450px" : "1fr", gap: "1.5rem", flex: 1, overflow: "hidden" }}>
-        {/* List Column */}
-        <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div className="table-container" style={{ margin: 0, borderRadius: 0, flex: 1, overflowY: "auto" }}>
+      <div style={{ display: "grid", gridTemplateColumns: selectedPO ? "1fr 450px" : "1fr", gap: "1.5rem" }}>
+        {/* Table Column */}
+        <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
+          <div className="table-container" style={{ margin: 0, borderRadius: 0 }}>
             <table className="table">
               <thead>
                 <tr>
@@ -117,7 +133,7 @@ export default function PurchasingApprovalPage() {
               </thead>
               <tbody>
                 {currentItems.length === 0 ? (
-                  <tr><td colSpan={6} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>Không có lệnh mua nào {activeTab === "pending" ? "đang chờ" : "đã xử lý"}</td></tr>
+                  <tr><td colSpan={6} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>Không có đơn mua hàng nào {activeTab === "pending" ? "đang chờ" : "đã xử lý"}</td></tr>
                 ) : (
                   currentItems.map(item => (
                     <tr 
@@ -128,19 +144,56 @@ export default function PurchasingApprovalPage() {
                         background: selectedPO?.id === item.id ? "#f0f7ff" : "transparent"
                       }}
                     >
-                      <td style={{ textAlign: "center" }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center" }}>
-                          {activeTab === "pending" ? (
-                            <>
-                              <button className="btn btn-sm btn-success" onClick={() => handleAction(item.id, "Chờ mua hàng")}>Duyệt</button>
-                              <button className="btn btn-sm btn-danger" onClick={() => handleAction(item.id, "Tạo mới")}>Từ chối</button>
-                            </>
-                          ) : (
-                            <span className={`badge ${(item.status === "Chờ mua hàng" || item.status === "Đã phê duyệt") ? "badge-success" : "badge-danger"}`}>
-                              {(item.status === "Chờ mua hàng" || item.status === "Đã phê duyệt") ? "Đã duyệt" : "Từ chối"}
-                            </span>
-                          )}
+                      <td style={{ textAlign: "center", position: "relative" }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: "flex", justifyContent: "center" }}>
+                          <button
+                            className="action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(openMenuId === item.id ? null : item.id);
+                            }}
+                          >
+                            <MoreHorizontal size={18} />
+                          </button>
                         </div>
+
+                        {openMenuId === item.id && (
+                          <div className="horizontal-action-dropdown" style={{ left: "50%", transform: "translateX(-50%)" }} onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className="icon-action-btn"
+                              title="Xem chi tiết"
+                              onClick={() => { setSelectedPO(item); setOpenMenuId(null); }}
+                            >
+                              <Eye size={15} style={{ color: "#3b82f6" }} />
+                            </button>
+                            
+                            {activeTab === "pending" ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="icon-action-btn"
+                                  title="Phê duyệt"
+                                  onClick={() => { handleAction(item.id, "Chờ mua hàng"); setOpenMenuId(null); }}
+                                >
+                                  <Check size={15} style={{ color: "#22c55e" }} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="icon-action-btn danger"
+                                  title="Từ chối"
+                                  onClick={() => { handleAction(item.id, "Tạo mới"); setOpenMenuId(null); }}
+                                >
+                                  <X size={15} style={{ color: "#ef4444" }} />
+                                </button>
+                              </>
+                            ) : (
+                              <span style={{ fontSize: "0.85rem", padding: "0 0.5rem", color: "#64748b", whiteSpace: "nowrap" }}>
+                                {(item.status === "Chờ mua hàng" || item.status === "Đã phê duyệt") ? "Đã duyệt" : "Từ chối"}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td style={{ fontWeight: 600, color: "#2563eb" }}>{item.poCode}</td>
                       <td>{item.creator}</td>
@@ -159,7 +212,7 @@ export default function PurchasingApprovalPage() {
         {selectedPO && (
           <div className="card" style={{ display: "flex", flexDirection: "column", padding: 0, animation: "slideInRight 0.3s ease" }}>
             <div style={{ padding: "1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
-              <h3 style={{ margin: 0 }}>Chi tiết lệnh mua</h3>
+              <h3 style={{ margin: 0 }}>Chi tiết đơn mua hàng</h3>
               <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                 <button className="btn btn-sm btn-outline" onClick={() => setHistoryRecordId(selectedPO.id)}>
                   <History size={14} style={{ marginRight: "4px" }} /> Lịch sử
@@ -167,7 +220,7 @@ export default function PurchasingApprovalPage() {
                 <button className="btn-icon" onClick={() => setSelectedPO(null)}><X size={20} /></button>
               </div>
             </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
+            <div style={{ padding: "1.25rem" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
                 <DetailItem icon={<FileText size={14}/>} label="Mã lệnh" value={selectedPO.poCode} color="#2563eb" />
                 <DetailItem icon={<Calendar size={14}/>} label="Ngày đề nghị" value={new Date(selectedPO.requestedDate).toLocaleDateString("vi-VN")} />

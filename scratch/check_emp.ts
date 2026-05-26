@@ -8,7 +8,7 @@ async function main() {
   })
   console.log("Employee:", emp)
   
-  const contracts = await prisma.laborContract.findMany({
+  const contracts = await (prisma as any).laborcontract.findMany({
     where: { employeeName: "Trần Văn Thương" }
   })
   console.log("Contracts:", contracts)

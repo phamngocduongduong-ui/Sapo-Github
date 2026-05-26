@@ -52,8 +52,9 @@ export async function getUnits() {
 export async function createProduct(formData: FormData) {
   const code = formData.get("code") as string;
   const name = formData.get("name") as string;
+  const englishName = formData.get("englishName") as string;
+  const packaging = formData.get("packaging") as string;
   const categoryId = formData.get("categoryId") as string;
-  const status = formData.get("status") as string;
   const note = formData.get("note") as string;
   const unitIds = formData.getAll("unitIds") as string[];
   const warehouseId = formData.get("warehouseId") as string;
@@ -62,9 +63,11 @@ export async function createProduct(formData: FormData) {
     data: {
       code,
       name,
+      englishName: englishName || null,
+      packaging: packaging || null,
       categoryId,
       warehouseId: warehouseId || null,
-      status,
+      status: "Hoạt động",
       note,
       unit: {
         connect: unitIds.map(id => ({ id }))
@@ -86,6 +89,8 @@ export async function updateProduct(id: string, formData: FormData) {
   
   const code = formData.get("code") as string;
   const name = formData.get("name") as string;
+  const englishName = formData.get("englishName") as string;
+  const packaging = formData.get("packaging") as string;
   const categoryId = formData.get("categoryId") as string;
   const status = formData.get("status") as string;
   const note = formData.get("note") as string;
@@ -97,6 +102,8 @@ export async function updateProduct(id: string, formData: FormData) {
     data: {
       code,
       name,
+      englishName: englishName || null,
+      packaging: packaging || null,
       categoryId,
       warehouseId: warehouseId || null,
       status,
@@ -128,6 +135,97 @@ export async function updateProductStatus(id: string, status: string) {
 
 export async function deleteProduct(id: string) {
   const oldProduct = await prisma.product.findUnique({ where: { id } });
+  if (!oldProduct) {
+    throw new Error("Sản phẩm không tồn tại!");
+  }
+
+  // 1. Check if used in Order Items
+  const orderItemCount = await prisma.orderitem.count({
+    where: { productName: oldProduct.name }
+  });
+  if (orderItemCount > 0) {
+    throw new Error("Không thể xóa sản phẩm này vì đã được sử dụng trong Đơn hàng!");
+  }
+
+  // 2. Check if used in Production Plan Items
+  const prodPlanItemCount = await (prisma as any).productionplanitem.count({
+    where: {
+      OR: [
+        { product: oldProduct.name },
+        { product: oldProduct.code }
+      ]
+    }
+  });
+  if (prodPlanItemCount > 0) {
+    throw new Error("Không thể xóa sản phẩm này vì đã được sử dụng trong Kế hoạch sản xuất!");
+  }
+
+  // 3. Check if used in Purchase Order Details
+  const poDetailCount = await prisma.purchaseorderdetail.count({
+    where: {
+      OR: [
+        { productCode: oldProduct.code },
+        { productName: oldProduct.name }
+      ]
+    }
+  });
+  if (poDetailCount > 0) {
+    throw new Error("Không thể xóa sản phẩm này vì đã được sử dụng trong Đơn mua hàng (PO)!");
+  }
+
+  // 4. Check if used in Purchase Invoice Details
+  const piDetailCount = await prisma.purchaseinvoicedetail.count({
+    where: {
+      OR: [
+        { productCode: oldProduct.code },
+        { productName: oldProduct.name }
+      ]
+    }
+  });
+  if (piDetailCount > 0) {
+    throw new Error("Không thể xóa sản phẩm này vì đã được sử dụng trong Hóa đơn mua hàng!");
+  }
+
+  // 5. Check if used in Finished Goods Stock
+  const stockCount = await prisma.finishedgoodsstock.count({
+    where: { productCode: oldProduct.code }
+  });
+  if (stockCount > 0) {
+    throw new Error("Không thể xóa sản phẩm này vì đã được sử dụng trong Tồn kho thành phẩm!");
+  }
+
+  // 6. Check if used in Finished Goods Receipt Details
+  const receiptDetailCount = await prisma.finishedgoodsreceiptdetail.count({
+    where: { productCode: oldProduct.code }
+  });
+  if (receiptDetailCount > 0) {
+    throw new Error("Không thể xóa sản phẩm này vì đã được sử dụng trong Phiếu nhập kho thành phẩm!");
+  }
+
+  // 7. Check if used in Finished Goods Issue Details
+  const issueDetailCount = await prisma.finishedgoodsissuedetail.count({
+    where: { productCode: oldProduct.code }
+  });
+  if (issueDetailCount > 0) {
+    throw new Error("Không thể xóa sản phẩm này vì đã được sử dụng trong Phiếu xuất kho thành phẩm!");
+  }
+
+  // 8. Check if used in Warehouse Log Details
+  const logDetailCount = await prisma.warehouselogdetail.count({
+    where: { productCode: oldProduct.code }
+  });
+  if (logDetailCount > 0) {
+    throw new Error("Không thể xóa sản phẩm này vì đã được sử dụng trong Nhật ký kho hàng!");
+  }
+
+  // 9. Check if used in Contract Items
+  const contractItemCount = await prisma.contractitem.count({
+    where: { productCode: oldProduct.code }
+  });
+  if (contractItemCount > 0) {
+    throw new Error("Không thể xóa sản phẩm này vì đã được sử dụng trong Hợp đồng mua bán!");
+  }
+
   await prisma.product.delete({ where: { id } });
 
   await createAuditLog("Product", id, "DELETE", oldProduct, null, `Xóa sản phẩm: ${oldProduct?.name}`);

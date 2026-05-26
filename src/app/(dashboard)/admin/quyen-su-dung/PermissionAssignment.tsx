@@ -8,6 +8,17 @@ import { saveCategoryPermissions, getCategoryPermissions } from "./actions";
 
 const MODULES = [
   {
+    key: "CA_NHAN",
+    label: "👤 Cá nhân",
+    children: [
+      { key: "CN_HO_SO", label: "Hồ sơ" },
+      { key: "CN_CHAM_CONG", label: "Chấm công" },
+      { key: "CN_NGHI_PHEP", label: "Nghỉ phép" },
+      { key: "CN_NGHI_VIEC", label: "Nghỉ việc" },
+      { key: "CN_TRA_CUU_LUONG", label: "Tra cứu lương" },
+    ]
+  },
+  {
     key: "DANH_MUC",
     label: "📦 Danh mục",
     children: [
@@ -22,6 +33,7 @@ const MODULES = [
       { key: "DM_DON_VI_TINH", label: "Đơn vị tính" },
       { key: "DM_KHO_HANG", label: "Kho hàng" },
       { key: "DM_VI_TRI", label: "Vị trí kho" },
+      { key: "LB_KHU_VUC", label: "Địa điểm chấm công" },
     ]
   },
   {
@@ -30,10 +42,9 @@ const MODULES = [
     children: [
       { key: "NS_NHAN_VIEN", label: "Nhân viên" },
       { key: "NS_HOP_DONG", label: "Hợp đồng lao động" },
-      { key: "NS_NGHI_PHEP", label: "Nghỉ phép" },
       { key: "NS_DIEU_DONG", label: "Thuyên chuyển, Bổ nhiệm" },
-      { key: "NS_NGHI_VIEC", label: "Nghỉ việc" },
       { key: "NS_APPROVE", label: "Phê duyệt" },
+      { key: "NS_BAO_CAO", label: "Báo cáo" },
     ]
   },
   {
@@ -42,7 +53,6 @@ const MODULES = [
     children: [
       { key: "LB_CHAM_CONG", label: "Chấm công" },
       { key: "NS_BANG_LUONG", label: "Bảng lương" },
-      { key: "NS_TRA_CUU_LUONG", label: "Tra cứu lương" },
       { key: "NS_TANG_GIAM_LUONG", label: "Tăng/Giảm lương" },
       { key: "NS_BAC_LUONG", label: "Bậc lương" },
     ]
@@ -51,6 +61,7 @@ const MODULES = [
     key: "KINH_DOANH",
     label: "💰 Kinh doanh",
     children: [
+      { key: "KD_HOP_DONG", label: "Hợp đồng" },
       { key: "KD_DON_HANG", label: "Đơn hàng" },
     ]
   },
@@ -58,8 +69,7 @@ const MODULES = [
     key: "THU_MUA",
     label: "🛒 Mua hàng",
     children: [
-      { key: "TM_KE_HOACH", label: "Kế hoạch Thu mua" },
-      { key: "TM_LENH_MUA", label: "Lệnh mua" },
+      { key: "TM_LENH_MUA", label: "Đơn mua hàng" },
       { key: "TM_APPROVE", label: "Phê duyệt" },
       { key: "TM_DON_MUA", label: "Đơn mua" },
       { key: "TM_DIEU_DONG", label: "Lệnh điều động" },
@@ -70,7 +80,17 @@ const MODULES = [
     key: "SAN_XUAT",
     label: "🏗️ Sản xuất",
     children: [
+      { key: "SX_DON_SAN_XUAT", label: "Đơn sản xuất" },
+      { key: "SX_KE_HOACH_GIAO", label: "Kế hoạch giao" },
       { key: "SX_VAT_TU", label: "Kế hoạch vật tư" },
+    ]
+  },
+  {
+    key: "BAO_TRI",
+    label: "🛠️ Bảo trì",
+    children: [
+      { key: "BT_DE_NGHI_MUA", label: "Đề nghị mua" },
+      { key: "BT_PHE_DUYET", label: "Phê duyệt" },
     ]
   },
   {
@@ -102,12 +122,36 @@ const MODULES = [
 ];
 
 
+const ALL_KEYS: string[] = [];
+MODULES.forEach(m => {
+  ALL_KEYS.push(m.key);
+  m.children.forEach(c => {
+    ALL_KEYS.push(c.key);
+  });
+});
+
 export default function PermissionAssignment({ categories }: { categories: any[] }) {
   const router = useRouter();
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const areAllSelected = ALL_KEYS.length > 0 && ALL_KEYS.every(key => permissions[key] === true);
+
+  function handleToggleAll() {
+    if (areAllSelected) {
+      setPermissions({});
+    } else {
+      const allPerms: Record<string, boolean> = {};
+      ALL_KEYS.forEach(key => {
+        allPerms[key] = true;
+      });
+      setPermissions(allPerms);
+    }
+  }
 
   useEffect(() => {
     if (selectedCategoryId) {
@@ -116,6 +160,20 @@ export default function PermissionAssignment({ categories }: { categories: any[]
       setPermissions({});
     }
   }, [selectedCategoryId]);
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   async function loadPermissions(permissionId: string) {
     setLoading(true);
@@ -154,7 +212,6 @@ export default function PermissionAssignment({ categories }: { categories: any[]
     setPermissions(prev => ({ ...prev, [childKey]: checked }));
   }
 
-
   function handleSave() {
     if (!selectedCategoryId) return;
     const permList = Object.entries(permissions).map(([moduleKey, canAccess]) => ({
@@ -165,141 +222,428 @@ export default function PermissionAssignment({ categories }: { categories: any[]
     startTransition(async () => {
       try {
         await saveCategoryPermissions(selectedCategoryId, permList);
-        alert("Đã lưu phân quyền thành công cho mục quyền!");
+        setSuccess("Đã lưu phân quyền thành công cho mục quyền!");
       } catch (err: any) {
-        alert(err.message);
+        setError(err.message || "Lỗi khi lưu phân quyền.");
       }
     });
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      <div className="card" style={{ padding: "1.5rem" }}>
-        <label className="filter-label" style={{ marginBottom: "0.5rem", display: "block" }}>🛡️ Chọn Mục quyền để phân quyền</label>
-        <select 
-          className="input" 
-          style={{ maxWidth: "400px" }}
-          value={selectedCategoryId}
-          onChange={(e) => setSelectedCategoryId(e.target.value)}
-        >
-          <option value="">-- Chọn mục quyền --</option>
-          {categories.map(c => (
-            <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-          ))}
-        </select>
+    <div className="perm-page-container">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .perm-page-container {
+          width: 100%;
+        }
+        .perm-layout {
+          display: flex;
+          gap: 1.5rem;
+          width: 100%;
+          font-family: "Segoe UI", -apple-system, sans-serif;
+          font-size: 13px;
+          padding: 10px 0px 10px 0px;
+        }
+        .perm-layout input,
+        .perm-layout select,
+        .perm-layout button,
+        .perm-layout table,
+        .perm-layout td,
+        .perm-layout th,
+        .perm-layout label,
+        .perm-layout .badge,
+        .perm-layout .blue-panel-header,
+        .perm-page-container .breadcrumb-banner {
+          font-size: 13px !important;
+        }
+        .breadcrumb-banner {
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          display: block;
+          border-radius: 0 !important;
+          margin-top: 0;
+          margin-left: -10px;
+          margin-right: -10px;
+        }
+        .panel-left {
+          flex: 0 0 40%;
+          min-width: 450px;
+        }
+        .panel-right {
+          flex: 1 1 60%;
+          min-width: 300px;
+        }
+        @media (max-width: 1024px) {
+          .perm-layout {
+            flex-direction: column;
+          }
+          .panel-left, .panel-right {
+            flex: 1 1 100%;
+            min-width: unset !important;
+          }
+        }
+        .blue-panel {
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          background: #ffffff;
+          overflow: hidden;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        }
+        .blue-panel-header {
+          background-color: #003466;
+          color: #ffffff;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          font-size: 0.95rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          border-bottom: 2px solid #ff5c00;
+        }
+        .blue-panel-body {
+          padding: 10px;
+        }
+        .search-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 5px 0px 10px 0px;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+        .sapo-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          border-radius: 4px;
+          font-weight: 400;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: background-color 0.2s, transform 0.1s;
+          border: none;
+        }
+        .sapo-btn:hover {
+          background-color: #002244;
+        }
+        .sapo-btn:active {
+          transform: scale(0.98);
+        }
+        .sapo-btn-secondary {
+          background-color: #475569;
+        }
+        .sapo-btn-secondary:hover {
+          background-color: #334155;
+        }
+        .row-selected {
+          background-color: #eff6ff !important;
+        }
+        .row-hoverable:hover {
+          background-color: #f8fafc;
+          cursor: pointer;
+        }
+        .table th,
+        .table td {
+          padding-top: 6px !important;
+          padding-bottom: 6px !important;
+        }
+        .table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          text-align: center !important;
+        }
+        .perm-table-container {
+          width: 100% !important;
+          overflow-x: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+        @media (max-width: 768px) {
+          .perm-page-container {
+            max-width: 100% !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+          }
+          .perm-layout {
+            max-width: 100% !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
+            gap: 1rem !important;
+            padding: 10px 0 !important;
+            box-sizing: border-box !important;
+            flex-direction: column !important;
+          }
+          .panel-left, .panel-right {
+            flex: none !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .blue-panel {
+            min-width: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+          }
+          .blue-panel-body {
+            min-width: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            overflow: visible !important;
+          }
+          .perm-table-container {
+            margin-left: 0px !important;
+            overflow: auto !important;
+            overflow-y: hidden !important;
+            -webkit-overflow-scrolling: touch !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            display: block !important;
+            box-sizing: border-box !important;
+          }
+          .perm-table-container table {
+            min-width: 480px !important;
+            width: 100% !important;
+            table-layout: auto !important;
+          }
+        }
+        .placeholder-box {
+          background: #f8fafc;
+          border: 1px dashed #cbd5e1;
+          color: #64748b;
+          padding: 2rem;
+          border-radius: 6px;
+          text-align: center;
+          font-size: 0.95rem;
+          font-weight: 600;
+          margin: 20px 0;
+        }
+      ` }} />
+
+      <div className="breadcrumb-banner">
+        QUẢN LÝ PHÂN QUYỀN
       </div>
 
-      {selectedCategoryId && (
-        <div className="card" style={{ padding: "1.5rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-            <h3 style={{ margin: 0 }}>📋 Chi tiết phân quyền cho mục quyền</h3>
-            <div style={{ display: "flex", gap: "0.75rem" }}>
-              <button className="btn btn-outline" onClick={() => {
-                const allPerms: Record<string, boolean> = {};
-                MODULES.forEach(m => {
-                  allPerms[m.key] = true;
-                  m.children.forEach(c => {
-                    allPerms[c.key] = true;
-                  });
-                });
-                setPermissions(allPerms);
-              }}>
-                ✅ Chọn tất cả
-              </button>
-              <button className="btn btn-outline" onClick={() => router.refresh()}>
-                <RotateCcw size={18} style={{ marginRight: "6px" }} /> Làm mới
-              </button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={isPending}>
-                {isPending ? "Đang lưu..." : "💾 Lưu phân quyền"}
-              </button>
-            </div>
-          </div>
-
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: "300px" }}>Phân hệ</th>
-                  <th style={{ width: "100px", textAlign: "center" }}>Truy cập</th>
-                  <th>Ghi chú</th>
-                </tr>
-              </thead>
+      <div className="perm-layout">
+        {/* Left Panel: List of Permission Groups */}
+        <div className="panel-left">
+          <div className="blue-panel">
+            <div className="blue-panel-header">Danh sách Mục quyền</div>
+            <div className="blue-panel-body">
+              <div className="perm-table-container">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: "60px", textTransform: "uppercase", fontWeight: 700, color: "#003466" }}>STT</th>
+                      <th style={{ textTransform: "uppercase", fontWeight: 700, color: "#003466" }}>Mã mục quyền</th>
+                      <th style={{ textTransform: "uppercase", fontWeight: 700, color: "#003466" }}>Tên mục quyền</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {loading ? (
+                    {categories.length === 0 ? (
                       <tr>
-                        <td colSpan={3} style={{ textAlign: "center", padding: "3rem" }}>
-                          <div className="loader" style={{ margin: "0 auto" }}></div>
-                          <p style={{ marginTop: "1rem", color: "#64748b" }}>Đang tải dữ liệu quyền...</p>
+                        <td colSpan={3} style={{ textAlign: "center", color: "#888", padding: "2rem" }}>
+                          Không tìm thấy mục quyền nào
                         </td>
                       </tr>
                     ) : (
-                      MODULES.map(parent => {
-                        const isParentChecked = permissions[parent.key] || false;
+                      categories.map((c, idx) => {
+                        const isSelected = selectedCategoryId === c.id;
                         return (
-                          <React.Fragment key={parent.key}>
-                            <tr style={{ background: "#f8fafc" }}>
-                              <td style={{ fontWeight: "700", color: "var(--primary-color)" }}>
-                                <label 
-                                  htmlFor={`parent-${parent.key}`} 
-                                  style={{ cursor: "pointer", display: "flex", alignItems: "center", width: "100%", height: "100%" }}
-                                >
-                                  {parent.label}
-                                </label>
-                              </td>
-                              <td style={{ textAlign: "center" }}>
-                                <input 
-                                  id={`parent-${parent.key}`}
-                                  type="checkbox" 
-                                  checked={isParentChecked}
-                                  onChange={(e) => handleParentToggle(parent.key, e.target.checked)}
-                                  style={{ width: "20px", height: "20px", cursor: "pointer" }}
-                                />
-                              </td>
-                              <td style={{ fontSize: "0.85rem", color: "#64748b" }}>Phân hệ mẹ</td>
-                            </tr>
-                            {parent.children.map(child => {
-                              const isChildChecked = permissions[child.key] || false;
-                              return (
-                                <tr key={child.key} style={{ opacity: isParentChecked ? 1 : 0.6 }}>
-                                  <td style={{ paddingLeft: "2.5rem" }}>
-                                    <label 
-                                      htmlFor={`child-${child.key}`} 
-                                      style={{ cursor: isParentChecked ? "pointer" : "not-allowed", display: "block", width: "100%" }}
-                                    >
-                                      {child.label}
-                                    </label>
-                                  </td>
-                                  <td style={{ textAlign: "center" }}>
-                                    <input 
-                                      id={`child-${child.key}`}
-                                      type="checkbox" 
-                                      checked={isChildChecked}
-                                      disabled={!isParentChecked}
-                                      onChange={(e) => handleChildToggle(child.key, e.target.checked)}
-                                      style={{ width: "18px", height: "18px", cursor: isParentChecked ? "pointer" : "not-allowed" }}
-                                    />
-                                  </td>
-                                  <td style={{ fontSize: "0.85rem", color: "#94a3b8" }}>
-                                    {!isParentChecked && "Bị khóa bởi phân hệ mẹ"}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </React.Fragment>
+                          <tr 
+                            key={c.id} 
+                            className={`row-hoverable ${isSelected ? "row-selected" : ""}`}
+                            onClick={() => setSelectedCategoryId(c.id)}
+                          >
+                            <td style={{ textAlign: "center" }}>{idx + 1}</td>
+                            <td style={{ fontWeight: 700, color: "#003466" }}>{c.code}</td>
+                            <td>{c.name}</td>
+                          </tr>
                         );
                       })
                     )}
                   </tbody>
-
-
-
-            </table>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Right Panel: Detailed Assignment Checklist */}
+        <div className="panel-right">
+          <div className="blue-panel">
+            <div className="blue-panel-header">Chi tiết phân quyền cho mục quyền</div>
+            <div className="blue-panel-body">
+              {!selectedCategoryId ? (
+                <div className="placeholder-box">
+                  💡 Vui lòng chọn mục quyền ở danh sách bên trái để phân quyền.
+                </div>
+              ) : (
+                <>
+                  <div className="search-container">
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                      <button 
+                        type="button"
+                        className="sapo-btn" 
+                        onClick={handleToggleAll}
+                      >
+                        {areAllSelected ? "Hủy chọn" : "Chọn tất cả"}
+                      </button>
+
+                      <button 
+                        type="button"
+                        className="sapo-btn" 
+                        onClick={handleSave} 
+                        disabled={isPending}
+                      >
+                        {isPending ? "Đang lưu..." : "Lưu"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="perm-table-container">
+                    <table className="table" style={{ width: "100%" }}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: "250px", textAlign: "left", textTransform: "uppercase", fontWeight: 700, color: "#003466" }}>Phân hệ</th>
+                          <th style={{ width: "100px", textAlign: "center", textTransform: "uppercase", fontWeight: 700, color: "#003466" }}>Truy cập</th>
+                          <th style={{ textAlign: "left", textTransform: "uppercase", fontWeight: 700, color: "#003466" }}>Ghi chú</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loading ? (
+                          <tr>
+                            <td colSpan={3} style={{ textAlign: "center", padding: "3rem" }}>
+                              <div className="loader" style={{ margin: "0 auto" }}></div>
+                              <p style={{ marginTop: "1rem", color: "#64748b" }}>Đang tải dữ liệu quyền...</p>
+                            </td>
+                          </tr>
+                        ) : (
+                          MODULES.map(parent => {
+                            const isParentChecked = permissions[parent.key] || false;
+                            return (
+                              <React.Fragment key={parent.key}>
+                                <tr style={{ background: "#f8fafc" }}>
+                                  <td style={{ fontWeight: "700", color: "#003466", textAlign: "left" }}>
+                                    <label 
+                                      htmlFor={`parent-${parent.key}`} 
+                                      style={{ cursor: "pointer", display: "flex", alignItems: "center", width: "100%", height: "100%" }}
+                                    >
+                                      {parent.label}
+                                    </label>
+                                  </td>
+                                  <td style={{ textAlign: "center" }}>
+                                    <input 
+                                      id={`parent-${parent.key}`}
+                                      type="checkbox" 
+                                      checked={isParentChecked}
+                                      onChange={(e) => handleParentToggle(parent.key, e.target.checked)}
+                                      style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                                    />
+                                  </td>
+                                  <td style={{ fontSize: "0.85rem", color: "#64748b", textAlign: "left" }}>Phân hệ mẹ</td>
+                                </tr>
+                                {parent.children.map(child => {
+                                  const isChildChecked = permissions[child.key] || false;
+                                  return (
+                                    <tr key={child.key} style={{ opacity: isParentChecked ? 1 : 0.6 }}>
+                                      <td style={{ paddingLeft: "2.5rem", textAlign: "left" }}>
+                                        <label 
+                                          htmlFor={`child-${child.key}`} 
+                                          style={{ cursor: isParentChecked ? "pointer" : "not-allowed", display: "block", width: "100%" }}
+                                        >
+                                          {child.label}
+                                        </label>
+                                      </td>
+                                      <td style={{ textAlign: "center" }}>
+                                        <input 
+                                          id={`child-${child.key}`}
+                                          type="checkbox" 
+                                          checked={isChildChecked}
+                                          disabled={!isParentChecked}
+                                          onChange={(e) => handleChildToggle(child.key, e.target.checked)}
+                                          style={{ width: "16px", height: "16px", cursor: isParentChecked ? "pointer" : "not-allowed" }}
+                                        />
+                                      </td>
+                                      <td style={{ fontSize: "0.85rem", color: "#94a3b8", textAlign: "left" }}>
+                                        {!isParentChecked && "Bị khóa bởi phân hệ mẹ"}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </React.Fragment>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Toast Notification */}
+      {(success || error) && (
+        <div style={{
+          position: "fixed",
+          top: "80px",
+          right: "20px",
+          zIndex: 9999,
+          pointerEvents: "none"
+        }}>
+          {success && (
+            <div style={{
+              background: "#ecfdf5",
+              color: "#065f46",
+              border: "1px solid #a7f3d0",
+              padding: "0.75rem 1.25rem",
+              borderRadius: "6px",
+              boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              pointerEvents: "auto",
+              marginBottom: "10px",
+              minWidth: "250px"
+            }}>
+              <span>✅</span>
+              <div>{success}</div>
+            </div>
+          )}
+          {error && (
+            <div style={{
+              background: "#fef2f2",
+              color: "#991b1b",
+              border: "1px solid #fecaca",
+              padding: "0.75rem 1.25rem",
+              borderRadius: "6px",
+              boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              pointerEvents: "auto",
+              marginBottom: "10px",
+              minWidth: "250px"
+            }}>
+              <span>⚠️</span>
+              <div>{error}</div>
+            </div>
+          )}
+        </div>
       )}
-      <style>{`
-        .filter-label { font-size: 0.9rem; font-weight: 600; color: #64748b; }
-      `}</style>
     </div>
   );
 }

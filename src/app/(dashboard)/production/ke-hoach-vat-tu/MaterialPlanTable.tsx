@@ -163,26 +163,46 @@ export default function MaterialPlanTable({ initialPlans, pendingItems, currentU
                       </button>
 
                       {openMenuId === plan.id && (
-                        <div className="action-dropdown" onClick={(e) => e.stopPropagation()}>
+                        <div className="horizontal-action-dropdown" onClick={(e) => e.stopPropagation()}>
                           {plan.status !== "Đã duyệt" && (
-                            <div className="dropdown-item" onClick={() => { handleEdit(plan); setOpenMenuId(null); }}>
-                              <Pencil size={14} /> Chỉnh sửa
-                            </div>
+                            <button
+                              type="button"
+                              className="icon-action-btn"
+                              title="Chỉnh sửa"
+                              onClick={() => { handleEdit(plan); setOpenMenuId(null); }}
+                            >
+                              <Pencil size={15} style={{ color: "#d97706" }} />
+                            </button>
                           )}
-                          <div className="dropdown-item" onClick={() => { setHistoryRecordId(plan.id); setOpenMenuId(null); }}>
-                            <History size={14} /> Lịch sử
-                          </div>
+                          <button
+                            type="button"
+                            className="icon-action-btn"
+                            title="Lịch sử"
+                            onClick={() => { setHistoryRecordId(plan.id); setOpenMenuId(null); }}
+                          >
+                            <History size={15} style={{ color: "#64748b" }} />
+                          </button>
                           
                           {plan.status === "Tạo mới" && (
-                            <div className="dropdown-item success" onClick={() => handleStatusChange(plan.id, "Đã duyệt", `số ${plan.planNumber}`)}>
-                              <CheckCircle size={14} /> Phê duyệt
-                            </div>
+                            <button
+                              type="button"
+                              className="icon-action-btn"
+                              title="Phê duyệt"
+                              onClick={() => { handleStatusChange(plan.id, "Đã duyệt", `số ${plan.planNumber}`); setOpenMenuId(null); }}
+                            >
+                              <CheckCircle size={15} style={{ color: "#22c55e" }} />
+                            </button>
                           )}
                           
                           {plan.status === "Đã duyệt" && (
-                            <div className="dropdown-item warning" onClick={() => handleStatusChange(plan.id, "Tạo mới", `số ${plan.planNumber}`)}>
-                              <RotateCcw size={14} /> Thu hồi
-                            </div>
+                            <button
+                              type="button"
+                              className="icon-action-btn"
+                              title="Thu hồi"
+                              onClick={() => { handleStatusChange(plan.id, "Tạo mới", `số ${plan.planNumber}`); setOpenMenuId(null); }}
+                            >
+                              <RotateCcw size={15} style={{ color: "#ea580c" }} />
+                            </button>
                           )}
                         </div>
                       )}

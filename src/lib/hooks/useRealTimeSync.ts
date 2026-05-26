@@ -6,7 +6,8 @@ export function useRealTimeSync<T>(
   module: string,
   currentData: T[],
   onUpdate: (newData: T[]) => void,
-  intervalMs: number = 3000
+  intervalMs: number = 3000,
+  disabled: boolean = false
 ) {
   const dataRef = useRef(currentData);
   const onUpdateRef = useRef(onUpdate);
@@ -20,6 +21,8 @@ export function useRealTimeSync<T>(
   }, [onUpdate]);
 
   useEffect(() => {
+    if (disabled) return;
+
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/sync?module=${module}`);
@@ -43,5 +46,5 @@ export function useRealTimeSync<T>(
     }, intervalMs);
 
     return () => clearInterval(interval);
-  }, [module, intervalMs]); // onUpdate removed from dependencies
+  }, [module, intervalMs, disabled]); // onUpdate removed from dependencies
 }

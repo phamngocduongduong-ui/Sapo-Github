@@ -1,7 +1,17 @@
 import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/session";
 
 export default async function SalesPage() {
+  const session = await getSession();
+  const user = session?.userId
+    ? await prisma.user.findUnique({ where: { id: session.userId } })
+    : null;
+  const isStaff = user?.role?.includes("Nhân viên") && user?.username !== "admin" && user?.role !== "Admin";
+  const userName = user?.employeeName || user?.username || "";
+  const whereClause = isStaff ? { employeeName: userName } : {};
+
   const orders = await prisma.order.findMany({
+    where: whereClause,
     include: { orderitem: true },
     orderBy: { createdAt: 'desc' }
   });

@@ -10,8 +10,8 @@ export default async function QuocGiaPage() {
   `);
 
   return (
-    <main className="main-content" style={{ padding: "10px" }}>
+    <div style={{ width: "100%" }}>
       <CountryClient initialCountries={countries} />
-    </main>
+    </div>
   );
 }

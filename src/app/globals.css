@@ -2525,6 +2525,7 @@ select.input-base {
   margin-left: -10px !important;
   margin-right: -10px !important;
   margin-bottom: 20px !important;
+  width: calc(100% + 20px) !important;
   box-sizing: border-box !important;
 }
 

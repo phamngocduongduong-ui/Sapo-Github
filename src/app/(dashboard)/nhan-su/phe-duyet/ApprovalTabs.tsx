@@ -358,6 +358,8 @@ export default function ApprovalTabs({
           margin-left: -10px !important;
           margin-right: -10px !important;
           margin-bottom: 20px !important;
+          width: calc(100% + 20px) !important;
+          box-sizing: border-box !important;
           font-family: "Segoe UI", sans-serif !important;
         }
         .sapo-btn {

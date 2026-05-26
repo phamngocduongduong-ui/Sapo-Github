@@ -193,6 +193,8 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
           margin-left: -10px !important;
           margin-right: -10px !important;
           margin-bottom: 20px !important;
+          width: calc(100% + 20px) !important;
+          box-sizing: border-box !important;
         }
         .panel-full {
           flex: 1 1 100%;

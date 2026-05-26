@@ -354,8 +354,10 @@ export default function ApprovalTabs({
           font-weight: 700 !important;
           text-transform: uppercase !important;
           letter-spacing: 0.5px !important;
-          margin-top: 0px !important;
-          margin-bottom: 10px !important;
+          margin-top: -10px !important;
+          margin-left: -10px !important;
+          margin-right: -10px !important;
+          margin-bottom: 20px !important;
           font-family: "Segoe UI", sans-serif !important;
         }
         .sapo-btn {
@@ -364,7 +366,7 @@ export default function ApprovalTabs({
           border: none !important;
           padding: 6px 12px !important;
           font-size: 13px !important;
-          font-weight: 700 !important;
+          font-weight: 500 !important;
           border-radius: 4px !important;
           cursor: pointer !important;
           display: inline-flex !important;
@@ -390,7 +392,7 @@ export default function ApprovalTabs({
           border: 1px solid #cbd5e1 !important;
           border-radius: 6px !important;
           overflow-x: auto !important;
-          margin-top: 10px !important;
+          margin-top: 20px !important;
         }
         .base-table {
           width: 100% !important;
@@ -458,7 +460,7 @@ export default function ApprovalTabs({
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0 10px" }}>
         
         {/* Module Tabs */}
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "nowrap", alignItems: "center", overflowX: "auto" }}>
@@ -468,7 +470,7 @@ export default function ApprovalTabs({
               className={`sapo-btn ${activeTab === "contract" ? "" : "btn-outline"}`}
               style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
             >
-              📄 HĐ Lao động <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.contracts?.length || 0})</span>
+              HĐ Lao động <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.contracts?.length || 0})</span>
             </button>
           )}
 
@@ -479,28 +481,28 @@ export default function ApprovalTabs({
                 className={`sapo-btn ${activeTab === "leave" ? "" : "btn-outline"}`}
                 style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
               >
-                🏖️ Nghỉ phép <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.leaves?.length || 0})</span>
+                Nghỉ phép <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.leaves?.length || 0})</span>
               </button>
               <button
                 onClick={() => setActiveTab("resignation")}
                 className={`sapo-btn ${activeTab === "resignation" ? "" : "btn-outline"}`}
                 style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
               >
-                🚪 Nghỉ việc <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.resignations?.length || 0})</span>
+                Nghỉ việc <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.resignations?.length || 0})</span>
               </button>
               <button
                 onClick={() => setActiveTab("transfer")}
                 className={`sapo-btn ${activeTab === "transfer" ? "" : "btn-outline"}`}
                 style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
               >
-                🔄 Thuyên chuyển, bổ nhiệm <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.transfers?.length || 0})</span>
+                Thuyên chuyển, bổ nhiệm <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.transfers?.length || 0})</span>
               </button>
               <button
                 onClick={() => setActiveTab("salary")}
                 className={`sapo-btn ${activeTab === "salary" ? "" : "btn-outline"}`}
                 style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
               >
-                💰 Tăng, giảm lương <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.salaryChanges?.length || 0})</span>
+                Tăng, giảm lương <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.salaryChanges?.length || 0})</span>
               </button>
             </>
           )}
@@ -511,7 +513,7 @@ export default function ApprovalTabs({
               className={`sapo-btn ${activeTab === "sales_contract" ? "" : "btn-outline"}`}
               style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
             >
-              💼 HĐ Bán hàng <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.salesContracts?.length || 0})</span>
+              HĐ Bán hàng <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.salesContracts?.length || 0})</span>
             </button>
           )}
 
@@ -521,7 +523,7 @@ export default function ApprovalTabs({
               className={`sapo-btn ${activeTab === "payroll" ? "" : "btn-outline"}`}
               style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
             >
-              💳 Lương/thưởng <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.payrolls?.length || 0})</span>
+              Bảng lương/thưởng <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.payrolls?.length || 0})</span>
             </button>
           )}
 
@@ -531,7 +533,7 @@ export default function ApprovalTabs({
               className={`sapo-btn ${activeTab === "purchase_order" ? "" : "btn-outline"}`}
               style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
             >
-              💵 Thanh toán <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.purchaseOrders?.length || 0})</span>
+              Thanh toán <span style={{ marginLeft: "4px", opacity: 0.85 }}>({pending.purchaseOrders?.length || 0})</span>
             </button>
           )}
           
@@ -542,7 +544,7 @@ export default function ApprovalTabs({
             className={`sapo-btn ${activeTab === "all" ? "" : "btn-outline"}`}
             style={{ height: "32px", padding: "0 12px", borderRadius: "6px" }}
           >
-            ✅ Tất cả <span style={{ marginLeft: "4px", opacity: 0.85 }}>({flattenData(approved).length})</span>
+            Tất cả <span style={{ marginLeft: "4px", opacity: 0.85 }}>({flattenData(approved).length})</span>
           </button>
         </div>
 

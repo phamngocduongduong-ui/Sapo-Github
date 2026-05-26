@@ -2514,7 +2514,6 @@ select.input-base {
   }
 }
 
-/* Ensure the page breadcrumb banner stretches edge-to-edge (phủ hết 2 bên) */
 .breadcrumb-banner {
   background-color: #003466 !important;
   color: white !important;
@@ -2522,9 +2521,10 @@ select.input-base {
   font-weight: 700 !important;
   display: block !important;
   border-radius: 0 !important;
-  margin-top: 0 !important;
+  margin-top: -10px !important;
   margin-left: -10px !important;
   margin-right: -10px !important;
+  margin-bottom: 20px !important;
   box-sizing: border-box !important;
 }
 

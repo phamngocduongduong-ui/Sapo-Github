@@ -64,59 +64,64 @@ export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbed
   const currentItems = activeTab === "pending" ? pendingItems : processedItems;
 
   return (
-    <div style={isEmbedded ? { width: "100%", height: "auto", display: "flex", flexDirection: "column", gap: "1.5rem" } : { padding: "1.5rem", width: "100%", minHeight: "calc(100vh - 140px)", height: "auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <>
       {!isEmbedded && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <h1 className="page-title" style={{ margin: 0 }}>✅ Phê duyệt Đơn mua hàng</h1>
-            <p style={{ color: "#64748b", marginTop: "0.25rem" }}>Xét duyệt các yêu cầu mua hàng từ các chi nhánh</p>
-          </div>
-          <button className="btn btn-outline" onClick={() => fetchData()} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <RefreshCw size={18} /> Làm mới
-          </button>
+        <div className="breadcrumb-banner">
+          PHÊ DUYỆT MUA HÀNG
         </div>
       )}
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: isEmbedded ? "0" : "0 10px", width: "100%", minHeight: isEmbedded ? "auto" : "calc(100vh - 140px)", height: "auto" }}>
+        {!isEmbedded && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <p style={{ color: "#64748b", margin: 0 }}>Xét duyệt các yêu cầu mua hàng từ các chi nhánh</p>
+            </div>
+            <button className="btn btn-outline" onClick={() => fetchData()} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 500 }}>
+              Làm mới
+            </button>
+          </div>
+        )}
 
-      <div style={{ display: "flex", gap: "2rem", borderBottom: "1px solid #e2e8f0" }}>
-        <button 
-          onClick={() => setActiveTab("pending")}
-          style={{ 
-            padding: "0.75rem 0", 
-            borderBottom: activeTab === "pending" ? "3px solid #2563eb" : "3px solid transparent",
-            color: activeTab === "pending" ? "#2563eb" : "#64748b",
-            fontWeight: 600,
-            background: "none",
-            borderLeft: "none",
-            borderRight: "none",
-            borderTop: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem"
-          }}
-        >
-          <Clock size={18} /> Chờ phê duyệt ({pendingItems.length})
-        </button>
-        <button 
-          onClick={() => setActiveTab("processed")}
-          style={{ 
-            padding: "0.75rem 0", 
-            borderBottom: activeTab === "processed" ? "3px solid #2563eb" : "3px solid transparent",
-            color: activeTab === "processed" ? "#2563eb" : "#64748b",
-            fontWeight: 600,
-            background: "none",
-            borderLeft: "none",
-            borderRight: "none",
-            borderTop: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem"
-          }}
-        >
-          <CheckCircle2 size={18} /> Đã xử lý ({processedItems.length})
-        </button>
-      </div>
+        <div style={{ display: "flex", gap: "2rem", borderBottom: "1px solid #e2e8f0" }}>
+          <button 
+            onClick={() => setActiveTab("pending")}
+            style={{ 
+              padding: "0.75rem 0", 
+              borderBottom: activeTab === "pending" ? "3px solid #2563eb" : "3px solid transparent",
+              color: activeTab === "pending" ? "#2563eb" : "#64748b",
+              fontWeight: 500,
+              background: "none",
+              borderLeft: "none",
+              borderRight: "none",
+              borderTop: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem"
+            }}
+          >
+            Chờ phê duyệt ({pendingItems.length})
+          </button>
+          <button 
+            onClick={() => setActiveTab("processed")}
+            style={{ 
+              padding: "0.75rem 0", 
+              borderBottom: activeTab === "processed" ? "3px solid #2563eb" : "3px solid transparent",
+              color: activeTab === "processed" ? "#2563eb" : "#64748b",
+              fontWeight: 500,
+              background: "none",
+              borderLeft: "none",
+              borderRight: "none",
+              borderTop: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem"
+            }}
+          >
+            Đã xử lý ({processedItems.length})
+          </button>
+        </div>
 
       <div style={{ display: "grid", gridTemplateColumns: selectedPO ? "1fr 450px" : "1fr", gap: "1.5rem" }}>
         {/* Table Column */}
@@ -260,19 +265,19 @@ export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbed
               <div style={{ padding: "1.25rem", borderTop: "1px solid #f1f5f9", display: "flex", gap: "0.75rem", background: "#f8fafc" }}>
                 <button 
                   className="btn btn-primary" 
-                  style={{ flex: 1 }} 
+                  style={{ flex: 1, fontWeight: 500 }} 
                   onClick={() => handleAction(selectedPO.id, "Chờ thực hiện")}
                   disabled={isPending}
                 >
-                  <CheckCircle2 size={18} /> Phê duyệt
+                  Phê duyệt
                 </button>
                 <button 
                   className="btn btn-outline" 
-                  style={{ flex: 1, color: "#e11d48", borderColor: "#fecaca" }} 
+                  style={{ flex: 1, color: "#e11d48", borderColor: "#fecaca", fontWeight: 500 }} 
                   onClick={() => handleAction(selectedPO.id, "Tạo mới")}
                   disabled={isPending}
                 >
-                  <X size={18} /> Từ chối
+                  Từ chối
                 </button>
               </div>
             )}
@@ -288,13 +293,8 @@ export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbed
         />
       )}
 
-      <style jsx>{`
-        @keyframes slideInRight {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-      `}</style>
     </div>
+    </>
   );
 }
 

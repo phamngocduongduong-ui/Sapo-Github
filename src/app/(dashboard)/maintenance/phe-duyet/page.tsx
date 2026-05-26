@@ -189,9 +189,10 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
           font-weight: 700;
           display: block;
           border-radius: 0 !important;
-          margin-top: 0;
-          margin-left: -10px;
-          margin-right: -10px;
+          margin-top: -10px !important;
+          margin-left: -10px !important;
+          margin-right: -10px !important;
+          margin-bottom: 20px !important;
         }
         .panel-full {
           flex: 1 1 100%;
@@ -622,28 +623,31 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
         </div>
       )}
 
-      <div className="tab-nav-base">
-        <button
-          type="button"
-          className={`tab-btn-base ${activeTab === 1 ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab(1);
-            setSelectedProposalId(null);
-          }}
-        >
-          Chờ duyệt ({proposals.filter(p => p.status === "Chờ duyệt" && (!filterBranch || p.branch === filterBranch)).length})
-        </button>
-        <button
-          type="button"
-          className={`tab-btn-base ${activeTab === 2 ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab(2);
-            setSelectedProposalId(null);
-          }}
-        >
-          Đã duyệt ({proposals.filter(p => p.status === "Đã phê duyệt" && (!filterBranch || p.branch === filterBranch)).length})
-        </button>
-      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px", padding: isEmbedded ? "0" : "0 10px" }}>
+        <div className="tab-nav-base" style={{ margin: 0 }}>
+          <button
+            type="button"
+            className={`tab-btn-base ${activeTab === 1 ? "active" : ""}`}
+            onClick={() => {
+              setActiveTab(1);
+              setSelectedProposalId(null);
+            }}
+            style={{ fontWeight: 500 }}
+          >
+            Chờ duyệt ({proposals.filter(p => p.status === "Chờ duyệt" && (!filterBranch || p.branch === filterBranch)).length})
+          </button>
+          <button
+            type="button"
+            className={`tab-btn-base ${activeTab === 2 ? "active" : ""}`}
+            onClick={() => {
+              setActiveTab(2);
+              setSelectedProposalId(null);
+            }}
+            style={{ fontWeight: 500 }}
+          >
+            Đã duyệt ({proposals.filter(p => p.status === "Đã phê duyệt" && (!filterBranch || p.branch === filterBranch)).length})
+          </button>
+        </div>
 
       {/* Mobile filter toggle box */}
       <div 
@@ -696,8 +700,8 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
       <div className="maintenance-layout" style={{ paddingTop: "0px" }}>
         <div className="panel-full">
           <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "0px" }}>
-            <button className="btn btn-outline sapo-btn" onClick={fetchData} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <RefreshCw size={14} /> Làm mới
+            <button className="btn btn-outline sapo-btn" onClick={fetchData} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 500 }}>
+              Làm mới
             </button>
 
             {selectedProposalObj && (
@@ -1154,6 +1158,7 @@ export default function MaintenanceApprovalPage({ isEmbedded = false }: { isEmbe
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

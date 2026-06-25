@@ -1246,9 +1246,9 @@ export default function ContractTable({ initialContracts, customers: initialCust
                   <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Hợp đồng</th>
                   <th style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Khách hàng (Bên mua)</th>
                   <th style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>ĐK giao hàng</th>
+                  <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Trạng thái</th>
                   <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>PT thanh toán</th>
-                  <th className="nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Giá trị</th>
-                  <th className="th-last nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Trạng thái</th>
+                  <th className="th-last nowrap" style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Giá trị</th>
                 </tr>
               </thead>
           <tbody>
@@ -1283,12 +1283,6 @@ export default function ContractTable({ initialContracts, customers: initialCust
                     </div>
                   </td>
                   <td className="nowrap" style={{ textAlign: "center" }}>
-                    <div style={{ color: "#000", fontWeight: 600 }}>{contract.paymentMethod || "—"}</div>
-                  </td>
-                  <td className="nowrap" style={{ textAlign: "center", fontWeight: 600, color: "#2563eb" }}>
-                    ${formatLocaleNumber2Dec(contract.contractitem?.reduce((sum: number, item: any) => sum + (item.quantity * item.price), 0) || 0)}
-                  </td>
-                  <td className="nowrap" style={{ textAlign: "center" }}>
                     <span
                       className={`status-pill ${
                         contract.status === "Đã phê duyệt"
@@ -1302,6 +1296,12 @@ export default function ContractTable({ initialContracts, customers: initialCust
                     >
                       {contract.status}
                     </span>
+                  </td>
+                  <td className="nowrap" style={{ textAlign: "center" }}>
+                    <div style={{ color: "#000", fontWeight: 600 }}>{contract.paymentMethod || "—"}</div>
+                  </td>
+                  <td className="nowrap" style={{ textAlign: "center", fontWeight: 600, color: "#2563eb" }}>
+                    ${formatLocaleNumber2Dec(contract.contractitem?.reduce((sum: number, item: any) => sum + (item.quantity * item.price), 0) || 0)}
                   </td>
                 </tr>
                 {expandedContractId === contract.id && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { exportDatabase, importDatabase } from "./actions";
 import { Database, Download, Upload, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
 
@@ -11,6 +11,25 @@ export default function SaoLuuPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
+
+  // Handle auto-refresh countdown after successful restore
+  const [countdown, setCountdown] = useState(3);
+  const [showRestoreSuccessModal, setShowRestoreSuccessModal] = useState(false);
+
+  useEffect(() => {
+    if (!showRestoreSuccessModal) return;
+
+    if (countdown === 0) {
+      window.location.reload();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [showRestoreSuccessModal, countdown]);
 
   // Handle database backup download
   const handleBackup = () => {
@@ -93,11 +112,12 @@ export default function SaoLuuPage() {
           if (!res.success) {
             setError(res.error || "Lỗi trong quá trình khôi phục dữ liệu.");
           } else {
-            setSuccessMessage("Khôi phục cơ sở dữ liệu thành công! Hệ thống đã được khôi phục về trạng thái trước đó.");
             setRestoreFile(null);
             // Reset input
             const fileInput = document.getElementById("sql-file-input") as HTMLInputElement;
             if (fileInput) fileInput.value = "";
+            setShowRestoreSuccessModal(true);
+            setCountdown(3);
           }
         };
 
@@ -368,6 +388,84 @@ export default function SaoLuuPage() {
 
       </div>
 
+      {/* Restore Success Modal */}
+      {showRestoreSuccessModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          backgroundColor: "rgba(15, 23, 42, 0.75)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: "#ffffff",
+            padding: "2.5rem 2rem",
+            borderRadius: "16px",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            width: "100%",
+            maxWidth: "420px",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "1.25rem",
+            border: "1px solid #e2e8f0"
+          }}>
+            <div style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              backgroundColor: "#ecfdf5",
+              color: "#10b981",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <CheckCircle size={32} />
+            </div>
+
+            <div>
+              <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#065f46", marginBottom: "0.5rem" }}>
+                Khôi phục dữ liệu thành công!
+              </h3>
+              <p style={{ color: "#475569", fontSize: "13px", fontFamily: '"Segoe UI", -apple-system, sans-serif', lineHeight: "1.5" }}>
+                Dữ liệu hệ thống đã được phục hồi hoàn tất. Trang web sẽ tự động làm mới sau <strong>{countdown}</strong> giây để cập nhật lại giao diện...
+              </p>
+            </div>
+
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                width: "100%",
+                padding: "8px 16px",
+                borderRadius: "4px",
+                backgroundColor: "#003466",
+                color: "#ffffff",
+                border: "none",
+                fontWeight: 600,
+                fontSize: "13px",
+                fontFamily: '"Segoe UI", -apple-system, sans-serif',
+                cursor: "pointer",
+                transition: "background-color 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#002244";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#003466";
+              }}
+            >
+              Làm mới ngay
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

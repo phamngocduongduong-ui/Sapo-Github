@@ -46,13 +46,12 @@ export default function SaoLuuPage() {
       }
     });
   };
-
   // Handle file select
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      if (!file.name.endsWith(".sql")) {
-        setError("Vui lòng chỉ chọn các tập tin có đuôi mở rộng .sql");
+      if (!file.name.endsWith(".json") && !file.name.endsWith(".sql")) {
+        setError("Vui lòng chỉ chọn các tập tin có đuôi mở rộng .json hoặc .sql");
         setRestoreFile(null);
         return;
       }
@@ -65,7 +64,7 @@ export default function SaoLuuPage() {
   // Handle database restore
   const handleRestore = () => {
     if (!restoreFile) {
-      setError("Vui lòng chọn tập tin sao lưu (.sql) trước khi khôi phục.");
+      setError("Vui lòng chọn tập tin sao lưu (.json hoặc .sql) trước khi khôi phục.");
       return;
     }
 
@@ -215,7 +214,7 @@ export default function SaoLuuPage() {
                 </h3>
               </div>
               <p style={{ color: "#475569", lineHeight: "1.6", marginBottom: "1.5rem" }}>
-                Hệ thống sẽ chạy lệnh kết xuất database để đóng gói toàn bộ dữ liệu bao gồm cấu trúc bảng, bản ghi giao dịch, phân quyền của hệ thống trên máy chủ VPS thành một tập tin SQL và gửi về trình duyệt của bạn để lưu trữ về ổ đĩa cục bộ.
+                Hệ thống sẽ chạy kết xuất database để đóng gói toàn bộ dữ liệu bao gồm cấu trúc bảng, bản ghi giao dịch, phân quyền của hệ thống trên máy chủ VPS thành một tập tin sao lưu (JSON/SQL) và gửi về trình duyệt của bạn để lưu trữ về ổ đĩa cục bộ.
               </p>
             </div>
 
@@ -303,12 +302,12 @@ export default function SaoLuuPage() {
               {/* File Input */}
               <div style={{ marginBottom: "1.5rem" }}>
                 <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600 }}>
-                  Chọn tập tin sao lưu (.sql) *
+                  Chọn tập tin sao lưu (.json, .sql) *
                 </label>
                 <input
                   id="sql-file-input"
                   type="file"
-                  accept=".sql"
+                  accept=".json,.sql"
                   className="input"
                   onChange={handleFileChange}
                   disabled={isPendingBackup || isPendingRestore}

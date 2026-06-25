@@ -1,55 +1,38 @@
 "use server";
 
-import { exec } from "child_process";
-import { promisify } from "util";
-import fs from "fs";
-import path from "path";
-import os from "os";
+import { prisma } from "@/lib/db";
 
-const execAsync = promisify(exec);
-
-// Parse DATABASE_URL
-// Connection string pattern: mysql://<username>:<password>@<host>:<port>/<database>
-function parseDatabaseUrl() {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error("DATABASE_URL is not configured in the environment");
+// Date reviver for JSON.parse
+function reviveDates(key: string, value: any) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(value)) {
+    return new Date(value);
   }
-
-  const match = url.match(/mysql:\/\/([^:]+)(?::([^@]*))?@([^:]+)(?::(\d+))?\/([^?]+)/);
-  if (!match) {
-    throw new Error("Invalid DATABASE_URL format");
-  }
-
-  const [_, username, password = "", host, port = "3306", database] = match;
-  return { username, password, host, port, database };
+  return value;
 }
 
 export async function exportDatabase() {
   try {
-    const { username, password, host, port, database } = parseDatabaseUrl();
-    const tempFile = path.join(os.tmpdir(), `backup_${Date.now()}.sql`);
+    const keys = Object.keys(prisma);
+    const models = keys.filter(key => {
+      return (
+        prisma[key as keyof typeof prisma] &&
+        typeof (prisma[key as keyof typeof prisma] as any).findMany === 'function'
+      );
+    });
 
-    // Build the mysqldump command
-    // Use quotes around password to avoid shell expansion issues
-    let cmd = `mysqldump -u ${username} -h ${host} -P ${port}`;
-    if (password) {
-      cmd += ` -p"${password}"`;
+    const backup: Record<string, any[]> = {};
+    for (const model of models) {
+      const data = await (prisma[model as keyof typeof prisma] as any).findMany();
+      backup[model] = data;
     }
-    cmd += ` ${database} > "${tempFile}"`;
 
-    await execAsync(cmd);
-
-    // Read file and convert to base64
-    const content = await fs.promises.readFile(tempFile, "base64");
-
-    // Clean up temporary file
-    await fs.promises.unlink(tempFile);
+    const jsonString = JSON.stringify(backup);
+    const base64Content = Buffer.from(jsonString).toString("base64");
 
     return {
       success: true,
-      filename: `${database}_backup_${new Date().toISOString().replace(/[:.]/g, "-")}.sql`,
-      content
+      filename: `sapo_ems_backup_${new Date().toISOString().replace(/[:.]/g, "-")}.json`,
+      content: base64Content
     };
   } catch (error: any) {
     console.error("Export database error:", error);
@@ -62,24 +45,39 @@ export async function exportDatabase() {
 
 export async function importDatabase(base64Content: string) {
   try {
-    const { username, password, host, port, database } = parseDatabaseUrl();
-    const tempFile = path.join(os.tmpdir(), `restore_${Date.now()}.sql`);
+    const jsonString = Buffer.from(base64Content, "base64").toString("utf-8");
+    const parsedBackup = JSON.parse(jsonString, reviveDates);
 
-    // Write base64 back to sql file
-    const buffer = Buffer.from(base64Content, "base64");
-    await fs.promises.writeFile(tempFile, buffer);
+    const keys = Object.keys(prisma);
+    const models = keys.filter(key => {
+      return (
+        prisma[key as keyof typeof prisma] &&
+        typeof (prisma[key as keyof typeof prisma] as any).findMany === 'function'
+      );
+    });
 
-    // Build the mysql command
-    let cmd = `mysql -u ${username} -h ${host} -P ${port}`;
-    if (password) {
-      cmd += ` -p"${password}"`;
+    // Disable foreign key checks
+    await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0;");
+
+    try {
+      // Truncate all tables
+      for (const model of models) {
+        await (prisma[model as keyof typeof prisma] as any).deleteMany({});
+      }
+
+      // Restore all tables
+      for (const model of models) {
+        const records = parsedBackup[model];
+        if (records && records.length > 0) {
+          await (prisma[model as keyof typeof prisma] as any).createMany({
+            data: records
+          });
+        }
+      }
+    } finally {
+      // Re-enable foreign key checks
+      await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1;");
     }
-    cmd += ` ${database} < "${tempFile}"`;
-
-    await execAsync(cmd);
-
-    // Clean up temporary file
-    await fs.promises.unlink(tempFile);
 
     return { success: true };
   } catch (error: any) {

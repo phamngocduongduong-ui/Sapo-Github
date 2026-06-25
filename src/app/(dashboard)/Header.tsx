@@ -447,11 +447,7 @@ export default function Header({
 
             {dropdownOpen && (
               <div className="user-dropdown">
-                <Link href="/ca-nhan/ho-so" onClick={() => setDropdownOpen(false)} className="dropdown-item">Hồ sơ cá nhân</Link>
-                <Link href="/ca-nhan/cham-cong" onClick={() => setDropdownOpen(false)} className="dropdown-item">Chấm công</Link>
-                <Link href="/ca-nhan/nghi-phep" onClick={() => setDropdownOpen(false)} className="dropdown-item">Nghỉ phép</Link>
-                <Link href="/ca-nhan/nghi-viec" onClick={() => setDropdownOpen(false)} className="dropdown-item">Nghỉ việc</Link>
-                <Link href="/ca-nhan/tra-cuu-luong" onClick={() => setDropdownOpen(false)} className="dropdown-item">Tra cứu lương</Link>
+                <Link href="/ca-nhan/doi-mat-khau" onClick={() => setDropdownOpen(false)} className="dropdown-item">Đổi mật khẩu</Link>
               </div>
             )}
           </div>

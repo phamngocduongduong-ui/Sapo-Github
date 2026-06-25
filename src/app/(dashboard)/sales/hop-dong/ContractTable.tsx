@@ -1783,7 +1783,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                     </>
                   ) : null}
                   {/* Banking Info Section */}
-                  <div style={{ gridColumn: "1 / -1", margin: "15px 0 5px 0", borderBottom: "1px solid #e2e8f0", paddingBottom: "5px" }}>
+                  <div style={{ gridColumn: "1 / -1", margin: "0px 0 5px 0", borderBottom: "1px solid #e2e8f0", paddingBottom: "5px" }}>
                     <span style={{ fontWeight: 700, color: "#003466", fontSize: "12px", textTransform: "uppercase" }}>Thông tin ngân hàng</span>
                   </div>
 

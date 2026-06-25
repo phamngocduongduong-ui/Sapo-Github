@@ -2074,9 +2074,10 @@ export default function ContractTable({ initialContracts, customers: initialCust
                 {/* Tab 3: List of Goods */}
                 <div style={{ display: activeTab === 3 ? "block" : "none" }}>
                   <div style={{ overflowX: "auto", overflowY: "auto", height: "260px", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
-                    <table className="table tab3-goods-table" style={{ fontSize: "13px", width: "100%", minWidth: "1280px", tableLayout: "fixed" }}>
+                    <table className="table tab3-goods-table" style={{ fontSize: "13px", width: "100%", minWidth: "1330px", tableLayout: "fixed" }}>
                       <thead style={{ background: "#f8fafc" }}>
                         <tr>
+                          <th style={{ width: "50px", padding: "5px 6px", textAlign: "center" }}>STT</th>
                           <th style={{ width: "350px", padding: "5px 6px", textAlign: "center" }}>Mã / Tên sản phẩm <span style={{ color: "red" }}>(*)</span></th>
                           <th style={{ width: "80px", padding: "5px 6px", textAlign: "center" }}>Brix <span style={{ color: "red" }}>(*)</span></th>
                           <th style={{ width: "80px", padding: "5px 6px", textAlign: "center" }}>ĐVT <span style={{ color: "red" }}>(*)</span></th>
@@ -2091,6 +2092,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                         {items.map((item, idx) => {
                           return (
                             <tr key={idx}>
+                              <td style={{ padding: "5px 6px", textAlign: "center", verticalAlign: "middle", fontWeight: 600, color: "#475569" }}>{idx + 1}</td>
                               <td style={{ padding: "5px 6px", position: "relative" }}>
                                 {isViewMode ? (
                                   <input

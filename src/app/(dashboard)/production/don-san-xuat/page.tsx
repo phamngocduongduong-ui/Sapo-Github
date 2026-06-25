@@ -46,7 +46,6 @@ export default async function ProductionOrdersPage() {
       salesEmployees={salesEmployees.map(e => e.fullName)}
       currentUser={session?.employeeName || "Unknown"}
       contracts={JSON.parse(JSON.stringify(contracts))}
-      activeBranch={activeBranch || undefined}
     />
   );
 }

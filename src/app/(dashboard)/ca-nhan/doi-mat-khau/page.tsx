@@ -64,21 +64,30 @@ export default function DoiMatKhauPage() {
   };
 
   return (
-    <div style={{ padding: "2rem", width: "100%", display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: "450px", marginTop: "2rem" }}>
+    <div style={{
+      padding: "2rem 1rem",
+      width: "100%",
+      minHeight: "calc(100vh - 220px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: '"Segoe UI", -apple-system, sans-serif',
+      fontSize: "13px"
+    }}>
+      <div style={{ width: "100%", maxWidth: "450px" }}>
         
         {/* Page title */}
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#003466", marginBottom: "0.5rem" }}>
+        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          <h1 style={{ fontSize: "20px", fontWeight: 700, color: "#003466", marginBottom: "0.5rem", fontFamily: '"Segoe UI", -apple-system, sans-serif' }}>
             🔑 Đổi mật khẩu
           </h1>
-          <p style={{ color: "#64748b", fontSize: "0.95rem" }}>
+          <p style={{ color: "#64748b", fontSize: "13px", fontFamily: '"Segoe UI", -apple-system, sans-serif' }}>
             Cập nhật mật khẩu mới để bảo vệ tài khoản của bạn
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="card" style={{ padding: "2rem", border: "1px solid #e2e8f0", position: "relative" }}>
+        <div className="card" style={{ padding: "2rem", border: "1px solid #e2e8f0", borderRadius: "8px", position: "relative", backgroundColor: "#ffffff" }}>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
             
             {error && (
@@ -88,7 +97,8 @@ export default function DoiMatKhauPage() {
                 backgroundColor: "#fef2f2",
                 border: "1px solid #fee2e2",
                 color: "#991b1b",
-                fontSize: "0.875rem",
+                fontSize: "13px",
+                fontFamily: '"Segoe UI", -apple-system, sans-serif',
                 fontWeight: 500,
                 display: "flex",
                 alignItems: "center",
@@ -100,7 +110,7 @@ export default function DoiMatKhauPage() {
 
             {/* Input Mật khẩu mới */}
             <div>
-              <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600 }}>
+              <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "13px", fontFamily: '"Segoe UI", -apple-system, sans-serif' }}>
                 Mật khẩu mới *
               </label>
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
@@ -112,7 +122,7 @@ export default function DoiMatKhauPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isPending || success}
                   required
-                  style={{ paddingRight: "45px" }}
+                  style={{ paddingRight: "45px", fontSize: "13px", fontFamily: '"Segoe UI", -apple-system, sans-serif' }}
                 />
                 <button
                   type="button"
@@ -136,7 +146,7 @@ export default function DoiMatKhauPage() {
 
             {/* Input Nhập lại mật khẩu */}
             <div>
-              <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600 }}>
+              <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "13px", fontFamily: '"Segoe UI", -apple-system, sans-serif' }}>
                 Nhập lại mật khẩu mới *
               </label>
               <input
@@ -147,30 +157,41 @@ export default function DoiMatKhauPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isPending || success}
                 required
+                style={{ fontSize: "13px", fontFamily: '"Segoe UI", -apple-system, sans-serif' }}
               />
             </div>
 
             {/* Submit button */}
             <button
               type="submit"
-              className="btn-primary"
               disabled={isPending || success}
               style={{
                 width: "100%",
-                padding: "0.75rem",
-                borderRadius: "8px",
-                backgroundColor: isPending || success ? "#cbd5e1" : "#ff5c00",
+                padding: "8px 16px",
+                borderRadius: "4px",
+                backgroundColor: isPending || success ? "#cbd5e1" : "#003466",
                 color: "#ffffff",
                 border: "none",
-                fontWeight: 700,
-                fontSize: "1rem",
+                fontWeight: 600,
+                fontSize: "13px",
+                fontFamily: '"Segoe UI", -apple-system, sans-serif',
                 cursor: isPending || success ? "not-allowed" : "pointer",
-                transition: "background-color 0.2s",
+                transition: "background-color 0.2s, transform 0.1s",
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
                 gap: "0.5rem",
                 marginTop: "0.5rem"
+              }}
+              onMouseEnter={(e) => {
+                if (!isPending && !success) {
+                  e.currentTarget.style.backgroundColor = "#002244";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isPending && !success) {
+                  e.currentTarget.style.backgroundColor = "#003466";
+                }
               }}
             >
               {isPending ? "Đang xử lý..." : "Đổi mật khẩu"}
@@ -225,7 +246,7 @@ export default function DoiMatKhauPage() {
               <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#065f46", marginBottom: "0.5rem" }}>
                 Đổi mật khẩu thành công!
               </h3>
-              <p style={{ color: "#475569", fontSize: "0.925rem", lineHeight: "1.5" }}>
+              <p style={{ color: "#475569", fontSize: "13px", fontFamily: '"Segoe UI", -apple-system, sans-serif', lineHeight: "1.5" }}>
                 Mật khẩu của bạn đã được thay đổi. Hệ thống sẽ tự động đăng xuất sau <strong>{countdown}</strong> giây để bạn đăng nhập lại.
               </p>
             </div>
@@ -234,14 +255,22 @@ export default function DoiMatKhauPage() {
               onClick={handleLogout}
               style={{
                 width: "100%",
-                padding: "0.625rem",
-                borderRadius: "8px",
-                backgroundColor: "#ff5c00",
+                padding: "8px 16px",
+                borderRadius: "4px",
+                backgroundColor: "#003466",
                 color: "#ffffff",
                 border: "none",
-                fontWeight: 700,
+                fontWeight: 600,
+                fontSize: "13px",
+                fontFamily: '"Segoe UI", -apple-system, sans-serif',
                 cursor: "pointer",
                 transition: "background-color 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#002244";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#003466";
               }}
             >
               Đăng xuất ngay

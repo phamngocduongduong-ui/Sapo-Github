@@ -1705,9 +1705,10 @@ export default function OrderTable({
                     📦 CHI TIẾT DÒNG HÀNG
                   </h4>
                   <div style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "8px" }}>
-                    <table className="table" style={{ fontSize: "0.85rem", width: "100%", minWidth: "2070px", tableLayout: "fixed", borderCollapse: "collapse" }}>
+                    <table className="table" style={{ fontSize: "0.85rem", width: "100%", minWidth: "2120px", tableLayout: "fixed", borderCollapse: "collapse" }}>
                       <thead style={{ background: "#f8fafc" }}>
                         <tr>
+                          <th style={{ width: "50px", minWidth: "50px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>STT</th>
                           <th style={{ width: "370px", minWidth: "370px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Tên hàng hóa <span style={{ color: "red" }}>(*)</span></th>
                           <th style={{ width: "170px", minWidth: "170px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Quy cách</th>
                           <th style={{ width: "70px", minWidth: "70px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>ĐVT</th>
@@ -1726,6 +1727,7 @@ export default function OrderTable({
                       <tbody>
                         {items.map((item, idx) => (
                           <tr key={idx}>
+                            <td style={{ padding: "6px", width: "50px", minWidth: "50px", textAlign: "center", verticalAlign: "middle", fontWeight: 600, color: "#475569" }}>{idx + 1}</td>
                             <td style={{ padding: "6px", width: "370px", minWidth: "370px" }}>
                               <input 
                                 type="text" 

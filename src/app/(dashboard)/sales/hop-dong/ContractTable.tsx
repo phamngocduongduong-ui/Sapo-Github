@@ -2065,18 +2065,18 @@ export default function ContractTable({ initialContracts, customers: initialCust
 
                 {/* Tab 3: List of Goods */}
                 <div style={{ display: activeTab === 3 ? "block" : "none" }}>
-                  <div style={{ overflow: "visible", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
-                    <table className="table tab3-goods-table" style={{ fontSize: "13px", width: "100%", minWidth: "100%", tableLayout: "fixed" }}>
+                  <div style={{ overflowX: "auto", minHeight: "220px", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
+                    <table className="table tab3-goods-table" style={{ fontSize: "13px", width: "100%", minWidth: "1280px", tableLayout: "fixed" }}>
                       <thead style={{ background: "#f8fafc" }}>
                         <tr>
-                          <th style={{ width: "28%", padding: "5px 6px", textAlign: "center" }}>Mã / Tên sản phẩm <span style={{ color: "red" }}>(*)</span></th>
-                          <th style={{ width: "8%", padding: "5px 6px", textAlign: "center" }}>Brix <span style={{ color: "red" }}>(*)</span></th>
-                          <th style={{ width: "8%", padding: "5px 6px", textAlign: "center" }}>ĐVT <span style={{ color: "red" }}>(*)</span></th>
-                          <th style={{ width: "10%", padding: "5px 6px", textAlign: "center" }}>Số lượng <span style={{ color: "red" }}>(*)</span></th>
-                          <th style={{ width: "11%", padding: "5px 6px", textAlign: "center" }}>Đơn giá <span style={{ color: "red" }}>(*)</span></th>
-                          <th style={{ width: "12%", padding: "5px 6px", textAlign: "center" }}>Thành tiền</th>
-                          <th style={{ width: "18%", padding: "5px 6px", textAlign: "center" }}>Ghi chú sản phẩm</th>
-                          {!isViewMode && <th style={{ width: "5%", padding: "5px 6px", textAlign: "center" }}>#</th>}
+                          <th style={{ width: "350px", padding: "5px 6px", textAlign: "center" }}>Mã / Tên sản phẩm <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "80px", padding: "5px 6px", textAlign: "center" }}>Brix <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "80px", padding: "5px 6px", textAlign: "center" }}>ĐVT <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "100px", padding: "5px 6px", textAlign: "center" }}>Số lượng <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "90px", padding: "5px 6px", textAlign: "center" }}>Đơn giá <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "115px", padding: "5px 6px", textAlign: "center" }}>Thành tiền</th>
+                          <th style={{ width: "400px", padding: "5px 6px", textAlign: "center" }}>Ghi chú sản phẩm</th>
+                          {!isViewMode && <th style={{ width: "50px", padding: "5px 6px", textAlign: "center" }}>#</th>}
                         </tr>
                       </thead>
                       <tbody>

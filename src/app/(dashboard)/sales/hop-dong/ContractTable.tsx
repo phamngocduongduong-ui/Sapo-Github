@@ -2065,7 +2065,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
 
                 {/* Tab 3: List of Goods */}
                 <div style={{ display: activeTab === 3 ? "block" : "none" }}>
-                  <div style={{ overflowX: "auto", minHeight: "220px", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
+                  <div style={{ overflowX: "auto", overflowY: "auto", height: "260px", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
                     <table className="table tab3-goods-table" style={{ fontSize: "13px", width: "100%", minWidth: "1280px", tableLayout: "fixed" }}>
                       <thead style={{ background: "#f8fafc" }}>
                         <tr>

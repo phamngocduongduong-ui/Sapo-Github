@@ -95,10 +95,14 @@ export default function ContractTable({ initialContracts, customers: initialCust
   }, [initialEmployees]);
 
   const salesEmployees = useMemo(() => {
-    return employees
+    const list = employees
       .filter((e) => e.department === "Kinh doanh")
       .map((e) => e.fullName);
-  }, [employees]);
+    if (currentUser && currentUser !== "Unknown" && !list.includes(currentUser)) {
+      list.push(currentUser);
+    }
+    return list;
+  }, [employees, currentUser]);
   
   // Goods list items state
   const [items, setItems] = useState<any[]>([
@@ -195,6 +199,10 @@ export default function ContractTable({ initialContracts, customers: initialCust
         setExpiryDate(calculateExpiryDate(today));
         const generated = generateContractNumber(editingContract.buyer, today);
         setContractNumber(generated);
+        
+        // Default to currentUser in duplicate mode
+        const defaultSalesEmp = (currentUser && currentUser !== "Unknown") ? currentUser : (editingContract.salesEmployee || "");
+        setSalesEmployee(defaultSalesEmp);
       } else {
         setContractNumber(editingContract.contractNumber || "");
         const cDate = editingContract.contractDate

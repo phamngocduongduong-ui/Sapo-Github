@@ -1509,6 +1509,9 @@ export default function ContractTable({ initialContracts, customers: initialCust
 
             {/* Scrollable Form Body Container */}
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+              {(!editingContract || isDuplicateMode) && (
+                <input type="hidden" name="expiryDate" value={expiryDate} />
+              )}
               <div className="scrollable-body" style={{ flex: 1, overflowX: "auto", overflowY: "auto", padding: "12px 1.5rem" }}>
                 {error && <div style={{ color: "#e74c3c", marginBottom: "1rem" }}>⚠️ {error}</div>}
 
@@ -1778,9 +1781,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                         )}
                       </div>
                     </>
-                  ) : (
-                    <input type="hidden" name="expiryDate" value={expiryDate} />
-                  )}
+                  ) : null}
                   {/* Banking Info Section */}
                   <div style={{ gridColumn: "1 / -1", margin: "15px 0 5px 0", borderBottom: "1px solid #e2e8f0", paddingBottom: "5px" }}>
                     <span style={{ fontWeight: 700, color: "#003466", fontSize: "12px", textTransform: "uppercase" }}>Thông tin ngân hàng</span>

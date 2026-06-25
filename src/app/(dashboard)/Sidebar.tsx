@@ -36,6 +36,7 @@ const allMenuGroups = [
       { href: "/admin/tai-khoan", label: "Tài khoản", key: "QT_TAI_KHOAN", icon: <UserCircle size={14} color="#6366f1" /> },
       { href: "/admin/muc-quyen", label: "Mục quyền", key: "QT_MUC_QUYEN", icon: <Key size={14} color="#6366f1" /> },
       { href: "/admin/quyen-su-dung", label: "Phân quyền", key: "QT_PHAN_QUYEN", icon: <Shield size={14} color="#6366f1" /> },
+      { href: "/admin/sao-luu", label: "Sao lưu & Phục hồi", key: "QT_SAO_LUU", icon: <Database size={14} color="#6366f1" /> },
     ]
   },
   {

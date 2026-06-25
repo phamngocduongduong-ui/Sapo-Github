@@ -58,9 +58,26 @@ export async function updateCategoryStatus(id: string, status: string) {
 }
 
 export async function deleteProductCategory(id: string) {
-  await (prisma as any).productcategory.delete({
-    where: { id }
-  });
+  try {
+    // Kiểm tra xem có sản phẩm nào đang liên kết với nhóm này hay không
+    const productCount = await prisma.product.count({
+      where: { categoryId: id }
+    });
 
-  revalidatePath("/danh-muc/nhom-san-pham");
+    if (productCount > 0) {
+      throw new Error(`Không thể xóa nhóm sản phẩm này vì đang có ${productCount} sản phẩm thuộc nhóm này.`);
+    }
+
+    await (prisma as any).productcategory.delete({
+      where: { id }
+    });
+
+    revalidatePath("/danh-muc/nhom-san-pham");
+  } catch (error: any) {
+    console.error("Lỗi khi xóa nhóm sản phẩm:", error);
+    if (error.code === "P2003") {
+      throw new Error("Không thể xóa nhóm sản phẩm này vì dữ liệu đang được sử dụng ở các bảng khác liên quan.");
+    }
+    throw new Error(error.message || "Đã xảy ra lỗi khi xóa nhóm sản phẩm.");
+  }
 }

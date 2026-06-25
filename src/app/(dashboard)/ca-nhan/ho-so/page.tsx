@@ -10,6 +10,16 @@ import {
   UserCheck, CreditCard, Award, ShieldAlert, FileSignature
 } from "lucide-react";
 
+const formatDate = (dateVal: string | Date | null | undefined): string => {
+  if (!dateVal) return "";
+  const date = new Date(dateVal);
+  if (isNaN(date.getTime())) return "";
+  const day = date.getUTCDate().toString().padStart(2, '0');
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const year = date.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 export default async function ProfilePage({
   searchParams
 }: {
@@ -169,7 +179,7 @@ export default async function ProfilePage({
               <div style={{ display: "flex", flexWrap: "wrap", gap: "1.5rem", marginTop: "1rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem" }}>
                 <span style={{ fontSize: "0.85rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.4rem" }}><Mail size={15} /> {employee?.email || "Chưa thiết lập"}</span>
                 <span style={{ fontSize: "0.85rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.4rem" }}><Phone size={15} /> {employee?.phone || "Chưa thiết lập"}</span>
-                <span style={{ fontSize: "0.85rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.4rem" }}><Calendar size={15} /> Ngày gia nhập: {employee?.startDate ? new Date(employee.startDate).toLocaleDateString("vi-VN") : "—"}</span>
+                <span style={{ fontSize: "0.85rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.4rem" }}><Calendar size={15} /> Ngày gia nhập: {formatDate(employee?.startDate) || "—"}</span>
               </div>
             </div>
           </div>
@@ -238,7 +248,7 @@ export default async function ProfilePage({
                         name="idCardDate"
                         type="date"
                         value={employee?.idCardDate ? new Date(employee.idCardDate).toISOString().split('T')[0] : ""}
-                        displayValue={employee?.idCardDate ? new Date(employee.idCardDate).toLocaleDateString("vi-VN") : "—"}
+                        displayValue={formatDate(employee?.idCardDate) || "—"}
                         editing={isEditing}
                       />
 
@@ -352,9 +362,9 @@ export default async function ProfilePage({
                         </div>
 
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", fontSize: "13px", color: "#475569" }}>
-                          <div>📅 Ngày ký: <strong>{new Date(contract.contractDate).toLocaleDateString("vi-VN")}</strong></div>
-                          <div>📅 Hiệu lực: <strong>{new Date(contract.startDate).toLocaleDateString("vi-VN")}</strong></div>
-                          <div>📅 Hết hạn: <strong>{contract.endDate ? new Date(contract.endDate).toLocaleDateString("vi-VN") : "Vô thời hạn"}</strong></div>
+                          <div>📅 Ngày ký: <strong>{formatDate(contract.contractDate)}</strong></div>
+                          <div>📅 Hiệu lực: <strong>{formatDate(contract.startDate)}</strong></div>
+                          <div>📅 Hết hạn: <strong>{contract.endDate ? formatDate(contract.endDate) : "Vô thời hạn"}</strong></div>
                           <div>💰 Lương cơ bản: <strong>{contract.salaryBase?.toLocaleString("vi-VN")} VNĐ</strong></div>
                           <div>🛡️ BHXH đóng: <strong>{contract.socialInsurance?.toLocaleString("vi-VN")} VNĐ</strong></div>
                           <div>🏷️ Bậc lương: <strong>{contract.salaryLevel || "—"}</strong></div>
@@ -457,8 +467,8 @@ export default async function ProfilePage({
                           leaveRequests.map((req: any) => (
                             <tr key={req.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                               <td style={{ padding: "10px 12px", color: "#64748b" }}>{new Date(req.createdAt).toLocaleDateString("vi-VN")}</td>
-                              <td style={{ padding: "10px 12px", fontWeight: 600 }}>{new Date(req.startDate).toLocaleDateString("vi-VN")}</td>
-                              <td style={{ padding: "10px 12px", fontWeight: 600 }}>{new Date(req.endDate).toLocaleDateString("vi-VN")}</td>
+                              <td style={{ padding: "10px 12px", fontWeight: 600 }}>{formatDate(req.startDate)}</td>
+                              <td style={{ padding: "10px 12px", fontWeight: 600 }}>{formatDate(req.endDate)}</td>
                               <td style={{ padding: "10px 12px", color: "#0072bc", fontWeight: 700 }}>{req.durationDays} ngày</td>
                               <td style={{ padding: "10px 12px", color: "#475569" }}>{req.reason}</td>
                               <td style={{ padding: "10px 12px" }}>

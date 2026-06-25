@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getSession } from "@/lib/session";
+import { getSession, encrypt } from "@/lib/session";
 import { cookies } from "next/headers";
+
+async function updateSessionActiveBranch(sessionPayload: any, newBranch: string) {
+  try {
+    sessionPayload.activeBranch = newBranch;
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    sessionPayload.expires = expires;
+    const newSession = await encrypt(sessionPayload);
+    cookies().set("session", newSession, { expires, httpOnly: true, path: "/" });
+  } catch (err) {
+    console.error("Failed to update active branch session cookie:", err);
+  }
+}
 
 export async function GET() {
   try {
@@ -35,18 +47,32 @@ export async function GET() {
     if (user.username === "admin" || user.role === "Admin") {
       const allowed = userBranches.length > 0 ? userBranches : activeBranches;
       const defaultBranch = allowed.length > 0 ? allowed[0] : "Toàn bộ chi nhánh";
+      let currentActive = session.activeBranch || defaultBranch;
+
+      if (!allowed.includes(currentActive)) {
+        currentActive = defaultBranch;
+        await updateSessionActiveBranch(session, currentActive);
+      }
+
       return NextResponse.json({ 
         isAdmin: true, 
         username: user.username,
         role: user.role,
         employeeName: user.employeeName, 
-        branch: session.activeBranch || defaultBranch,
+        branch: currentActive,
         allowedBranches: allowed
       });
     }
 
     const permissionIds = (user as any).permission.map((p: any) => p.id);
     const allowed = userBranches;
+    const defaultBranch = allowed.length > 0 ? allowed[0] : "Toàn bộ chi nhánh";
+    let currentActive = session.activeBranch || defaultBranch;
+
+    if (!allowed.includes(currentActive)) {
+      currentActive = defaultBranch;
+      await updateSessionActiveBranch(session, currentActive);
+    }
 
     if (permissionIds.length === 0) {
       return NextResponse.json({ 
@@ -55,7 +81,7 @@ export async function GET() {
         username: user.username,
         role: user.role,
         employeeName: user.employeeName,
-        branch: session.activeBranch || allowed[0] || "Toàn bộ chi nhánh",
+        branch: currentActive,
         allowedBranches: allowed
       });
     }
@@ -75,7 +101,7 @@ export async function GET() {
       username: user.username,
       role: user.role,
       employeeName: user.employeeName,
-      branch: session.activeBranch || allowed[0] || "Toàn bộ chi nhánh",
+      branch: currentActive,
       allowedBranches: allowed
     });
 

@@ -50,7 +50,7 @@ const allMenuGroups = [
       { href: "/phe-duyet/luong-thuong", label: "Bảng lương/thưởng", key: "PD_LUONG_THUONG", icon: <CreditCard size={14} color="#0072bc" /> },
       { href: "/phe-duyet/thanh-toan", label: "Thanh toán", key: "PD_THANH_TOAN", icon: <DollarSign size={14} color="#0072bc" /> },
       { href: "/phe-duyet/mua-hang", label: "Mua hàng", key: "PD_MUA_HANG", icon: <ShoppingCart size={14} color="#0072bc" /> },
-      { href: "/phe-duyet/bao-tri", label: "Bảo trì", key: "PD_BAO_TRI", icon: <Settings size={14} color="#0072bc" /> },
+      { href: "/phe-duyet/de-nghi-mua-hang", label: "Đề nghị mua hàng", key: "PD_DE_NGHI_MH", icon: <ClipboardList size={14} color="#0072bc" /> },
     ]
   },
   {
@@ -68,6 +68,7 @@ const allMenuGroups = [
       { href: "/danh-muc/quoc-gia", label: "Quốc gia", key: "DM_QUOC_GIA", icon: <Globe size={14} color="#10b981" /> },
       { href: "/danh-muc/san-pham", label: "Sản phẩm", key: "DM_SAN_PHAM", icon: <Package size={14} color="#10b981" /> },
       { href: "/danh-muc/don-vi-tinh", label: "Đơn vị tính", key: "DM_DON_VI_TINH", icon: <Ruler size={14} color="#10b981" /> },
+      { href: "/danh-muc/ngan-hang", label: "Ngân hàng", key: "DM_NGAN_HANG", icon: <CreditCard size={14} color="#10b981" /> },
       { href: "/danh-muc/kho-hang", label: "Kho hàng", key: "DM_KHO_HANG", icon: <WarehouseIcon size={14} color="#10b981" /> },
       { href: "/danh-muc/vi-tri", label: "Vị trí kho", key: "DM_VI_TRI", icon: <Locate size={14} color="#10b981" /> },
       { href: "/danh-muc/dia-diem-cham-cong", label: "Địa điểm chấm công", key: "LB_KHU_VUC", icon: <Map size={14} color="#10b981" /> },
@@ -114,10 +115,8 @@ const allMenuGroups = [
     label: "Mua hàng",
     icon: <ShoppingCart size={18} color="#8b5cf6" />,
     items: [
+      { href: "/purchasing/de-nghi", label: "Đề nghị", key: "TM_DE_NGHI", icon: <ClipboardList size={14} color="#8b5cf6" /> },
       { href: "/purchasing/lenh-mua", label: "Đơn mua hàng", key: "TM_LENH_MUA", icon: <FilePlus size={14} color="#8b5cf6" /> },
-      { href: "/purchasing/phe-duyet", label: "Phê duyệt", key: "TM_APPROVE", icon: <CheckCircle2 size={14} color="#8b5cf6" /> },
-      { href: "/purchasing/don-mua", label: "Đơn mua", key: "TM_DON_MUA", icon: <ShoppingCart size={14} color="#8b5cf6" /> },
-      { href: "/purchasing/dispatch", label: "Lệnh điều động", key: "TM_DIEU_DONG", icon: <ArrowRightLeft size={14} color="#8b5cf6" /> },
       { href: "/purchasing/bao-cao", label: "Báo cáo", key: "TM_BAO_CAO", icon: <BarChart3 size={14} color="#8b5cf6" /> },
     ]
   },
@@ -131,16 +130,7 @@ const allMenuGroups = [
       { href: "/production/ke-hoach-giao", label: "Kế hoạch giao", key: "SX_KE_HOACH_GIAO", icon: <ClipboardList size={14} color="#eab308" /> },
       { href: "/production/ke-hoach-vat-tu", label: "Kế hoạch vật tư", key: "SX_VAT_TU", icon: <ClipboardList size={14} color="#eab308" /> },
     ]
-  },
-  {
-    id: "maintenance",
-    key: "BAO_TRI",
-    label: "Bảo trì",
-    icon: <Settings size={18} color="#f43f5e" />,
-    items: [
-      { href: "/maintenance/de-nghi-mua", label: "Đề nghị mua", key: "BT_DE_NGHI_MUA", icon: <ClipboardList size={14} color="#f43f5e" /> },
-      { href: "/maintenance/phe-duyet", label: "Phê duyệt", key: "BT_PHE_DUYET", icon: <CheckCircle2 size={14} color="#f43f5e" /> },
-    ]
+
   },
   {
     id: "accounting",
@@ -148,7 +138,9 @@ const allMenuGroups = [
     label: "Kế toán",
     icon: <DollarSign size={18} color="#0d9488" />,
     items: [
-      { href: "/accounting/thanh-toan", label: "Thanh toán", key: "KT_THANH_TOAN", icon: <DollarSign size={14} color="#0d9488" /> }
+      { href: "/accounting/phieu-thu", label: "Phiếu thu", key: "KT_PHIEU_THU", icon: <DollarSign size={14} color="#0d9488" /> },
+      { href: "/accounting/phieu-chi", label: "Phiếu chi", key: "KT_PHIEU_CHI", icon: <DollarSign size={14} color="#0d9488" /> },
+      { href: "/accounting/can-xe", label: "Cân xe", key: "KT_CAN_XE", icon: <Truck size={14} color="#0d9488" /> }
     ]
   },
   {
@@ -263,6 +255,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
       <nav className="sidebar-nav" style={{ padding: "0", flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
         <Link 
           href="/" 
+          prefetch={false}
           style={{
             display: "flex",
             alignItems: "center",
@@ -351,6 +344,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
                       <Link 
                         key={item.href} 
                         href={item.href} 
+                        prefetch={false}
                         style={{
                           display: "flex",
                           alignItems: "center",

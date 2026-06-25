@@ -25,7 +25,7 @@ export function useRealTimeSync<T>(
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/sync?module=${module}`);
+        const res = await fetch(`/api/sync?module=${module}&_t=${Date.now()}`, { cache: "no-store" });
         if (res.status === 403) {
           const errorData = await res.json();
           if (errorData.error === "ACCOUNT_INACTIVE") {

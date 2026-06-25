@@ -1229,7 +1229,7 @@ export default function ProductionOrderTable({
                                     <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "13px", color: "#003466", fontWeight: "700" }}>
                                       📦 Chi tiết hàng hóa (Đơn: {order.orderCode})
                                     </h4>
-                                    <table style={{ fontSize: "12px", width: "100%", minWidth: "1135px", tableLayout: "fixed", borderCollapse: "collapse" }}>
+                                    <table style={{ fontSize: "12px", width: "100%", minWidth: "1285px", tableLayout: "fixed", borderCollapse: "collapse" }}>
                                       <thead>
                                         <tr style={{ background: "#f1f5f9" }}>
                                           <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "300px", whiteSpace: "normal", verticalAlign: "middle" }}>Tên hàng hóa</th>
@@ -1240,6 +1240,7 @@ export default function ProductionOrderTable({
                                           <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Túi in</th>
                                           <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Thùng in</th>
                                           <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Brix (%)</th>
+                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "150px", whiteSpace: "normal", verticalAlign: "middle" }}>Tiêu chuẩn</th>
                                           <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "180px", whiteSpace: "normal", verticalAlign: "middle" }}>Yêu cầu khác</th>
                                           <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "180px", whiteSpace: "normal", verticalAlign: "middle" }}>Ghi chú</th>
                                         </tr>
@@ -1256,13 +1257,14 @@ export default function ProductionOrderTable({
                                               <td style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1" }}>{item.printedBag ? "✅" : "—"}</td>
                                               <td style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1" }}>{item.printedBox ? "✅" : "—"}</td>
                                               <td style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1" }}>{item.brix || "—"}</td>
+                                              <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{item.standard || "—"}</td>
                                               <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{item.otherRequirements || "—"}</td>
                                               <td style={{ padding: "6px", border: "1px solid #cbd5e1", color: "#64748b" }}>{item.note || "—"}</td>
                                             </tr>
                                           ))
                                         ) : (
                                           <tr>
-                                            <td colSpan={10} style={{ padding: "8px", textAlign: "center", color: "#888" }}>Không có chi tiết hàng hóa.</td>
+                                            <td colSpan={11} style={{ padding: "8px", textAlign: "center", color: "#888" }}>Không có chi tiết hàng hóa.</td>
                                           </tr>
                                         )}
                                       </tbody>
@@ -1663,7 +1665,7 @@ export default function ProductionOrderTable({
               {/* Tab 2: Goods list */}
               <div style={{ display: modalActiveTab === 2 ? "block" : "none" }}>
                 <div style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "8px" }}>
-                  <table style={{ fontSize: "12px", width: "100%", minWidth: "1135px", tableLayout: "fixed", borderCollapse: "collapse" }}>
+                  <table style={{ fontSize: "12px", width: "100%", minWidth: "1285px", tableLayout: "fixed", borderCollapse: "collapse" }}>
                     <thead style={{ background: "#f8fafc" }}>
                       <tr>
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "300px", whiteSpace: "normal", verticalAlign: "middle" }}>Tên hàng hóa</th>
@@ -1674,6 +1676,7 @@ export default function ProductionOrderTable({
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Túi in</th>
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Thùng in</th>
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Brix (%)</th>
+                        <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "150px", whiteSpace: "normal", verticalAlign: "middle" }}>Tiêu chuẩn</th>
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "180px", whiteSpace: "normal", verticalAlign: "middle" }}>Yêu cầu khác</th>
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "180px", whiteSpace: "normal", verticalAlign: "middle" }}>Ghi chú</th>
                       </tr>
@@ -1690,6 +1693,7 @@ export default function ProductionOrderTable({
                             <td style={{ padding: "8px", textAlign: "center" }}>{item.printedBag ? "✅" : "—"}</td>
                             <td style={{ padding: "8px", textAlign: "center" }}>{item.printedBox ? "✅" : "—"}</td>
                             <td style={{ padding: "8px", textAlign: "center" }}>{item.brix || "—"}</td>
+                            <td style={{ padding: "8px" }}>{item.standard || "—"}</td>
                             <td style={{ padding: "8px" }}>{item.otherRequirements || "—"}</td>
                             <td style={{ padding: "8px", color: "#64748b" }}>{item.note || "—"}</td>
                           </tr>

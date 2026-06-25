@@ -5,11 +5,16 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
 
-export async function getResignations(isAdmin: boolean, userBranches: string[]) {
+import { getUserModuleBranchFilter } from "@/lib/permissions";
+
+export async function getResignations(userId: string, activeBranch: string | null | undefined) {
+  const filter = await getUserModuleBranchFilter(userId, "CN_NGHI_VIEC", activeBranch, {
+    branchField: "branch",
+    employeeField: "employeeName"
+  });
+
   return await (prisma as any).resignation.findMany({
-    where: isAdmin ? {} : {
-      branch: { in: userBranches }
-    },
+    where: filter,
     orderBy: { createdAt: "desc" }
   });
 }

@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
-import { createEmployee, updateEmployee, updateEmployeeStatus, bulkUpsertEmployees, generateNextEmployeeCode } from "./actions";
+import { createEmployee, updateEmployee, updateEmployeeStatus, importEmployees, generateNextEmployeeCode } from "./actions";
 import {
   Pencil, Trash2, CheckCircle, PowerOff, FileSpreadsheet,
   Upload, Download, Plus, RotateCcw, Filter, Search,
@@ -13,6 +13,17 @@ import {
 } from "lucide-react";
 import HistoryModal from "../../HistoryModal";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+
+const formatDate = (dateVal: string | Date | null | undefined): string => {
+  if (!dateVal) return "";
+  const date = new Date(dateVal);
+  if (isNaN(date.getTime())) return "";
+  const day = date.getUTCDate().toString().padStart(2, '0');
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const year = date.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+};
 
 export default function EmployeeTable({
   initialEmployees,
@@ -45,6 +56,11 @@ export default function EmployeeTable({
   const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">("down");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId) || null;
+
+  // Import state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importEmployeesData, setImportEmployeesData] = useState<any[]>([]);
+  const [importMode, setImportMode] = useState<"append" | "replace">("append");
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
     title: string;
@@ -187,12 +203,123 @@ export default function EmployeeTable({
     "Bậc lương": "salaryLevel"
   };
 
-  const handleDownloadTemplate = () => {
-    const headers = Object.keys(fieldMapping);
-    const ws = XLSX.utils.aoa_to_sheet([headers]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "mau_nhan_vien.xlsx");
+  const handleDownloadTemplate = async () => {
+    const headers = Object.keys(fieldMapping).filter(
+      key =>
+        key !== "Trình độ học vấn" &&
+        key !== "Tình trạng hôn nhân" &&
+        key !== "Nơi làm việc" &&
+        key !== "Bậc lương" &&
+        key !== "Mã thẻ"
+    );
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Template");
+
+    // Add headers
+    worksheet.addRow(headers);
+
+    // Style headers
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { name: "Segoe UI", bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF003466" } // Sapo Blue color
+    };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 25;
+
+    // Create a hidden data list worksheet
+    const dataListsSheet = workbook.addWorksheet("Data_Lists");
+    dataListsSheet.state = "hidden";
+
+    const genders = ["Nam", "Nữ"];
+    genders.forEach((g, idx) => {
+      dataListsSheet.getCell(`A${idx + 1}`).value = g;
+    });
+
+    const activeBranches = branches.filter(Boolean);
+    activeBranches.forEach((b, idx) => {
+      dataListsSheet.getCell(`B${idx + 1}`).value = b;
+    });
+
+    const activePos = activePositions.filter(Boolean);
+    activePos.forEach((p, idx) => {
+      dataListsSheet.getCell(`C${idx + 1}`).value = p;
+    });
+
+    const activeDept = activeDepartments.filter(Boolean);
+    activeDept.forEach((d, idx) => {
+      dataListsSheet.getCell(`D${idx + 1}`).value = d;
+    });
+
+    // Add validation for Gender (Col B)
+    (worksheet as any).dataValidations.add("B2:B500", {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Data_Lists!$A$1:$A$${genders.length}`],
+      showErrorMessage: true,
+      errorTitle: "Dữ liệu không hợp lệ",
+      error: "Vui lòng chọn Giới tính trong danh sách."
+    });
+
+    // Add validation for Branch (Col C)
+    if (activeBranches.length > 0) {
+      (worksheet as any).dataValidations.add("C2:C500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$B$1:$B$${activeBranches.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Chi nhánh trong danh sách."
+      });
+    }
+
+    // Add validation for Position (Col D)
+    if (activePos.length > 0) {
+      (worksheet as any).dataValidations.add("D2:D500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$C$1:$C$${activePos.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Chức vụ trong danh sách."
+      });
+    }
+
+    // Add validation for Department (Col E)
+    if (activeDept.length > 0) {
+      (worksheet as any).dataValidations.add("E2:E500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$D$1:$D$${activeDept.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Bộ phận trong danh sách."
+      });
+    }
+
+    // Auto-fit column widths
+    worksheet.columns.forEach(column => {
+      let maxLen = 0;
+      column.eachCell?.({ includeEmpty: true }, cell => {
+        const value = cell.value ? String(cell.value) : "";
+        if (value.length > maxLen) {
+          maxLen = value.length;
+        }
+      });
+      column.width = Math.max(maxLen + 4, 15);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "mau_nhan_vien.xlsx";
+    anchor.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const handleExportExcel = () => {
@@ -202,7 +329,7 @@ export default function EmployeeTable({
         const field = fieldMapping[header];
         let val = emp[field];
         if (val instanceof Date || (typeof val === 'string' && val.includes('T') && !isNaN(Date.parse(val)))) {
-          val = new Date(val).toLocaleDateString("vi-VN");
+          val = formatDate(val);
         }
         row[header] = val || "";
       });
@@ -249,7 +376,11 @@ export default function EmployeeTable({
             if (value !== undefined && value !== null) {
               let val = value;
               if (val instanceof Date) {
-                val = val.toISOString();
+                const useUTC = val.getUTCHours() === 0 && val.getUTCMinutes() === 0 && val.getUTCSeconds() === 0;
+                const year = useUTC ? val.getUTCFullYear() : val.getFullYear();
+                const month = ((useUTC ? val.getUTCMonth() : val.getMonth()) + 1).toString().padStart(2, '0');
+                const day = (useUTC ? val.getUTCDate() : val.getDate()).toString().padStart(2, '0');
+                val = `${year}-${month}-${day}`;
               }
               item[mappedField] = val;
             }
@@ -262,20 +393,32 @@ export default function EmployeeTable({
           return;
         }
 
-        startTransition(async () => {
-          try {
-            await bulkUpsertEmployees(processedData);
-            alert(`Import thành công ${processedData.length} nhân viên!`);
-          } catch (err: any) {
-            alert("Lỗi lưu dữ liệu: " + err.message);
-          }
-        });
+        setImportEmployeesData(processedData);
+        setImportMode("append");
+        setShowImportModal(true);
       } catch (err: any) {
         alert("Lỗi đọc file Excel: " + err.message);
       }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = ""; // Reset input
+  };
+
+  const executeImport = () => {
+    if (importEmployeesData.length === 0) return;
+
+    startTransition(async () => {
+      try {
+        await importEmployees(importEmployeesData, importMode);
+        alert(`Import thành công ${importEmployeesData.length} nhân viên!`);
+        setShowImportModal(false);
+        setImportEmployeesData([]);
+        setSelectedEmployeeId(null);
+        router.refresh();
+      } catch (err: any) {
+        alert("Lỗi lưu dữ liệu: " + err.message);
+      }
+    });
   };
 
   const calculateSeniority = (startDate: string | Date | null) => {
@@ -806,7 +949,7 @@ export default function EmployeeTable({
                       </div>
                     </td>
                     <td>
-                      <span className="date-text">{emp.startDate ? new Date(emp.startDate).toLocaleDateString("vi-VN") : "—"}</span>
+                      <span className="date-text">{formatDate(emp.startDate) || "—"}</span>
                     </td>
                     <td style={{ textAlign: "center" }}>
                       {emp.cardCode ? (
@@ -1028,15 +1171,15 @@ export default function EmployeeTable({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              margin: "0 auto 1.5rem",
+              margin: "0 auto 1.25rem",
               color: confirmDialog.type === "danger" ? "#ef4444" : "#22c55e"
             }}>
               {confirmDialog.type === "danger" ? <AlertTriangle size={32} /> : <CheckCircle size={32} />}
             </div>
-            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 auto 0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
               {confirmDialog.title}
             </h3>
-            <div style={{ color: "#475569", marginBottom: "2rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+            <div style={{ color: "#475569", margin: "0 auto 1.75rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
               <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>{confirmDialog.message}</p>
               {confirmDialog.type === "danger" && (
                 <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
@@ -1049,11 +1192,43 @@ export default function EmployeeTable({
                 </p>
               )}
             </div>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmDialog(prev => ({ ...prev, show: false }))}>Bỏ qua</button>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button 
+                type="button"
+                className="sapo-btn sapo-btn-secondary" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={() => setConfirmDialog(prev => ({ ...prev, show: false }))}
+              >
+                Bỏ qua
+              </button>
               <button
-                className="btn btn-primary"
-                style={{ flex: 1, background: confirmDialog.type === "danger" ? "#ef4444" : "#2563eb" }}
+                type="button"
+                className="sapo-btn"
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: confirmDialog.type === "danger" ? "#ef4444" : "#003466",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }}
                 onClick={confirmDialog.onConfirm}
                 disabled={isPending}
               >
@@ -1063,6 +1238,101 @@ export default function EmployeeTable({
           </div>
         </div>
       )}
+
+          {showImportModal && (
+            <div className="confirm-overlay" onClick={() => setShowImportModal(false)}>
+              <div className="confirm-modal animate-slide-up" style={{ maxWidth: "450px", padding: "1.5rem" }} onClick={(e) => e.stopPropagation()}>
+                <div className="confirm-icon-box" style={{ backgroundColor: "#eff6ff", color: "#2563eb", width: "48px", height: "48px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem auto" }}>
+                  <Upload size={24} />
+                </div>
+                <h4 className="confirm-title" style={{ marginTop: "0.5rem", fontSize: "16px", fontWeight: 700, textAlign: "center", color: "#003466" }}>
+                  Nhập Excel Nhân viên
+                </h4>
+                <p className="confirm-message" style={{ margin: "0.5rem 0 1rem 0", fontSize: "13px", color: "#475569", textAlign: "center" }}>
+                  Phát hiện <strong>{importEmployeesData.length}</strong> nhân viên từ file Excel. Vui lòng chọn phương thức nhập dữ liệu:
+                </p>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
+                  <label style={{ 
+                    display: "flex", 
+                    alignItems: "flex-start", 
+                    gap: "0.75rem", 
+                    padding: "10px 12px", 
+                    border: "1px solid #cbd5e1", 
+                    borderRadius: "6px", 
+                    cursor: "pointer",
+                    backgroundColor: importMode === "append" ? "#eff6ff" : "white",
+                    borderColor: importMode === "append" ? "#3b82f6" : "#cbd5e1",
+                    transition: "all 0.2s"
+                  }}>
+                    <input 
+                      type="radio" 
+                      name="importMode" 
+                      value="append" 
+                      checked={importMode === "append"} 
+                      onChange={() => setImportMode("append")}
+                      style={{ marginTop: "3px" }}
+                    />
+                    <div>
+                      <strong style={{ display: "block", fontSize: "13px", color: "#0f172a" }}>Cập nhật thêm</strong>
+                      <span style={{ fontSize: "11px", color: "#64748b" }}>Thêm nhân viên mới và cập nhật thông tin nhân viên đã tồn tại (trùng mã hoặc tên + chi nhánh). Tự động cấp mã nhân viên mới nếu thiếu.</span>
+                    </div>
+                  </label>
+
+                  <label style={{ 
+                    display: "flex", 
+                    alignItems: "flex-start", 
+                    gap: "0.75rem", 
+                    padding: "10px 12px", 
+                    border: "1px solid #cbd5e1", 
+                    borderRadius: "6px", 
+                    cursor: "pointer",
+                    backgroundColor: importMode === "replace" ? "#fef2f2" : "white",
+                    borderColor: importMode === "replace" ? "#ef4444" : "#cbd5e1",
+                    transition: "all 0.2s"
+                  }}>
+                    <input 
+                      type="radio" 
+                      name="importMode" 
+                      value="replace" 
+                      checked={importMode === "replace"} 
+                      onChange={() => setImportMode("replace")}
+                      style={{ marginTop: "3px" }}
+                    />
+                    <div>
+                      <strong style={{ display: "block", fontSize: "13px", color: "#b91c1c" }}>Thay thế tất cả</strong>
+                      <span style={{ fontSize: "11px", color: "#991b1b" }}>Xóa toàn bộ dữ liệu nhân viên hiện tại và nhập dữ liệu mới từ file Excel. Mã nhân viên mới được tự động cấp lại từ 001 theo từng chi nhánh.</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="confirm-actions" style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                  <button type="button" className="confirm-btn btn-cancel" onClick={() => setShowImportModal(false)} style={{ flex: 1, padding: "8px 16px", borderRadius: "4px", fontSize: "13px" }}>
+                    Hủy
+                  </button>
+                  <button 
+                    type="button" 
+                    className="confirm-btn" 
+                    onClick={executeImport} 
+                    disabled={isPending}
+                    style={{ 
+                      flex: 1, 
+                      padding: "8px 16px", 
+                      borderRadius: "4px", 
+                      fontSize: "13px", 
+                      backgroundColor: importMode === "replace" ? "#ef4444" : "#22c55e",
+                      color: "white",
+                      border: "none",
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    {isPending ? "Đang xử lý..." : "Đồng ý"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
     </div>
   );

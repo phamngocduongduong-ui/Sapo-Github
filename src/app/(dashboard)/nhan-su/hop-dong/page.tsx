@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import LaborContractTable from "./LaborContractTable";
 import { getSession } from "@/lib/session";
+import { getUserModuleBranchFilter } from "@/lib/permissions";
 
 export default async function LaborContractPage() {
   const session = await getSession();
@@ -12,19 +13,29 @@ export default async function LaborContractPage() {
   const userBranches = user?.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
   const userName = user?.employeeName || user?.username || "User";
 
+  const filter = user ? await getUserModuleBranchFilter(user.id, "NS_HOP_DONG", session?.activeBranch, {
+    branchField: "branch",
+    creatorField: "creator",
+    employeeField: "employeeName"
+  }) : { id: "NO_ACCESS" };
+
   // Lọc hợp đồng
   const contracts = await (prisma as any).laborcontract.findMany({
-    where: isAdmin ? {} : {
-      branch: { in: userBranches }
-    },
+    where: filter,
     orderBy: { createdAt: "desc" }
   });
+
+  const employeeFilter = user ? await getUserModuleBranchFilter(user.id, "NS_HOP_DONG", session?.activeBranch, {
+    branchField: "branch",
+    creatorField: "creator",
+    employeeField: "fullName"
+  }) : { id: "NO_ACCESS" };
 
   // Lấy danh sách nhân viên đang hoạt động thuộc chi nhánh được phép
   const employees = await prisma.employee.findMany({
     where: { 
       status: { notIn: ["Nghỉ việc", "INACTIVE"] },
-      ...(isAdmin ? {} : { branch: { in: userBranches } })
+      ...employeeFilter
     },
     select: { 
       fullName: true,

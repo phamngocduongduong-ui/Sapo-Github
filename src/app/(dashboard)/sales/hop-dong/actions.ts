@@ -45,6 +45,7 @@ export async function createContract(formData: FormData, items: any[]) {
   const swiftCode = formData.get("swiftCode") as string;
 
   const accompanyingDocuments = formData.get("accompanyingDocuments") as string;
+  const attachments = formData.get("attachments") as string;
 
   if (!contractNumber) throw new Error("Số hợp đồng là bắt buộc.");
   if (!contractDateStr) throw new Error("Ngày hợp đồng là bắt buộc.");
@@ -70,14 +71,9 @@ export async function createContract(formData: FormData, items: any[]) {
       deliveryTerms: deliveryTerms || null,
       paymentMethod: paymentMethod || null,
       paymentTerms: paymentTerms || null,
-      bank: bankName || null,
       bankAccount: bankAccount || null,
-      bankName: bankName || null,
-      bankAddress: bankAddress || null,
-      beneficiaryName: beneficiaryName || null,
-      beneficiaryAddress: beneficiaryAddress || null,
-      swiftCode: swiftCode || null,
       accompanyingDocuments: accompanyingDocuments || null,
+      attachments: attachments || null,
       expiryDate: expiryDateStr ? new Date(expiryDateStr) : null,
       thermometer,
       thermometerQty,
@@ -94,6 +90,7 @@ export async function createContract(formData: FormData, items: any[]) {
           quantity: sanitizeNumber(item.quantity),
           price: sanitizeNumber(item.price),
           amount: sanitizeNumber(item.amount),
+          brix: item.brix ? sanitizeNumber(item.brix) : null,
           packaging: item.packaging || null,
           note: item.note || null,
           updatedAt: new Date(),
@@ -150,6 +147,7 @@ export async function updateContract(id: string, formData: FormData, items: any[
   const swiftCode = formData.get("swiftCode") as string;
 
   const accompanyingDocuments = formData.get("accompanyingDocuments") as string;
+  const attachments = formData.get("attachments") as string;
 
   if (!contractDateStr) throw new Error("Ngày hợp đồng là bắt buộc.");
   if (!seller || !buyer) throw new Error("Người bán và người mua là bắt buộc.");
@@ -182,14 +180,9 @@ export async function updateContract(id: string, formData: FormData, items: any[
       deliveryTerms: deliveryTerms || null,
       paymentMethod: paymentMethod || null,
       paymentTerms: paymentTerms || null,
-      bank: bankName || null,
       bankAccount: bankAccount || null,
-      bankName: bankName || null,
-      bankAddress: bankAddress || null,
-      beneficiaryName: beneficiaryName || null,
-      beneficiaryAddress: beneficiaryAddress || null,
-      swiftCode: swiftCode || null,
       accompanyingDocuments: accompanyingDocuments || null,
+      attachments: attachments || null,
       expiryDate: expiryDateStr ? new Date(expiryDateStr) : null,
       thermometer,
       thermometerQty,
@@ -206,6 +199,7 @@ export async function updateContract(id: string, formData: FormData, items: any[
           quantity: sanitizeNumber(item.quantity),
           price: sanitizeNumber(item.price),
           amount: sanitizeNumber(item.amount),
+          brix: item.brix ? sanitizeNumber(item.brix) : null,
           packaging: item.packaging || null,
           note: item.note || null,
           updatedAt: new Date(),

@@ -79,15 +79,32 @@ function numberToEnglishWords(num: number): string {
 }
 
 function getDocLabel(key: string, label: string): string {
-  const lower = (key || label || "").toLowerCase();
-  if (lower.includes("invoice")) return "Commercial Invoice";
-  if (lower.includes("packing")) return "Packing List";
-  if (lower.includes("lading") || lower.includes("b/l")) return "Bill of Lading";
-  if (lower.includes("origin") || lower.includes("co ")) return "Certificate of Original form EUR.1";
-  if (lower.includes("phytosanitary")) return "Certificate of Phytosanitary";
-  if (lower.includes("coa") || lower.includes("analysis")) return "Certificate of Analysis";
-  if (lower.includes("fumigation")) return "Fumigation";
-  return label;
+  const lowerKey = (key || "").toLowerCase();
+  const lowerLabel = (label || "").toLowerCase();
+  
+  if (lowerKey === "invoice" || lowerLabel.includes("invoice") || lowerLabel.includes("hóa đơn")) {
+    return "Commercial Invoice";
+  }
+  if (lowerKey === "packing_list" || lowerLabel.includes("packing") || lowerLabel.includes("phiếu đóng gói")) {
+    return "Packing List";
+  }
+  if (lowerKey === "bl" || lowerLabel.includes("lading") || lowerLabel.includes("vận đơn")) {
+    return "Bill of Lading - B/L";
+  }
+  if (lowerKey === "co" || lowerLabel.includes("origin") || lowerLabel.includes("xuất xứ")) {
+    return "Certificate of Origin - C/O";
+  }
+  if (lowerKey === "phytosanitary" || lowerLabel.includes("phytosanitary") || lowerLabel.includes("kiểm dịch")) {
+    return "Certificate of Phytosanitary";
+  }
+  if (lowerKey === "coa" || lowerLabel.includes("analysis") || lowerLabel.includes("phân tích")) {
+    return "Certificate of Analysis - COA";
+  }
+  if (lowerKey === "fumigation" || lowerLabel.includes("fumigation") || lowerLabel.includes("khử trùng")) {
+    return "Fumigation Certificate";
+  }
+  
+  return label.replace(/\s*\([^)]*[áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ][^)]*\)/gi, "").trim();
 }
 
 function getBuyerRepresentative(customer: any): string {
@@ -137,8 +154,10 @@ export default function PrintContractClient({ contract, customer, sellerDetails 
   return (
     <div className="print-container">
       {/* Watermark */}
-      <div className={`watermark ${contract.status === "Đã phê duyệt" ? "approved" : ""}`}>
-        {contract.status === "Đã phê duyệt" ? "Approved" : "Draft"}
+      <div className="watermark">
+        <div className={`watermark-inner ${contract.status === "Đã phê duyệt" ? "approved" : ""}`}>
+          {contract.status === "Đã phê duyệt" ? "Approved" : "Draft"}
+        </div>
       </div>
 
       {/* Floating control bar (Hidden during print) */}
@@ -516,6 +535,37 @@ export default function PrintContractClient({ contract, customer, sellerDetails 
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
+        /* Override global styles forcing Segoe UI and bold font weights */
+        .a4-page,
+        .a4-page table,
+        .a4-page tr,
+        .a4-page td,
+        .a4-page th,
+        .a4-page p,
+        .a4-page span,
+        .a4-page div,
+        .a4-page h1,
+        .a4-page h2,
+        .a4-page h3,
+        .a4-page h4 {
+          font-family: "Times New Roman", Times, serif !important;
+          font-weight: normal;
+        }
+
+        .a4-page th,
+        .a4-page strong,
+        .a4-page b,
+        .a4-page h1,
+        .a4-page h2,
+        .a4-page h3,
+        .a4-page h4,
+        .a4-page tr[style*="font-weight: bold"] td,
+        .a4-page tr[style*="font-weight:bold"] td,
+        .a4-page td[style*="font-weight: bold"],
+        .a4-page td[style*="font-weight:bold"] {
+          font-weight: bold;
+        }
+
         /* Standard layout styling */
         html, body {
           height: auto !important;
@@ -625,7 +675,7 @@ export default function PrintContractClient({ contract, customer, sellerDetails 
           background-color: #fff;
           width: 210mm;
           min-height: 297mm;
-          padding: 15mm 20mm 15mm 20mm;
+          padding: 20mm 20mm 20mm 30mm;
           box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
           box-sizing: border-box;
         }
@@ -819,34 +869,50 @@ export default function PrintContractClient({ contract, customer, sellerDetails 
 
         .watermark {
           position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%) rotate(-35deg);
-          font-size: 8rem;
-          font-weight: 900;
-          color: rgba(0, 0, 0, 0.08) !important;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
           z-index: 9999;
           pointer-events: none;
-          white-space: nowrap;
-          text-transform: uppercase;
-          font-family: 'Segoe UI', Arial, sans-serif;
           user-select: none;
         }
 
-        .watermark.approved {
+        .watermark-inner {
+          transform: rotate(-35deg);
+          font-size: 8rem;
+          font-weight: 900;
+          color: rgba(0, 0, 0, 0.08) !important;
+          white-space: nowrap;
+          text-transform: uppercase;
+          font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        .watermark-inner.approved {
           font-size: 6.5rem;
           color: rgba(0, 0, 0, 0.04) !important;
         }
 
         /* Print Media Styles */
         @media print {
+          @page {
+            size: A4;
+            margin: 20mm 20mm 20mm 30mm; /* top: 2cm, right: 2cm, bottom: 2cm, left: 3cm */
+          }
           .watermark {
+            display: flex !important;
+            pointer-events: none;
+          }
+          .watermark-inner {
             display: block !important;
             color: rgba(0, 0, 0, 0.08) !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          .watermark.approved {
+          .watermark-inner.approved {
             color: rgba(0, 0, 0, 0.04) !important;
           }
           html, body {

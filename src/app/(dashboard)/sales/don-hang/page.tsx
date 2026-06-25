@@ -1,17 +1,54 @@
 import { prisma } from "@/lib/db";
 import OrderTable from "./OrderTable";
 import { getSession } from "@/lib/session";
+import { getUserModuleBranchFilter } from "@/lib/permissions";
+
+async function getUserPosition(employeeName: string | null) {
+  if (!employeeName) return "";
+
+  // Check in transferpromotion table for the latest approved request
+  const latestTransfer = await (prisma as any).transferpromotion.findFirst({
+    where: {
+      employeeName: employeeName,
+      status: "Đã phê duyệt"
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
+  if (latestTransfer) {
+    return latestTransfer.newPosition || "";
+  }
+
+  // Fallback to employee table
+  const employee = await prisma.employee.findFirst({
+    where: { fullName: employeeName }
+  });
+
+  return employee?.position || "";
+}
 
 export default async function DonHangPage() {
   const session = await getSession();
   const user = session?.userId
     ? await prisma.user.findUnique({ where: { id: session.userId } })
     : null;
-  const isStaff = user?.role?.includes("Nhân viên") && user?.username !== "admin" && user?.role !== "Admin";
+  const position = await getUserPosition(user?.employeeName || null);
+  const isAdmin = user?.username === "admin" || user?.role === "Admin";
+  const isManager = isAdmin || user?.role?.includes("Trưởng phòng") || position.includes("Trưởng phòng") || position.includes("Giám đốc");
+  const isStaff = !isManager;
   const userName = user?.employeeName || user?.username || "";
 
+  const activeBranch = session?.activeBranch;
+
+  const filter = user ? await getUserModuleBranchFilter(user.id, "KD_DON_HANG", session?.activeBranch, {
+    branchField: "branch",
+    employeeField: "employeeName"
+  }) : { id: "NO_ACCESS" };
+
   const orders = await prisma.order.findMany({
-    where: isStaff ? { employeeName: userName } : {},
+    where: filter,
     include: { orderitem: true },
     orderBy: { createdAt: "desc" },
   });
@@ -34,9 +71,14 @@ export default async function DonHangPage() {
     select: { fullName: true }
   });
 
+  const contractFilter = user ? await getUserModuleBranchFilter(user.id, "KD_DON_HANG", session?.activeBranch, {
+    employeeInBranchField: "salesEmployee",
+    employeeField: "salesEmployee"
+  }) : { id: "NO_ACCESS" };
+
   // Lấy danh sách hợp đồng để chọn trong biểu mẫu
   const contracts = await prisma.contract.findMany({
-    where: isStaff ? { salesEmployee: userName } : {},
+    where: contractFilter,
     include: { contractitem: true },
     orderBy: { createdAt: "desc" }
   });
@@ -66,6 +108,7 @@ export default async function DonHangPage() {
       contracts={JSON.parse(JSON.stringify(contracts))}
       customersFull={JSON.parse(JSON.stringify(customers))}
       products={JSON.parse(JSON.stringify(products))}
+      isStaff={isStaff}
     />
   );
 }

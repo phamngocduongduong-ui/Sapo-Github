@@ -15,11 +15,19 @@ export async function createOrder(formData: FormData, items: any[]) {
   const shipDate = formData.get("shipDate") as string;
   const thermometer = formData.get("thermometer") === "on";
   const note = formData.get("note") as string;
+  const isCombined = formData.get("isCombined") === "on";
+  const combinedOrderCode = formData.get("combinedOrderCode") as string;
+  const attachments = formData.get("attachments") as string;
 
   if (!orderCode || !customerCode) throw new Error("Mã đơn hàng và Mã khách hàng là bắt buộc.");
 
-  const existing = await (prisma as any).order.findUnique({ where: { orderCode } });
-  if (existing) throw new Error("Mã đơn hàng đã tồn tại.");
+  const existing = await (prisma as any).order.findFirst({
+    where: {
+      orderCode,
+      branch: branch || null
+    }
+  });
+  if (existing) throw new Error("Mã đơn hàng đã tồn tại ở chi nhánh này.");
 
   const order = await (prisma as any).order.create({
     data: {
@@ -33,6 +41,9 @@ export async function createOrder(formData: FormData, items: any[]) {
       thermometer,
       status: "Tạo mới",
       note: note || null,
+      isCombined,
+      combinedOrderCode: isCombined ? (combinedOrderCode || null) : null,
+      attachments: attachments || null,
       orderitem: {
         create: items.map(item => ({
           id: crypto.randomUUID(),
@@ -45,6 +56,7 @@ export async function createOrder(formData: FormData, items: any[]) {
           printedBag: item.printedBag || false,
           printedBox: item.printedBox || false,
           brix: item.brix || null,
+          standard: item.standard || null,
           otherRequirements: item.otherRequirements || null,
           note: item.note,
           updatedAt: new Date()
@@ -70,6 +82,7 @@ export async function createOrder(formData: FormData, items: any[]) {
 }
 
 export async function updateOrder(id: string, formData: FormData, items: any[]) {
+  const orderCode = formData.get("orderCode") as string;
   const customerCode = formData.get("customerCode") as string;
   const branch = formData.get("branch") as string;
   const requestDeliveryDate = formData.get("requestDeliveryDate") as string;
@@ -77,6 +90,11 @@ export async function updateOrder(id: string, formData: FormData, items: any[]) 
   const thermometer = formData.get("thermometer") === "on";
   const note = formData.get("note") as string;
   const status = formData.get("status") as string;
+  const isCombined = formData.get("isCombined") === "on";
+  const combinedOrderCode = formData.get("combinedOrderCode") as string;
+  const attachments = formData.get("attachments") as string;
+
+  if (!orderCode || !customerCode) throw new Error("Mã đơn hàng và Mã khách hàng là bắt buộc.");
 
   const session = await getSession();
   const oldOrder = await (prisma as any).order.findUnique({ where: { id }, include: { orderitem: true } });
@@ -86,12 +104,22 @@ export async function updateOrder(id: string, formData: FormData, items: any[]) 
     throw new Error(`Không thể chỉnh sửa đơn hàng đang ở trạng thái "${oldOrder.status}".`);
   }
 
+  const existing = await (prisma as any).order.findFirst({
+    where: {
+      orderCode,
+      branch: branch || null,
+      NOT: { id }
+    }
+  });
+  if (existing) throw new Error("Mã đơn hàng đã tồn tại ở chi nhánh này.");
+
   // Xóa orderitem cũ và tạo mới
   await (prisma as any).orderitem.deleteMany({ where: { orderId: id } });
 
   const updatedOrder = await (prisma as any).order.update({
     where: { id },
     data: {
+      orderCode,
       customerCode,
       branch: branch || null,
       requestDeliveryDate: requestDeliveryDate ? new Date(requestDeliveryDate) : null,
@@ -99,6 +127,9 @@ export async function updateOrder(id: string, formData: FormData, items: any[]) 
       thermometer,
       status,
       note: note || null,
+      isCombined,
+      combinedOrderCode: isCombined ? (combinedOrderCode || null) : null,
+      attachments: attachments || null,
       orderitem: {
         create: items.map(item => ({
           id: crypto.randomUUID(),
@@ -111,6 +142,7 @@ export async function updateOrder(id: string, formData: FormData, items: any[]) 
           printedBag: item.printedBag || false,
           printedBox: item.printedBox || false,
           brix: item.brix || null,
+          standard: item.standard || null,
           otherRequirements: item.otherRequirements || null,
           note: item.note,
           updatedAt: new Date()

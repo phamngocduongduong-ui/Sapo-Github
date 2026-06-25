@@ -296,18 +296,18 @@ export default function SalaryChangeTable({
               display: "flex", 
               alignItems: "center", 
               justifyContent: "center", 
-              margin: "0 auto 1.5rem",
+              margin: "0 auto 1.25rem",
               color: "#f97316"
             }}>
               <Clock size={32} />
             </div>
-            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 auto 0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
               {confirmUpdate.status === "Chờ phê duyệt" ? "Gửi phê duyệt" : 
                confirmUpdate.status === "Tạo mới" ? "Thu hồi hồ sơ" : 
                confirmUpdate.status === "Đã phê duyệt" ? "Phê duyệt hồ sơ" : 
                "Xác nhận thay đổi"}
             </h3>
-            <div style={{ color: "#475569", marginBottom: "2rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+            <div style={{ color: "#475569", margin: "0 auto 1.75rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
               {confirmUpdate.status === "Chờ phê duyệt" ? (
                 <>
                   <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc muốn gửi hồ sơ để chờ phê duyệt không?</p>
@@ -333,9 +333,47 @@ export default function SalaryChangeTable({
                 <p>Bạn có chắc chắn muốn chuyển trạng thái hồ sơ này sang <strong>"{confirmUpdate.status}"</strong> không?</p>
               )}
             </div>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmUpdate(null)}>Hủy bỏ</button>
-              <button className="btn btn-primary" style={{ flex: 1, background: confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Hủy" ? "#ef4444" : "#2563eb" }} onClick={executeStatusChange}>Xác nhận</button>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button 
+                type="button"
+                className="sapo-btn sapo-btn-secondary" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={() => setConfirmUpdate(null)}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                type="button"
+                className="sapo-btn" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Hủy" ? "#ef4444" : "#003466",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={executeStatusChange}
+              >
+                Xác nhận
+              </button>
             </div>
           </div>
         </div>

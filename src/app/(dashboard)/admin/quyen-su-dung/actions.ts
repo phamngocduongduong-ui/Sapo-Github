@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
-export async function saveCategoryPermissions(permissionId: string, permissions: { moduleKey: string, canAccess: boolean }[]) {
+export async function saveCategoryPermissions(permissionId: string, permissions: { moduleKey: string, canAccess: boolean, allBranches: boolean }[]) {
   // Đảm bảo chỉ lưu các moduleKey duy nhất và hợp lệ
   const uniquePermissions = Array.from(
     new Map(permissions.map(p => [p.moduleKey, p])).values()
@@ -19,7 +19,8 @@ export async function saveCategoryPermissions(permissionId: string, permissions:
       data: uniquePermissions.map(p => ({
         permissionId,
         moduleKey: p.moduleKey,
-        canAccess: p.canAccess
+        canAccess: p.canAccess,
+        allBranches: p.allBranches
       }))
     })
   ]);

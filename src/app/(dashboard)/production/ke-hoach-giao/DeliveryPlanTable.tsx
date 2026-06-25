@@ -22,7 +22,8 @@ export default function DeliveryPlanTable({
   branches,
   salesEmployees,
   currentUser,
-  contracts = []
+  contracts = [],
+  activeBranch
 }: {
   initialOrders: any[];
   customers: string[];
@@ -31,20 +32,32 @@ export default function DeliveryPlanTable({
   salesEmployees: string[];
   currentUser: string;
   contracts?: any[];
+  activeBranch?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isSaving, setIsSaving] = useState(false);
   const [orders, setOrders] = useState<any[]>(initialOrders);
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [filterMonth, setFilterMonth] = useState("");
   
-  // Sync initialOrders from props when revalidated
+  // Sync initialOrders from props only when data actually changes to prevent optimistic state flicker
+  const initialOrdersKey = useMemo(() => {
+    return initialOrders.map(o => `${o.id}-${o.status}-${o.shipDate || ""}-${o.updatedAt || ""}`).join("|");
+  }, [initialOrders]);
+
   useEffect(() => {
     setOrders(initialOrders);
-  }, [initialOrders]);
+  }, [initialOrdersKey]);
   
-  // Real-time sync (disabled during transition)
-  useRealTimeSync("orders", orders, setOrders, 3000, isPending);
+  // Real-time sync (disabled during transition or saving)
+  useRealTimeSync(
+    activeBranch ? `orders&branch=${encodeURIComponent(activeBranch)}` : "orders", 
+    orders, 
+    setOrders, 
+    3000, 
+    isPending || isSaving
+  );
 
   // Sync calendar date when filterMonth changes
   useEffect(() => {
@@ -155,7 +168,7 @@ export default function DeliveryPlanTable({
     setDragOverDate(null);
   }
 
-  function handleCalendarDrop(e: React.DragEvent, dateStr: string) {
+  async function handleCalendarDrop(e: React.DragEvent, dateStr: string) {
     e.preventDefault();
     setDragOverDate(null);
     const orderId = e.dataTransfer.getData("text/plain");
@@ -179,15 +192,24 @@ export default function DeliveryPlanTable({
       )
     );
 
-    startTransition(async () => {
-      try {
-        await planOrder(orderId, dateStr);
-      } catch (err: any) {
-        // Rollback
-        setOrders(previousOrders);
-        alert(err.message);
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/production/ke-hoach-giao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "plan", orderId, shipDateStr: dateStr })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Có lỗi xảy ra khi xếp lịch.");
       }
-    });
+    } catch (err: any) {
+      // Rollback
+      setOrders(previousOrders);
+      alert(err.message);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function handleLeftDeckDragOver(e: React.DragEvent) {
@@ -199,7 +221,7 @@ export default function DeliveryPlanTable({
     setIsLeftDeckDragOver(false);
   }
 
-  function handleLeftDeckDrop(e: React.DragEvent) {
+  async function handleLeftDeckDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsLeftDeckDragOver(false);
     const orderId = e.dataTransfer.getData("text/plain");
@@ -234,15 +256,24 @@ export default function DeliveryPlanTable({
         setFilterEmployee("");
       }
 
-      startTransition(async () => {
-        try {
-          await unplanOrder(orderId);
-        } catch (err: any) {
-          // Rollback
-          setOrders(previousOrders);
-          alert(err.message);
+      setIsSaving(true);
+      try {
+        const res = await fetch("/api/production/ke-hoach-giao", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "unplan", orderId })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Có lỗi xảy ra khi hủy xếp lịch.");
         }
-      });
+      } catch (err: any) {
+        // Rollback
+        setOrders(previousOrders);
+        alert(err.message);
+      } finally {
+        setIsSaving(false);
+      }
     }
   }
 
@@ -598,7 +629,7 @@ export default function DeliveryPlanTable({
         }
         .calendar-grid {
           display: grid;
-          grid-template-columns: repeat(7, 1fr);
+          grid-template-columns: repeat(7, minmax(0, 1fr));
           gap: 6px;
           flex: 1;
         }
@@ -666,17 +697,18 @@ export default function DeliveryPlanTable({
           color: #0369a1;
           border: 1px solid #bae6fd;
           border-radius: 4px;
-          padding: 2px 4px;
-          font-size: 11px !important;
+          padding: 3px 6px;
+          font-size: 10px !important;
           font-weight: 700;
           cursor: grab;
           display: flex;
+          flex-direction: column;
           align-items: center;
-          justify-content: space-between;
-          gap: 2px;
+          justify-content: center;
+          gap: 1px;
           white-space: nowrap;
           overflow: hidden;
-          text-overflow: ellipsis;
+          text-align: center;
           transition: background-color 0.15s, transform 0.15s;
         }
         .calendar-order-badge:hover {
@@ -714,6 +746,12 @@ export default function DeliveryPlanTable({
           position: absolute !important;
           left: 10px !important;
           color: #94a3b8 !important;
+        }
+        @keyframes loading-spin {
+          to { transform: rotate(360deg); }
+        }
+        .loading-spin {
+          animation: loading-spin 1s linear infinite;
         }
         `
       }} />
@@ -792,7 +830,49 @@ export default function DeliveryPlanTable({
           </div>
 
           {/* DND CALENDAR VIEW */}
-          <div className="split-layout">
+          <div className="split-layout" style={{ position: "relative" }}>
+            {(isPending || isSaving) && (
+              <div style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(255, 255, 255, 0.7)",
+                backdropFilter: "blur(2px)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 20,
+                borderRadius: "6px",
+                transition: "all 0.3s ease"
+              }}>
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#ffffff",
+                  padding: "16px 28px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
+                }}>
+                  <div className="loading-spin" style={{
+                    border: "3px solid rgba(0, 52, 102, 0.1)",
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "50%",
+                    borderLeftColor: "#003466",
+                    marginBottom: "8px"
+                  }} />
+                  <p style={{ margin: 0, fontSize: "13px", color: "#003466", fontWeight: 600 }}>
+                    {isSaving ? "Đang lưu kế hoạch giao..." : "Đang xử lý..."}
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Left Panel: Draggable orders waiting for schedule */}
             <div 
               className={`left-deck ${isLeftDeckDragOver ? "drag-over" : ""}`}
@@ -888,7 +968,7 @@ export default function DeliveryPlanTable({
               </div>
 
               {/* Weekday Labels (Mon - Sun) */}
-              <div className="calendar-grid" style={{ gridTemplateRows: "auto", flex: "0 0 auto", marginBottom: "6px" }}>
+              <div className="calendar-grid" style={{ gridTemplateRows: "auto", flex: "0 0 auto", width: "100%", marginBottom: "6px" }}>
                 <div className="calendar-weekday">T2</div>
                 <div className="calendar-weekday">T3</div>
                 <div className="calendar-weekday">T4</div>
@@ -899,7 +979,7 @@ export default function DeliveryPlanTable({
               </div>
 
               {/* Day Cells Grid */}
-              <div className="calendar-grid" style={{ gridTemplateRows: "repeat(6, 1fr)" }}>
+              <div className="calendar-grid" style={{ gridAutoRows: "minmax(85px, auto)" }}>
                 {calendarCells.map((cell, idx) => {
                   const dateStr = `${cell.date.getFullYear()}-${String(cell.date.getMonth() + 1).padStart(2, '0')}-${String(cell.date.getDate()).padStart(2, '0')}`;
                   const isToday = new Date().toDateString() === cell.date.toDateString();
@@ -940,7 +1020,7 @@ export default function DeliveryPlanTable({
                       <div className="calendar-day-number">{cell.date.getDate()}</div>
                       
                       {/* List of orders on this day */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: "2px", overflowY: "auto", flex: 1, maxHeight: "65px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1 }}>
                         {cellOrders.map(order => (
                           <div
                             key={order.id}
@@ -985,68 +1065,69 @@ export default function DeliveryPlanTable({
               🔍 Chi tiết đơn sản xuất: <span style={{ color: "#ff5c00" }}>{viewingOrder.orderCode}</span>
             </h3>
 
-            {/* Modal Tabs Navigation */}
-            <div style={{ display: "flex", gap: "0.15rem", borderBottom: "2px solid #eee", padding: "0 0.5rem", background: "#f8fafc" }}>
-              <button type="button" onClick={() => setModalActiveTab(1)} style={getTabButtonStyle(1)}>
-                1. Thông tin chung
-              </button>
-              <button type="button" onClick={() => setModalActiveTab(2)} style={getTabButtonStyle(2)}>
-                2. Chi tiết hàng hóa
-              </button>
-            </div>
-
             {/* Modal Scrollable Body */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
+            <div style={{ flex: 1, overflow: "auto", padding: "16px 24px" }}>
               
-              {/* Tab 1: General Info */}
-              <div style={{ display: modalActiveTab === 1 ? "grid" : "none", gridTemplateColumns: "repeat(3, 1fr)", rowGap: "12px", columnGap: "1.5rem" }}>
-                <div>
+              {/* General Info Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: "10px", columnGap: "1.5rem", marginBottom: "20px" }}>
+                <div style={{ width: "120px" }}>
                   <label className="filter-label">Mã đơn hàng</label>
                   <input type="text" className="input" defaultValue={viewingOrder.orderCode} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
                 </div>
-                <div>
+                <div style={{ width: "120px" }}>
                   <label className="filter-label">Mã khách hàng</label>
                   <input type="text" className="input" defaultValue={viewingOrder.customerCode} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
                 </div>
-                <div>
+                <div style={{ width: "170px" }}>
                   <label className="filter-label">Nhân viên thực hiện</label>
                   <input type="text" className="input" defaultValue={viewingOrder.employeeName} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
                 </div>
-                <div>
+
+                <div style={{ width: "150px" }}>
                   <label className="filter-label">Ngày thực hiện</label>
                   <input type="text" className="input" defaultValue={new Date(viewingOrder.orderDate).toLocaleDateString("vi-VN")} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
                 </div>
-                <div>
+                <div style={{ width: "120px" }}>
                   <label className="filter-label">Chi nhánh</label>
                   <input type="text" className="input" defaultValue={viewingOrder.branch || "—"} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
                 </div>
-                <div>
+                <div style={{ width: "150px" }}>
                   <label className="filter-label">Thời gian đề nghị</label>
                   <input type="text" className="input" defaultValue={formatYearMonth(viewingOrder.requestDeliveryDate)} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
                 </div>
 
-                <div>
+                <div style={{ width: "200px" }}>
                   <label className="filter-label">Ngày dự kiến xuất hàng</label>
                   <input type="text" className="input" defaultValue={viewingOrder.shipDate ? new Date(viewingOrder.shipDate).toLocaleDateString("vi-VN") : "—"} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
                 </div>
-                <div>
+                <div style={{ display: "none" }}>
                   <label className="filter-label">Trạng thái</label>
                   <input type="text" className="input" defaultValue={viewingOrder.status} readOnly style={{ width: "100%", background: "#f1f5f9", fontWeight: 700, color: viewingOrder.status === "Chờ tiếp nhận" ? "#7c3aed" : viewingOrder.status === "Chờ kế hoạch" ? "#2563eb" : undefined }} />
                 </div>
+                <div style={{ display: "none" }}>
+                  {/* Empty grid cell */}
+                </div>
+
+                {/* Checkbox row */}
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", gridColumn: "span 3", marginTop: "5px" }}>
                   <input type="checkbox" id="modal-thermometer" checked={viewingOrder.thermometer} readOnly style={{ width: "16px", height: "16px" }} />
                   <label htmlFor="modal-thermometer" style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#003466" }}>CÓ SỬ DỤNG NHIỆT KẾ</label>
                 </div>
+
+                {/* Ghi chú row */}
                 <div style={{ gridColumn: "span 3" }}>
                   <label className="filter-label">Ghi chú</label>
                   <input type="text" className="input" defaultValue={viewingOrder.note ?? "—"} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
                 </div>
               </div>
 
-              {/* Tab 2: Goods list */}
-              <div style={{ display: modalActiveTab === 2 ? "block" : "none" }}>
+              {/* Goods list Section */}
+              <div style={{ marginTop: "20px", marginBottom: "20px" }}>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", color: "#003466", fontWeight: "700" }}>
+                  📦 Chi tiết hàng hóa
+                </h4>
                 <div style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "8px" }}>
-                  <table style={{ fontSize: "12px", width: "100%", minWidth: "1135px", tableLayout: "fixed", borderCollapse: "collapse" }}>
+                  <table style={{ fontSize: "12px", width: "100%", minWidth: "1285px", tableLayout: "fixed", borderCollapse: "collapse" }}>
                     <thead style={{ background: "#f8fafc" }}>
                       <tr>
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "300px", whiteSpace: "normal", verticalAlign: "middle" }}>Tên hàng hóa</th>
@@ -1057,6 +1138,7 @@ export default function DeliveryPlanTable({
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Túi in</th>
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Thùng in</th>
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Brix (%)</th>
+                        <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "150px", whiteSpace: "normal", verticalAlign: "middle" }}>Tiêu chuẩn</th>
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "180px", whiteSpace: "normal", verticalAlign: "middle" }}>Yêu cầu khác</th>
                         <th style={{ textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", borderBottom: "2px solid #cbd5e1", textAlign: "center", width: "180px", whiteSpace: "normal", verticalAlign: "middle" }}>Ghi chú</th>
                       </tr>
@@ -1073,18 +1155,48 @@ export default function DeliveryPlanTable({
                             <td style={{ padding: "8px", textAlign: "center" }}>{item.printedBag ? "✅" : "—"}</td>
                             <td style={{ padding: "8px", textAlign: "center" }}>{item.printedBox ? "✅" : "—"}</td>
                             <td style={{ padding: "8px", textAlign: "center" }}>{item.brix || "—"}</td>
+                            <td style={{ padding: "8px" }}>{item.standard || "—"}</td>
                             <td style={{ padding: "8px" }}>{item.otherRequirements || "—"}</td>
                             <td style={{ padding: "8px", color: "#64748b" }}>{item.note || "—"}</td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={10} style={{ padding: "12px", textAlign: "center", color: "#888" }}>Không có chi tiết hàng hóa.</td>
+                          <td colSpan={11} style={{ padding: "12px", textAlign: "center", color: "#888" }}>Không có chi tiết hàng hóa.</td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* Attachments Section */}
+              <div style={{ marginTop: "20px", borderTop: "1px solid #cbd5e1", paddingTop: "15px" }}>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", color: "#003466", fontWeight: "700" }}>
+                  📎 Tệp đính kèm từ hợp đồng
+                </h4>
+                {(() => {
+                  const match = viewingOrder.note?.match(/Hợp đồng:\s*(.*?)(?:\s+-\s+|$)/);
+                  const contractNo = match ? match[1]?.trim() : null;
+                  const contractObj = contractNo ? (contracts || []).find((c: any) => c.contractNumber?.trim() === contractNo) : null;
+                  const attachments = contractObj?.attachments ? JSON.parse(contractObj.attachments) : [];
+                  
+                  if (attachments && attachments.length > 0) {
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {attachments.map((file: any, index: number) => (
+                          <div key={index} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "6px 12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px" }}>
+                            <span style={{ fontSize: "13px", color: "#334155", flex: 1 }}>{file.fileName}</span>
+                            <a href={file.fileContent} download={file.fileName} style={{ fontSize: "12px", color: "#2563eb", textDecoration: "underline", fontWeight: 500 }}>
+                              Tải xuống
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>Không có tệp đính kèm nào.</p>;
+                })()}
               </div>
 
             </div>

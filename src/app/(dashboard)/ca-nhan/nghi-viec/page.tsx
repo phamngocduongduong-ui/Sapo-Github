@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import ResignationTable from "./ResignationTable";
 import { getResignations } from "./actions";
+import { getUserModuleBranchFilter } from "@/lib/permissions";
 
 export default async function NghiViecPage() {
   const session = await getSession();
@@ -21,12 +22,17 @@ export default async function NghiViecPage() {
   const currentUserName = user?.employeeName || user?.username || "";
   const currentUserBranch = user?.branch || "";
 
+  const employeeFilter = user ? await getUserModuleBranchFilter(user.id, "CN_NGHI_VIEC", session?.activeBranch, {
+    branchField: "branch",
+    employeeField: "fullName"
+  }) : { id: "NO_ACCESS" };
+
   const [resignations, employees] = await Promise.all([
-    getResignations(isAdmin, userBranches),
+    getResignations(user?.id || "", session?.activeBranch),
     prisma.employee.findMany({
       where: { 
         status: "ACTIVE",
-        branch: isAdmin ? undefined : { in: userBranches }
+        ...employeeFilter
       },
       select: { id: true, fullName: true, employeeCode: true },
       orderBy: { fullName: "asc" }

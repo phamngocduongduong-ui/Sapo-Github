@@ -66,7 +66,8 @@ export default function OrderTable({
   currentUser,
   contracts = [],
   customersFull = [],
-  products = []
+  products = [],
+  isStaff = false
 }: {
   initialOrders: any[],
   customers: string[],
@@ -75,13 +76,15 @@ export default function OrderTable({
   currentUser: string,
   contracts?: any[],
   customersFull?: any[],
-  products?: { code: string; name: string; englishName?: string | null; packaging?: string | null; unit?: { name: string }[] }[]
+  products?: { code: string; name: string; englishName?: string | null; packaging?: string | null; unit?: { name: string }[] }[],
+  isStaff?: boolean
 }) {
   const router = useRouter();
   const [orders, setOrders] = useState<any[]>(initialOrders);
   const [showModal, setShowModal] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [editingOrder, setEditingOrder] = useState<any | null>(null);
+  const [isDuplicateMode, setIsDuplicateMode] = useState(false);
   const [items, setItems] = useState<any[]>([]);
   
   // State selected order
@@ -111,6 +114,21 @@ export default function OrderTable({
   const [formRequestDeliveryDate, setFormRequestDeliveryDate] = useState("");
   const [formThermometer, setFormThermometer] = useState(false);
   const [formNote, setFormNote] = useState("");
+
+  // Combined consignment states
+  const [formIsCombined, setFormIsCombined] = useState(false);
+  const [formCombinedOrderCode, setFormCombinedOrderCode] = useState("");
+  const [combinedOrderSearch, setCombinedOrderSearch] = useState("");
+  const [showCombinedOrderDropdown, setShowCombinedOrderDropdown] = useState(false);
+  const [attachmentList, setAttachmentList] = useState<any[]>([]);
+  const combinedOrderDropdownRef = useRef<HTMLDivElement>(null);
+
+  const eligibleOrders = useMemo(() => {
+    return orders.filter(o => 
+      (o.status === "Chờ kế hoạch" || o.status === "Chờ giao hàng") &&
+      o.orderCode !== formOrderCode
+    );
+  }, [orders, formOrderCode]);
 
   // Contract selection states
   const [showContractModal, setShowContractModal] = useState(false);
@@ -176,7 +194,9 @@ export default function OrderTable({
     }
     
     if (contract.salesEmployee) {
-      setFormEmployeeName(contract.salesEmployee);
+      if (!isStaff) {
+        setFormEmployeeName(contract.salesEmployee);
+      }
     }
     
     setFormThermometer(contract.thermometer);
@@ -200,16 +220,6 @@ export default function OrderTable({
       setFormNote(contractNote);
     }
 
-    // Auto-generate orderCode
-    const contractOrders = orders.filter(o => 
-      o.note && o.note.includes(`Hợp đồng: ${contract.contractNumber}`)
-    );
-    const nextSeq = contractOrders.length + 1;
-    const seqStr = String(nextSeq).padStart(2, '0');
-    const contractSuffix = contract.contractNumber.slice(-7);
-    const generatedOrderCode = `PO${contractSuffix}.${seqStr}`;
-    setFormOrderCode(generatedOrderCode);
-    
     setSelectedContractNumber(contract.contractNumber);
     setShowContractModal(false);
   }
@@ -241,7 +251,8 @@ export default function OrderTable({
         hasCornerGuard: false,
         printedBag: false,
         printedBox: false,
-        brix: "",
+        brix: item.brix != null ? String(item.brix) : "",
+        standard: "",
         otherRequirements: "",
         note: item.note || ""
       };
@@ -276,6 +287,24 @@ export default function OrderTable({
     return () => window.removeEventListener("click", handleClick);
   }, []);
 
+  // Close combined order dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        combinedOrderDropdownRef.current &&
+        !combinedOrderDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowCombinedOrderDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+
+
   // Auto-Sync
   useRealTimeSync("orders", orders, setOrders);
 
@@ -294,12 +323,58 @@ export default function OrderTable({
     return Array.from(new Set(orders.map(o => o.customerCode)));
   }, [orders]);
 
+  // Get all orders associated with the selected contract (excluding cancelled orders)
+  const associatedOrders = useMemo(() => {
+    if (!selectedContractObj) return [];
+    return orders.filter(o => 
+      o.status !== "Đã hủy" &&
+      o.note && o.note.includes(`Hợp đồng: ${selectedContractObj.contractNumber}`)
+    );
+  }, [orders, selectedContractObj]);
+
+  // Get expected order item name for a contract item and sum quantities
+  const getOrderedQuantityForContractItem = (contractItem: any) => {
+    if (!selectedContractObj) return 0;
+    let total = 0;
+    
+    // Find the mapped product details for this contract item
+    const prod = contractItem.productCode 
+      ? (products || []).find(p => p.code === contractItem.productCode) 
+      : null;
+    
+    const possibleNames = new Set<string>();
+    if (contractItem.productName) {
+      possibleNames.add(contractItem.productName.trim().toLowerCase());
+    }
+    if (prod) {
+      if (prod.name) possibleNames.add(prod.name.trim().toLowerCase());
+      if (prod.englishName) possibleNames.add(prod.englishName.trim().toLowerCase());
+    }
+    
+    associatedOrders.forEach(o => {
+      // Exclude the order currently being edited
+      if (editingOrder && !isDuplicateMode && o.id === editingOrder.id) return;
+      
+      const itemsList = o.orderitem || [];
+      itemsList.forEach((item: any) => {
+        const orderItemName = (item.productName || "").trim().toLowerCase();
+        if (possibleNames.has(orderItemName)) {
+          total += item.quantity || 0;
+        }
+      });
+    });
+    
+    return total;
+  };
+
   function handleClose() {
     setShowModal(false);
     setEditingOrder(null);
     setIsViewMode(false);
+    setIsDuplicateMode(false);
     setItems([]);
     setError(null);
+    setAttachmentList([]);
 
     // Reset form states
     setFormOrderCode("");
@@ -310,6 +385,57 @@ export default function OrderTable({
     setFormThermometer(false);
     setFormNote("");
     setSelectedContractNumber(null);
+    setFormIsCombined(false);
+    setFormCombinedOrderCode("");
+    setCombinedOrderSearch("");
+    setShowCombinedOrderDropdown(false);
+  }
+
+  function handleDuplicate(order: any) {
+    setEditingOrder(order);
+    setIsViewMode(false);
+    setIsDuplicateMode(true);
+    setItems(order.orderitem.length > 0 
+      ? order.orderitem.map((item: any) => ({
+          ...item,
+          quantityInput: formatLocaleNumber(item.quantity ?? 1),
+          unit: item.unit ?? "",
+          printedBag: item.printedBag ?? false,
+          printedBox: item.printedBox ?? false,
+          brix: item.brix ?? "",
+          standard: item.standard ?? "",
+          otherRequirements: item.otherRequirements ?? ""
+        }))
+      : []
+    );
+    setShowModal(true);
+
+    const atts = order.attachments ? JSON.parse(order.attachments) : [];
+    setAttachmentList(atts);
+
+    // Initialize form states
+    setFormCustomerCode(order.customerCode);
+    setFormEmployeeName(isStaff ? currentUser : order.employeeName);
+    setFormBranch(order.branch ?? "");
+    setFormRequestDeliveryDate(order.requestDeliveryDate ? getYearMonthString(order.requestDeliveryDate) : "");
+    setFormThermometer(order.thermometer);
+    setFormNote(order.note ?? "");
+    
+    // Parse contract number from note if it exists
+    const match = order.note?.match(/Hợp đồng:\s*(.*?)(?:\s+-\s+|$)/);
+    let contractNum = null;
+    if (match) {
+      contractNum = match[1];
+      setSelectedContractNumber(contractNum);
+    } else {
+      setSelectedContractNumber(null);
+    }
+
+    setFormOrderCode("");
+    setFormIsCombined(order.isCombined || false);
+    setFormCombinedOrderCode(order.combinedOrderCode || "");
+    setCombinedOrderSearch(order.combinedOrderCode || "");
+    setShowCombinedOrderDropdown(false);
   }
 
   function handleEdit(order: any) {
@@ -323,11 +449,15 @@ export default function OrderTable({
           printedBag: item.printedBag ?? false,
           printedBox: item.printedBox ?? false,
           brix: item.brix ?? "",
+          standard: item.standard ?? "",
           otherRequirements: item.otherRequirements ?? ""
         }))
       : []
     );
     setShowModal(true);
+
+    const atts = order.attachments ? JSON.parse(order.attachments) : [];
+    setAttachmentList(atts);
 
     // Initialize form states
     setFormOrderCode(order.orderCode);
@@ -345,6 +475,10 @@ export default function OrderTable({
     } else {
       setSelectedContractNumber(null);
     }
+    setFormIsCombined(order.isCombined || false);
+    setFormCombinedOrderCode(order.combinedOrderCode || "");
+    setCombinedOrderSearch(order.combinedOrderCode || "");
+    setShowCombinedOrderDropdown(false);
   }
 
   function handleView(order: any) {
@@ -358,11 +492,15 @@ export default function OrderTable({
           printedBag: item.printedBag ?? false,
           printedBox: item.printedBox ?? false,
           brix: item.brix ?? "",
+          standard: item.standard ?? "",
           otherRequirements: item.otherRequirements ?? ""
         }))
       : []
     );
     setShowModal(true);
+
+    const atts = order.attachments ? JSON.parse(order.attachments) : [];
+    setAttachmentList(atts);
 
     // Initialize form states
     setFormOrderCode(order.orderCode);
@@ -380,6 +518,10 @@ export default function OrderTable({
     } else {
       setSelectedContractNumber(null);
     }
+    setFormIsCombined(order.isCombined || false);
+    setFormCombinedOrderCode(order.combinedOrderCode || "");
+    setCombinedOrderSearch(order.combinedOrderCode || "");
+    setShowCombinedOrderDropdown(false);
   }
 
   function handleStatusChange(id: string, newStatus: string, info?: string) {
@@ -437,10 +579,18 @@ export default function OrderTable({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (isViewMode) return;
+
+    if (formIsCombined) {
+      if (!formCombinedOrderCode || formCombinedOrderCode !== combinedOrderSearch) {
+        setError("Vui lòng chọn một Mã đơn hàng ghép chung hợp lệ từ danh sách.");
+        return;
+      }
+    }
+
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       try {
-        if (editingOrder) await updateOrder(editingOrder.id, formData, items);
+        if (editingOrder && !isDuplicateMode) await updateOrder(editingOrder.id, formData, items);
         else await createOrder(formData, items);
         handleClose();
       } catch (err: any) { setError(err.message); }
@@ -677,7 +827,7 @@ export default function OrderTable({
           border-right: none !important;
         }
         .base-table td {
-          padding: 6px 0.75rem !important;
+          padding: 5px 0.75rem !important;
           vertical-align: middle !important;
           white-space: normal !important;
           word-break: break-word !important;
@@ -687,7 +837,7 @@ export default function OrderTable({
           border-right: none !important;
         }
         .base-table tbody tr {
-          height: 45px !important;
+          height: 35px !important;
         }
         .nowrap, .base-table .nowrap {
           white-space: nowrap !important;
@@ -736,13 +886,31 @@ export default function OrderTable({
           right: 0 !important;
           bottom: 0 !important;
         }
+        .custom-modal-overlay,
+        .custom-modal-overlay label,
+        .custom-modal-overlay input,
+        .custom-modal-overlay select,
+        .custom-modal-overlay textarea,
+        .custom-modal-overlay span,
+        .custom-modal-overlay p,
+        .custom-modal-overlay table,
+        .custom-modal-overlay th,
+        .custom-modal-overlay td,
+        .custom-modal-overlay button,
+        .custom-modal-overlay div {
+          font-size: 12px !important;
+        }
+        .custom-modal-overlay h3,
+        .custom-modal-overlay h3 span {
+          font-size: 16px !important;
+        }
         .filter-label { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; font-weight: 700; color: #003466; text-transform: uppercase; }
         .custom-modal-overlay .filter-label {
           text-transform: uppercase !important;
           color: #003466 !important;
           font-weight: 700 !important;
-          margin-bottom: 0.35rem !important;
-          font-size: 0.85rem !important;
+          margin-bottom: 5px !important;
+          font-size: 12px !important;
         }
         .custom-modal-overlay .scrollable-body::-webkit-scrollbar {
           display: none !important;
@@ -771,10 +939,11 @@ export default function OrderTable({
           color: white !important;
           font-weight: 500 !important;
           border-radius: 6px !important;
-          padding: 8px 20px !important;
-          font-size: 14px !important;
+          padding: 6px 15px !important;
+          font-size: 12px !important;
           border: none !important;
           cursor: pointer !important;
+          transition: background-color 0.2s, transform 0.1s !important;
         }
         .custom-modal-overlay .modal-footer-btn-secondary:hover {
           background-color: #003466 !important;
@@ -784,10 +953,11 @@ export default function OrderTable({
           color: white !important;
           font-weight: 500 !important;
           border-radius: 6px !important;
-          padding: 8px 20px !important;
-          font-size: 14px !important;
+          padding: 6px 15px !important;
+          font-size: 12px !important;
           border: none !important;
           cursor: pointer !important;
+          transition: background-color 0.2s, transform 0.1s !important;
         }
         .custom-modal-overlay .modal-footer-btn-success:hover {
           background-color: #003466 !important;
@@ -796,8 +966,9 @@ export default function OrderTable({
         .custom-modal-overlay .input {
           border-radius: 8px !important;
           border: 1px solid #cbd5e1 !important;
-          padding: 5px 12px !important;
-          height: 32px !important;
+          padding: 2px 10px !important;
+          height: 26px !important;
+          font-size: 12px !important;
           transition: border-color 0.2s, box-shadow 0.2s !important;
         }
         .custom-modal-overlay .input:focus {
@@ -807,8 +978,9 @@ export default function OrderTable({
         .custom-modal-overlay select.input {
           border-radius: 8px !important;
           border: 1px solid #cbd5e1 !important;
-          padding: 5px 12px !important;
-          height: 32px !important;
+          padding: 2px 10px !important;
+          height: 26px !important;
+          font-size: 12px !important;
           transition: border-color 0.2s, box-shadow 0.2s !important;
         }
         .custom-modal-overlay select.input:focus {
@@ -818,8 +990,13 @@ export default function OrderTable({
         .custom-modal-overlay .input-sm {
           border-radius: 6px !important;
           border: 1px solid #cbd5e1 !important;
-          padding: 5px 10px !important;
+          padding: 2px 8px !important;
+          font-size: 12px !important;
           transition: border-color 0.2s, box-shadow 0.2s !important;
+        }
+        .custom-modal-overlay input.input-sm,
+        .custom-modal-overlay select.input-sm {
+          height: 24px !important;
         }
         .custom-modal-overlay .input-sm:focus {
           border-color: #ff5c00 !important;
@@ -828,6 +1005,11 @@ export default function OrderTable({
         .custom-modal-overlay textarea.input-sm {
           border-radius: 6px !important;
           border: 1px solid #cbd5e1 !important;
+          padding: 5px 10px !important;
+        }
+        .custom-modal-overlay select.input option,
+        .custom-modal-overlay select option {
+          font-size: 12px !important;
         }
         .input-sm { width: 100%; padding: 5px 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.85rem; outline: none; }
         .input-sm:focus { border-color: #3498db; }
@@ -924,6 +1106,8 @@ export default function OrderTable({
               className="sapo-btn"
               onClick={() => {
                 setIsViewMode(false);
+                setEditingOrder(null);
+                setIsDuplicateMode(false);
                 setShowModal(true);
                 // Initialize form states for new order
                 setFormOrderCode("");
@@ -934,6 +1118,10 @@ export default function OrderTable({
                 setFormThermometer(false);
                 setFormNote("");
                 setSelectedContractNumber(null);
+                setFormIsCombined(false);
+                setFormCombinedOrderCode("");
+                setCombinedOrderSearch("");
+                setShowCombinedOrderDropdown(false);
               }}
             >
               Thêm mới
@@ -961,6 +1149,14 @@ export default function OrderTable({
                   onClick={() => setHistoryRecordId(selectedOrder.id)}
                 >
                   Lịch sử
+                </button>
+
+                <button
+                  type="button"
+                  className="sapo-btn"
+                  onClick={() => handleDuplicate(selectedOrder)}
+                >
+                  Nhân bản
                 </button>
 
                 {selectedOrder.status === "Tạo mới" && (
@@ -1011,16 +1207,17 @@ export default function OrderTable({
               <thead>
                 <tr>
                   <th className="th-first" style={{ width: "45px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>STT</th>
-                  <th style={{ width: "105px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Mã ĐH</th>
+                  <th style={{ width: "130px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Mã ĐH</th>
+                  <th style={{ width: "120px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Hàng ghép chung</th>
                   <th style={{ width: "65px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Mã KH</th>
                   <th style={{ width: "150px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Nhân viên</th>
                   <th style={{ width: "100px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Ngày tạo</th>
                   <th style={{ width: "95px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Chi nhánh</th>
+                  <th style={{ width: "115px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Trạng thái</th>
                   <th style={{ width: "110px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Thời gian giao đề nghị</th>
                   <th style={{ width: "95px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Ngày xuất dự kiến</th>
                   <th style={{ width: "90px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tổng số lượng</th>
-                  <th style={{ width: "90px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tổng giá trị</th>
-                  <th className="th-last" style={{ width: "100px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Trạng thái</th>
+                  <th className="th-last" style={{ width: "90px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tổng giá trị</th>
                 </tr>
               </thead>
               <tbody>
@@ -1038,6 +1235,9 @@ export default function OrderTable({
                     <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{idx + 1}</td>
                     <td className="nowrap" style={{ fontWeight: 600, textAlign: "center" }}>{order.orderCode}</td>
                     <td className="nowrap" style={{ textAlign: "center" }}>
+                      {order.isCombined ? `Y (${order.combinedOrderCode || ""})` : "N"}
+                    </td>
+                    <td className="nowrap" style={{ textAlign: "center" }}>
                       {(() => {
                         const cust = (customersFull || []).find(c => c.code === order.customerCode);
                         return cust?.abbreviation || order.customerCode;
@@ -1046,6 +1246,25 @@ export default function OrderTable({
                     <td className="nowrap" style={{ textAlign: "center" }}>{order.employeeName}</td>
                     <td className="nowrap" style={{ textAlign: "center" }}>{new Date(order.orderDate).toLocaleDateString("vi-VN")}</td>
                     <td className="nowrap" style={{ textAlign: "center" }}>{order.branch}</td>
+                    <td className="nowrap" style={{ textAlign: "center" }}>
+                      <span
+                        className={`status-pill ${
+                          order.status === "Đã giao hàng"
+                            ? "status-active"
+                            : order.status === "Tạo mới"
+                            ? "status-new"
+                            : order.status === "Chờ tiếp nhận"
+                            ? "status-waiting"
+                            : order.status === "Chờ kế hoạch"
+                            ? "status-planning"
+                            : order.status === "Đã hủy"
+                            ? "status-inactive"
+                            : "status-pending"
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </td>
                     <td className="nowrap" style={{ textAlign: "center" }}>{formatYearMonth(order.requestDeliveryDate)}</td>
                     <td className="nowrap" style={{ textAlign: "center" }}>{order.shipDate ? new Date(order.shipDate).toLocaleDateString("vi-VN") : "—"}</td>
                     {(() => {
@@ -1084,30 +1303,11 @@ export default function OrderTable({
                         </>
                       );
                     })()}
-                    <td className="nowrap" style={{ textAlign: "center" }}>
-                      <span
-                        className={`status-pill ${
-                          order.status === "Đã giao hàng"
-                            ? "status-active"
-                            : order.status === "Tạo mới"
-                            ? "status-new"
-                            : order.status === "Chờ tiếp nhận"
-                            ? "status-waiting"
-                            : order.status === "Chờ kế hoạch"
-                            ? "status-planning"
-                            : order.status === "Đã hủy"
-                            ? "status-inactive"
-                            : "status-pending"
-                        }`}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
                   </tr>
                 ))}
                 {filteredOrders.length === 0 && (
                   <tr>
-                    <td colSpan={11} style={{ textAlign: "center", padding: "2rem", color: "#000", fontWeight: 600 }}>
+                    <td colSpan={12} style={{ textAlign: "center", padding: "2rem", color: "#000", fontWeight: 600 }}>
                       Chưa có đơn hàng nào phù hợp.
                     </td>
                   </tr>
@@ -1146,10 +1346,15 @@ export default function OrderTable({
             }}
           >
             {/* Sticky Header */}
-            <h3 style={{ borderBottom: "1px solid #e2e8f0", padding: "16px 30px", margin: 0, background: "#fff", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", fontSize: "1.25rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
+            <h3 style={{ borderBottom: "1px solid #e2e8f0", padding: "10px 30px", margin: 0, background: "#fff", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", fontSize: "16px", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
               {isViewMode ? (
                 <>
                   <span>🔍 Chi tiết đơn hàng:</span>
+                  <span style={{ color: "#ff5c00" }}>{editingOrder?.orderCode}</span>
+                </>
+              ) : isDuplicateMode ? (
+                <>
+                  <span>📋 Nhân bản đơn hàng:</span>
                   <span style={{ color: "#ff5c00" }}>{editingOrder?.orderCode}</span>
                 </>
               ) : editingOrder ? (
@@ -1192,7 +1397,7 @@ export default function OrderTable({
                 {error && <div style={{ color: "#e74c3c", marginBottom: "1rem" }}>⚠️ {error}</div>}
                 
                 {/* General Info Section */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "1.5rem", maxWidth: "780px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "1.5rem", maxWidth: "780px" }}>
                   {/* Dòng 1: Mã đơn hàng, Mã khách hàng, Chi nhánh thực hiện */}
                   <div style={{ display: "flex", gap: "20px", width: "100%" }}>
                     <div style={{ width: "140px", flexShrink: 0 }}>
@@ -1202,10 +1407,14 @@ export default function OrderTable({
                         name="orderCode" 
                         className="input" 
                         value={formOrderCode} 
-                        readOnly
-                        tabIndex={-1}
+                        onChange={(e) => setFormOrderCode(e.target.value)}
+                        disabled={isViewMode}
                         required 
-                        style={{ width: "100%", backgroundColor: "#f1f5f9", pointerEvents: "none" }} 
+                        style={{ 
+                          width: "100%", 
+                          backgroundColor: isViewMode ? "#f1f5f9" : "white", 
+                          pointerEvents: isViewMode ? "none" : "auto" 
+                        }} 
                       />
                     </div>
                     <div style={{ width: "400px", flexShrink: 0 }}>
@@ -1287,8 +1496,138 @@ export default function OrderTable({
                       )}
                     </div>
                   </div>
+
+                  {/* Dòng 3: Hàng ghép Checkbox & Mã ĐH ghép chung Autocomplete */}
+                  <div style={{ display: "flex", gap: "20px", width: "100%", alignItems: "center", minHeight: "36px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", height: "26px" }}>
+                      <input
+                        type="checkbox"
+                        id="isCombined"
+                        name="isCombined"
+                        checked={formIsCombined}
+                        disabled={isViewMode}
+                        onChange={(e) => {
+                          setFormIsCombined(e.target.checked);
+                          if (!e.target.checked) {
+                            setFormCombinedOrderCode("");
+                            setCombinedOrderSearch("");
+                          }
+                        }}
+                        style={{ cursor: isViewMode ? "default" : "pointer", width: "16px", height: "16px", margin: 0 }}
+                      />
+                      <label 
+                        htmlFor="isCombined" 
+                        style={{ 
+                          fontWeight: 700, 
+                          color: "#003466", 
+                          textTransform: "uppercase", 
+                          cursor: isViewMode ? "default" : "pointer",
+                          margin: 0,
+                          fontSize: "12px",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        Hàng ghép
+                      </label>
+                    </div>
+
+                    {formIsCombined && (
+                      <div ref={combinedOrderDropdownRef} style={{ flex: 1, display: "flex", alignItems: "center", gap: "10px", position: "relative" }}>
+                        <label className="filter-label" style={{ margin: 0, whiteSpace: "nowrap", fontSize: "12px" }}>
+                          Mã ĐH ghép chung <span style={{ color: "red" }}>(*)</span>
+                        </label>
+                        <input
+                          type="hidden"
+                          name="combinedOrderCode"
+                          value={formCombinedOrderCode}
+                        />
+                        <div style={{ position: "relative", flex: 1 }}>
+                          <input
+                            type="text"
+                            className="input"
+                            placeholder={isViewMode ? "Không có" : "Tìm kiếm & chọn mã đơn hàng..."}
+                            value={isViewMode ? formCombinedOrderCode : combinedOrderSearch}
+                            onChange={(e) => {
+                              setCombinedOrderSearch(e.target.value);
+                              setShowCombinedOrderDropdown(true);
+                            }}
+                            onFocus={() => {
+                              if (!isViewMode) {
+                                setShowCombinedOrderDropdown(true);
+                              }
+                            }}
+                            disabled={isViewMode}
+                            required={formIsCombined}
+                            style={{
+                              width: "100%",
+                              backgroundColor: isViewMode ? "#f1f5f9" : "white",
+                              pointerEvents: isViewMode ? "none" : "auto",
+                              margin: 0
+                            }}
+                          />
+                          {!isViewMode && showCombinedOrderDropdown && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: "100%",
+                                left: 0,
+                                right: 0,
+                                zIndex: 1000,
+                                backgroundColor: "#ffffff",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "8px",
+                                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                                maxHeight: "200px",
+                                overflowY: "auto",
+                                marginTop: "4px"
+                              }}
+                            >
+                              {eligibleOrders.filter(o => 
+                                o.orderCode.toLowerCase().includes(combinedOrderSearch.toLowerCase())
+                              ).length > 0 ? (
+                                eligibleOrders
+                                  .filter(o => o.orderCode.toLowerCase().includes(combinedOrderSearch.toLowerCase()))
+                                  .map((o) => (
+                                    <div
+                                      key={o.id}
+                                      onClick={() => {
+                                        setFormCombinedOrderCode(o.orderCode);
+                                        setCombinedOrderSearch(o.orderCode);
+                                        setShowCombinedOrderDropdown(false);
+                                      }}
+                                      style={{
+                                        padding: "8px 12px",
+                                        cursor: "pointer",
+                                        fontSize: "12px",
+                                        borderBottom: "1px solid #f1f5f9",
+                                        transition: "background-color 0.2s"
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = "#f1f5f9";
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = "transparent";
+                                      }}
+                                    >
+                                      <div style={{ fontWeight: 600, color: "#0f172a" }}>{o.orderCode}</div>
+                                      <div style={{ fontSize: "11px", color: "#64748b" }}>
+                                        Trạng thái: {o.status} | Khách hàng: {o.customerCode}
+                                      </div>
+                                    </div>
+                                  ))
+                              ) : (
+                                <div style={{ padding: "8px 12px", color: "#64748b", fontSize: "12px", textAlign: "center" }}>
+                                  Không tìm thấy đơn hàng chờ kế hoạch/chờ giao hàng phù hợp
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   
-                  {editingOrder && (
+                  {editingOrder && !isDuplicateMode && (
                     <input type="hidden" name="status" value={editingOrder?.status ?? "Tạo mới"} />
                   )}
                   <input
@@ -1330,24 +1669,6 @@ export default function OrderTable({
                           <span style={{ fontWeight: 600, color: "#475569" }}>Tên đơn vị: </span>
                           <span style={{ color: "#0f172a" }}>{selectedContractObj?.seller || "—"}</span>
                         </div>
-                        <div>
-                          <span style={{ fontWeight: 600, color: "#475569" }}>Địa chỉ: </span>
-                          <span style={{ color: "#0f172a" }}>{sellerCust?.address || "—"}</span>
-                        </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                          <div>
-                            <span style={{ fontWeight: 600, color: "#475569" }}>Điện thoại: </span>
-                            <span style={{ color: "#0f172a" }}>{sellerCust?.phone || "—"}</span>
-                          </div>
-                          <div>
-                            <span style={{ fontWeight: 600, color: "#475569" }}>Email: </span>
-                            <span style={{ color: "#0f172a" }}>{sellerCust?.email || "—"}</span>
-                          </div>
-                        </div>
-                        <div>
-                          <span style={{ fontWeight: 600, color: "#475569" }}>Người đại diện: </span>
-                          <span style={{ color: "#0f172a" }}>{sellerCust?.representative || "—"}</span>
-                        </div>
                       </div>
                     );
                   })()}
@@ -1373,24 +1694,6 @@ export default function OrderTable({
                           <span style={{ fontWeight: 600, color: "#475569" }}>Tên khách hàng: </span>
                           <span style={{ color: "#0f172a" }}>{cust?.name || selectedContractObj?.buyer || "—"}</span>
                         </div>
-                        <div>
-                          <span style={{ fontWeight: 600, color: "#475569" }}>Địa chỉ: </span>
-                          <span style={{ color: "#0f172a" }}>{cust?.address || "—"}</span>
-                        </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                          <div>
-                            <span style={{ fontWeight: 600, color: "#475569" }}>Điện thoại: </span>
-                            <span style={{ color: "#0f172a" }}>{cust?.phone || "—"}</span>
-                          </div>
-                          <div>
-                            <span style={{ fontWeight: 600, color: "#475569" }}>Email: </span>
-                            <span style={{ color: "#0f172a" }}>{cust?.email || "—"}</span>
-                          </div>
-                        </div>
-                        <div>
-                          <span style={{ fontWeight: 600, color: "#475569" }}>Người đại diện: </span>
-                          <span style={{ color: "#0f172a" }}>{cust?.representative || "—"}</span>
-                        </div>
                       </div>
                     );
                   })()}
@@ -1402,7 +1705,7 @@ export default function OrderTable({
                     📦 CHI TIẾT DÒNG HÀNG
                   </h4>
                   <div style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "8px" }}>
-                    <table className="table" style={{ fontSize: "0.85rem", width: "100%", minWidth: "1350px", tableLayout: "fixed", borderCollapse: "collapse" }}>
+                    <table className="table" style={{ fontSize: "0.85rem", width: "100%", minWidth: "2070px", tableLayout: "fixed", borderCollapse: "collapse" }}>
                       <thead style={{ background: "#f8fafc" }}>
                         <tr>
                           <th style={{ width: "370px", minWidth: "370px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Tên hàng hóa <span style={{ color: "red" }}>(*)</span></th>
@@ -1414,8 +1717,9 @@ export default function OrderTable({
                           <th style={{ width: "60px", minWidth: "60px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Túi in</th>
                           <th style={{ width: "70px", minWidth: "70px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Thùng in</th>
                           <th style={{ width: "80px", minWidth: "80px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Brix (%)</th>
-                          <th style={{ width: "160px", minWidth: "160px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Yêu cầu khác</th>
-                          <th style={{ width: "120px", minWidth: "120px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Ghi chú</th>
+                          <th style={{ width: "320px", minWidth: "320px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Tiêu chuẩn</th>
+                          <th style={{ width: "360px", minWidth: "360px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Yêu cầu khác</th>
+                          <th style={{ width: "320px", minWidth: "320px", textTransform: "uppercase", color: "#003466", fontWeight: 700, padding: "8px", textAlign: "center" }}>Ghi chú</th>
                           {!isViewMode && <th style={{ width: "50px", minWidth: "50px", padding: "8px" }}>#</th>}
                         </tr>
                       </thead>
@@ -1551,24 +1855,85 @@ export default function OrderTable({
                             </td>
                             <td style={{ padding: "6px" }}>
                               <textarea 
-                                className="input-sm" 
-                                value={item.otherRequirements || ""} 
-                                onChange={(e) => updateItem(idx, "otherRequirements", e.target.value)} 
+                                className="input-sm auto-resize-textarea" 
+                                value={item.standard || ""} 
+                                onChange={(e) => {
+                                  updateItem(idx, "standard", e.target.value);
+                                }} 
+                                ref={(el) => {
+                                  if (el) {
+                                    el.style.height = "auto";
+                                    el.style.height = `${el.scrollHeight}px`;
+                                  }
+                                }}
                                 disabled={isViewMode} 
                                 placeholder={isViewMode ? "" : "Nhập..."}
                                 rows={1}
                                 style={{ 
                                   width: "100%", 
                                   minHeight: "32px", 
-                                  height: "32px",
                                   resize: "vertical", 
                                   padding: "5px 10px",
                                   lineHeight: "1.4",
-                                  fontFamily: "inherit"
+                                  fontFamily: "inherit",
+                                  overflow: "auto"
                                 }} 
                               />
                             </td>
-                            <td style={{ padding: "6px" }}><input type="text" className="input-sm" value={item.note} onChange={(e) => updateItem(idx, "note", e.target.value)} disabled={isViewMode} style={{ width: "100%" }} /></td>
+                            <td style={{ padding: "6px" }}>
+                              <textarea 
+                                className="input-sm auto-resize-textarea" 
+                                value={item.otherRequirements || ""} 
+                                onChange={(e) => {
+                                  updateItem(idx, "otherRequirements", e.target.value);
+                                }} 
+                                ref={(el) => {
+                                  if (el) {
+                                    el.style.height = "auto";
+                                    el.style.height = `${el.scrollHeight}px`;
+                                  }
+                                }}
+                                disabled={isViewMode} 
+                                placeholder={isViewMode ? "" : "Nhập..."}
+                                rows={1}
+                                style={{ 
+                                  width: "100%", 
+                                  minHeight: "32px", 
+                                  resize: "vertical", 
+                                  padding: "5px 10px",
+                                  lineHeight: "1.4",
+                                  fontFamily: "inherit",
+                                  overflow: "auto"
+                                }} 
+                              />
+                            </td>
+                            <td style={{ padding: "6px" }}>
+                              <textarea 
+                                className="input-sm auto-resize-textarea" 
+                                value={item.note || ""} 
+                                onChange={(e) => {
+                                  updateItem(idx, "note", e.target.value);
+                                }} 
+                                ref={(el) => {
+                                    if (el) {
+                                      el.style.height = "auto";
+                                      el.style.height = `${el.scrollHeight}px`;
+                                    }
+                                }}
+                                disabled={isViewMode} 
+                                placeholder={isViewMode ? "" : "Nhập..."}
+                                rows={1}
+                                style={{ 
+                                  width: "100%", 
+                                  minHeight: "32px", 
+                                  resize: "vertical", 
+                                  padding: "5px 10px",
+                                  lineHeight: "1.4",
+                                  fontFamily: "inherit",
+                                  overflow: "auto"
+                                }} 
+                              />
+                            </td>
                             {!isViewMode && (
                               <td style={{ padding: "6px", textAlign: "center" }}>
                                 <button type="button" onClick={() => removeItem(idx)} style={{ color: "#e74c3c", border: "none", background: "none", cursor: "pointer", fontSize: "1.1rem" }}>
@@ -1600,6 +1965,122 @@ export default function OrderTable({
                       </button>
                     </div>
                   )}
+                </div>
+
+                {/* Phần: Tệp đính kèm */}
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: 700, color: "#003466", textTransform: "uppercase" }}>
+                    📎 TỆP ĐÍNH KÈM
+                  </h4>
+                  <input type="hidden" name="attachments" value={JSON.stringify(attachmentList)} />
+                  
+                  {!isViewMode && (
+                    <button
+                      type="button"
+                      className="sapo-btn"
+                      style={{ fontSize: "12px", marginBottom: "12px" }}
+                      onClick={() => {
+                        setAttachmentList([...attachmentList, { name: "", fileName: "", fileContent: "" }]);
+                      }}
+                    >
+                      Thêm tệp đính kèm
+                    </button>
+                  )}
+                  
+                  <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
+                    <table className="table" style={{ fontSize: "12px", width: "100%", borderCollapse: "collapse" }}>
+                      <thead style={{ background: "#f8fafc" }}>
+                        <tr>
+                          <th style={{ width: "50px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700, padding: "8px" }}>STT</th>
+                          <th style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700, padding: "8px" }}>Tên tài liệu / mô tả <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "350px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700, padding: "8px" }}>Tệp đính kèm</th>
+                          {!isViewMode && <th style={{ width: "80px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700, padding: "8px" }}>Thao tác</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attachmentList.length === 0 ? (
+                          <tr>
+                            <td colSpan={isViewMode ? 3 : 4} style={{ textAlign: "center", color: "#334155", padding: "12px" }}>
+                              Không có tệp đính kèm nào.
+                            </td>
+                          </tr>
+                        ) : (
+                          attachmentList.map((att, idx) => (
+                            <tr key={idx} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                              <td style={{ textAlign: "center", fontWeight: 500, padding: "8px" }}>{idx + 1}</td>
+                              <td style={{ padding: "8px" }}>
+                                <input
+                                  type="text"
+                                  className="input"
+                                  placeholder="Nhập tên/mô tả tài liệu..."
+                                  value={att.name}
+                                  disabled={isViewMode}
+                                  onChange={(e) => {
+                                    const newList = [...attachmentList];
+                                    newList[idx].name = e.target.value;
+                                    setAttachmentList(newList);
+                                  }}
+                                  required
+                                  style={{ width: "100%" }}
+                                />
+                              </td>
+                              <td style={{ padding: "8px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  {!isViewMode && (
+                                    <input
+                                      type="file"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const reader = new FileReader();
+                                          reader.onload = (evt) => {
+                                            const content = evt.target?.result as string;
+                                            const newList = [...attachmentList];
+                                            newList[idx].fileName = file.name;
+                                            newList[idx].fileContent = content;
+                                            setAttachmentList(newList);
+                                          };
+                                          reader.readAsDataURL(file);
+                                        }
+                                      }}
+                                      style={{ fontSize: "12px", width: "100%" }}
+                                    />
+                                  )}
+                                  {att.fileName ? (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                                      <span style={{ fontSize: "12px", color: "#1e293b", fontWeight: 500 }}>📄 {att.fileName}</span>
+                                      <a
+                                        href={att.fileContent}
+                                        download={att.fileName}
+                                        style={{ fontSize: "11px", color: "#2563eb", textDecoration: "underline" }}
+                                      >
+                                        Tải xuống
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: "12px", color: "#64748b" }}>Chưa đính kèm tệp</span>
+                                  )}
+                                </div>
+                              </td>
+                              {!isViewMode && (
+                                <td style={{ textAlign: "center", padding: "8px" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAttachmentList(attachmentList.filter((_, i) => i !== idx));
+                                    }}
+                                    style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontWeight: 600 }}
+                                  >
+                                    Xóa
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Phần 3: Chi tiết thông tin giao nhận */}
@@ -1717,17 +2198,17 @@ export default function OrderTable({
               display: "flex", 
               alignItems: "center", 
               justifyContent: "center", 
-              margin: "0 auto 1.5rem",
+              margin: "0 auto 1.25rem",
               color: "#f97316"
             }}>
               <Clock size={32} />
             </div>
-            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 auto 0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
               {confirmUpdate.status === "Chờ tiếp nhận" ? "Gửi tiếp nhận đơn hàng" : 
                confirmUpdate.status === "Tạo mới" ? "Thu hồi đơn hàng" : 
                "Xác nhận thay đổi"}
             </h3>
-            <div style={{ color: "#475569", marginBottom: "2rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+            <div style={{ color: "#475569", margin: "0 auto 1.75rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
               {confirmUpdate.status === "Chờ tiếp nhận" ? (
                 <>
                   <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn muốn gửi tiếp nhận {confirmUpdate.info} không?</p>
@@ -1746,9 +2227,47 @@ export default function OrderTable({
                 <p>Bạn có chắc chắn muốn chuyển trạng thái đơn này sang <strong>"{confirmUpdate.status}"</strong> không?</p>
               )}
             </div>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmUpdate(null)}>Hủy bỏ</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={executeStatusChange}>Xác nhận</button>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button 
+                type="button"
+                className="sapo-btn sapo-btn-secondary" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={() => setConfirmUpdate(null)}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                type="button"
+                className="sapo-btn" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: "#003466",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={executeStatusChange}
+              >
+                Xác nhận
+              </button>
             </div>
           </div>
         </div>
@@ -1907,11 +2426,11 @@ export default function OrderTable({
               </button>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: "8px", marginBottom: "15px" }}>
+            <div style={{ flex: 1, overflow: "auto", border: "1px solid #e2e8f0", borderRadius: "8px", marginBottom: "15px" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                 <thead style={{ position: "sticky", top: 0, background: "#f8fafc", zIndex: 1, borderBottom: "2px solid #cbd5e1" }}>
                   <tr>
-                    <th style={{ width: "40px", padding: "10px 12px", borderBottom: "1px solid #cbd5e1", textAlign: "center" }}>
+                    <th style={{ width: "40px", padding: "10px 12px", borderBottom: "1px solid #cbd5e1", textAlign: "center", whiteSpace: "nowrap" }}>
                       <input
                         type="checkbox"
                         checked={
@@ -1929,12 +2448,12 @@ export default function OrderTable({
                         style={{ width: "16px", height: "16px", cursor: "pointer" }}
                       />
                     </th>
-                    <th style={{ textAlign: "left", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1" }}>TÊN HÀNG HÓA</th>
-                    <th style={{ textAlign: "left", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1" }}>QUY CÁCH</th>
-                    <th style={{ textAlign: "right", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", width: "90px" }}>SỐ LƯỢNG</th>
-                    <th style={{ textAlign: "center", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", width: "60px" }}>ĐVT</th>
-                    <th style={{ textAlign: "right", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", width: "110px" }}>ĐƠN GIÁ</th>
-                    <th style={{ textAlign: "right", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", width: "120px" }}>THÀNH TIỀN</th>
+                    <th style={{ textAlign: "center", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", whiteSpace: "nowrap" }}>TÊN HÀNG HÓA</th>
+                    <th style={{ textAlign: "center", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", whiteSpace: "nowrap" }}>QUY CÁCH</th>
+                    <th style={{ textAlign: "center", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", width: "100px", whiteSpace: "nowrap" }}>SỐ LƯỢNG</th>
+                    <th style={{ textAlign: "center", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", width: "70px", whiteSpace: "nowrap" }}>ĐVT</th>
+                    <th style={{ textAlign: "center", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", width: "140px", whiteSpace: "nowrap" }}>SỐ LƯỢNG ĐÃ TẠO</th>
+                    <th style={{ textAlign: "center", padding: "10px 12px", fontWeight: "700", color: "#003466", borderBottom: "1px solid #cbd5e1", width: "140px", whiteSpace: "nowrap" }}>SỐ LƯỢNG CÒN LẠI</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1947,6 +2466,8 @@ export default function OrderTable({
                   ) : (
                     selectedContractObj.contractitem.map((item: any) => {
                       const isChecked = selectedContractItemIds.includes(item.id);
+                      const orderedQty = getOrderedQuantityForContractItem(item);
+                      const remainingQty = (item.quantity || 0) - orderedQty;
                       return (
                         <tr 
                           key={item.id} 
@@ -1961,7 +2482,7 @@ export default function OrderTable({
                           onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
                           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                         >
-                          <td style={{ textAlign: "center", padding: "10px 12px" }} onClick={(e) => e.stopPropagation()}>
+                          <td style={{ textAlign: "center", padding: "10px 12px", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -1975,12 +2496,12 @@ export default function OrderTable({
                               style={{ width: "16px", height: "16px", cursor: "pointer" }}
                             />
                           </td>
-                          <td style={{ padding: "10px 12px", fontWeight: "600", color: "#0f172a" }}>{item.productName}</td>
-                          <td style={{ padding: "10px 12px", color: "#334155" }}>{item.packaging || "—"}</td>
-                          <td style={{ padding: "10px 12px", textAlign: "right", color: "#334155" }}>{formatNumber(item.quantity) || "—"}</td>
-                          <td style={{ padding: "10px 12px", textAlign: "center", color: "#334155" }}>{item.unit || "—"}</td>
-                          <td style={{ padding: "10px 12px", textAlign: "right", color: "#334155" }}>{formatNumber(item.price) || "—"}</td>
-                          <td style={{ padding: "10px 12px", textAlign: "right", color: "#334155" }}>{formatNumber(item.amount) || "—"}</td>
+                          <td style={{ padding: "10px 12px", fontWeight: "600", color: "#0f172a", textAlign: "left", whiteSpace: "nowrap" }}>{item.productName}</td>
+                          <td style={{ padding: "10px 12px", color: "#334155", textAlign: "left", whiteSpace: "nowrap" }}>{item.packaging || "—"}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", color: "#334155", whiteSpace: "nowrap" }}>{formatNumber(item.quantity) || "—"}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "center", color: "#334155", whiteSpace: "nowrap" }}>{item.unit || "—"}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", color: "#334155", whiteSpace: "nowrap" }}>{formatNumber(orderedQty)}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: remainingQty > 0 ? "600" : "normal", color: remainingQty > 0 ? "#16a34a" : "#dc2626", whiteSpace: "nowrap" }}>{formatNumber(remainingQty)}</td>
                         </tr>
                       );
                     })

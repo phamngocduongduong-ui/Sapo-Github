@@ -30,9 +30,15 @@ export default function HistoryModal({
       try {
         const res = await fetch(`/api/audit-logs?tableName=${tableName}&recordId=${recordId}`);
         const data = await res.json();
-        setLogs(data);
+        if (Array.isArray(data)) {
+          setLogs(data);
+        } else {
+          console.error("API did not return an array:", data);
+          setLogs([]);
+        }
       } catch (e) {
-        console.error(e);
+        console.error("Failed to fetch audit logs:", e);
+        setLogs([]);
       } finally {
         setLoading(false);
       }
@@ -72,20 +78,32 @@ export default function HistoryModal({
                     <User size={14} /> Thực hiện bởi: <span style={{ fontWeight: 600, color: "#000000" }}>{log.changedBy}</span>
                   </div>
 
-                  {log.action === "UPDATE" && log.oldData && log.newData && (
-                    <div style={{ marginTop: "0.75rem", background: "#f8fafc", padding: "0.75rem", borderRadius: "8px", fontSize: "0.85rem", color: "#000000", fontWeight: 600 }}>
-                       {Object.keys(log.newData).map(key => {
-                         if (log.oldData[key] !== log.newData[key]) {
-                           return (
+                  {log.action === "UPDATE" && log.oldData && log.newData && (() => {
+                    let oldObj = log.oldData;
+                    let newObj = log.newData;
+                    if (typeof oldObj === "string") {
+                      try { oldObj = JSON.parse(oldObj); } catch (e) {}
+                    }
+                    if (typeof newObj === "string") {
+                      try { newObj = JSON.parse(newObj); } catch (e) {}
+                    }
+                    
+                    if (oldObj && newObj && typeof oldObj === "object" && typeof newObj === "object" && !Array.isArray(oldObj) && !Array.isArray(newObj)) {
+                      const changedKeys = Object.keys(newObj).filter(key => oldObj[key] !== newObj[key]);
+                      if (changedKeys.length === 0) return null;
+                      
+                      return (
+                        <div style={{ marginTop: "0.75rem", background: "#f8fafc", padding: "0.75rem", borderRadius: "8px", fontSize: "0.85rem", color: "#000000", fontWeight: 600 }}>
+                           {changedKeys.map(key => (
                              <div key={key} style={{ marginBottom: "0.25rem" }}>
-                               <strong style={{ color: "#000000" }}>{key}:</strong> {String(log.oldData[key] || "—")} <ArrowRight size={12} style={{ margin: "0 4px" }} /> <span style={{ color: "#3b82f6", fontWeight: 600 }}>{String(log.newData[key])}</span>
+                               <strong style={{ color: "#000000" }}>{key}:</strong> {String(oldObj[key] || "—")} <ArrowRight size={12} style={{ margin: "0 4px" }} /> <span style={{ color: "#3b82f6", fontWeight: 600 }}>{String(newObj[key])}</span>
                              </div>
-                           );
-                         }
-                         return null;
-                       })}
-                    </div>
-                  )}
+                           ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               ))}
             </div>

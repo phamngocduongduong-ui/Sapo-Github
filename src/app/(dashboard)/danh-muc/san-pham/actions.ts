@@ -50,11 +50,33 @@ export async function getUnits() {
 }
 
 export async function createProduct(formData: FormData) {
-  const code = formData.get("code") as string;
+  let code = formData.get("code") as string;
+  const categoryId = formData.get("categoryId") as string;
+  if (!code || code.trim() === "") {
+    const category = await prisma.productcategory.findUnique({
+      where: { id: categoryId }
+    });
+    const categoryName = category?.name || "";
+    let prefix = "KC";
+    const normalized = categoryName.trim().toLowerCase();
+    if (normalized === "thành phẩm sản xuất") {
+      prefix = "SP";
+    } else if (normalized === "vật tư, bao bì đóng gói" || normalized === "vật tư bao bì đóng gói") {
+      prefix = "VT";
+    } else if (normalized === "hóa chất") {
+      prefix = "HC";
+    } else if (normalized === "công cụ dụng cụ sản xuất" || normalized === "công cụ, dụng cụ sản xuất") {
+      prefix = "CC";
+    }
+
+    const count = await prisma.product.count({
+      where: { categoryId }
+    });
+    code = `${prefix}${String(count + 1).padStart(4, '0')}`;
+  }
   const name = formData.get("name") as string;
   const englishName = formData.get("englishName") as string;
   const packaging = formData.get("packaging") as string;
-  const categoryId = formData.get("categoryId") as string;
   const note = formData.get("note") as string;
   const unitIds = formData.getAll("unitIds") as string[];
   const warehouseId = formData.get("warehouseId") as string;

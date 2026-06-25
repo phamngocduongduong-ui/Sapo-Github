@@ -14,11 +14,12 @@ import {
   createCustomer,
   updateCustomer,
   checkCustomerHasOrders,
-  bulkReplaceCustomers,
+  importCustomers,
   generateNextCustomerCode
 } from "./actions";
 import HistoryModal from "@/app/(dashboard)/HistoryModal";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 type Customer = {
   id: string;
@@ -53,6 +54,11 @@ export default function CustomerTable({
   const [searchTerm, setSearchTerm] = useState("");
   const [classification, setClassification] = useState("Quốc tế");
   const [generatedCode, setGeneratedCode] = useState<string>("");
+
+  // Excel import states
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importCustomersData, setImportCustomersData] = useState<any[]>([]);
+  const [importMode, setImportMode] = useState<"append" | "replace">("append");
 
   // Custom delete state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -208,12 +214,85 @@ export default function CustomerTable({
     "Trạng thái": "status"
   };
 
-  const handleDownloadTemplate = () => {
-    const headers = Object.keys(fieldMapping);
-    const ws = XLSX.utils.aoa_to_sheet([headers]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "mau_khach_hang.xlsx");
+  const handleDownloadTemplate = async () => {
+    const headers = Object.keys(fieldMapping).filter(key => key !== "Mã khách hàng" && key !== "Trạng thái");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Template");
+
+    // Add headers
+    worksheet.addRow(headers);
+
+    // Style headers
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { name: "Segoe UI", bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF003466" } // Sapo Blue color
+    };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 25;
+
+    // Create hidden sheet
+    const dataListsSheet = workbook.addWorksheet("Data_Lists");
+    dataListsSheet.state = "hidden";
+
+    // Phân loại options: ["Quốc tế", "Trong nước"]
+    const classifications = ["Quốc tế", "Trong nước"];
+    classifications.forEach((val, idx) => {
+      dataListsSheet.getCell(`A${idx + 1}`).value = val;
+    });
+
+    // Quốc gia options
+    const countryOptions = countries.includes("Việt Nam") ? countries : [...countries, "Việt Nam"];
+    const activeCountries = countryOptions.filter(Boolean);
+    activeCountries.forEach((val, idx) => {
+      dataListsSheet.getCell(`B${idx + 1}`).value = val;
+    });
+
+    // Add validation for "Phân loại" (Col C)
+    (worksheet as any).dataValidations.add("C2:C500", {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Data_Lists!$A$1:$A$${classifications.length}`],
+      showErrorMessage: true,
+      errorTitle: "Dữ liệu không hợp lệ",
+      error: "Vui lòng chọn Phân loại trong danh sách."
+    });
+
+    // Add validation for "Quốc gia" (Col D)
+    if (activeCountries.length > 0) {
+      (worksheet as any).dataValidations.add("D2:D500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$B$1:$B$${activeCountries.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Quốc gia trong danh sách."
+      });
+    }
+
+    // Auto-fit column widths
+    worksheet.columns.forEach(column => {
+      let maxLen = 0;
+      column.eachCell?.({ includeEmpty: true }, cell => {
+        const value = cell.value ? String(cell.value) : "";
+        if (value.length > maxLen) {
+          maxLen = value.length;
+        }
+      });
+      column.width = Math.max(maxLen + 4, 15);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "mau_khach_hang.xlsx";
+    anchor.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const handleExportExcel = () => {
@@ -267,29 +346,39 @@ export default function CustomerTable({
             }
           });
           return item;
-        }).filter(item => item.code && item.name); // Ensure code and name exist
+        }).filter(item => item.name); // Ensure name exists (code is auto-allocated)
 
         if (processedData.length === 0) {
           alert("Không tìm thấy dữ liệu hợp lệ (vui lòng kiểm tra tiêu đề cột trong file Excel)!");
           return;
         }
 
-        startTransition(async () => {
-          try {
-            await bulkReplaceCustomers(processedData);
-            alert(`Import thành công ${processedData.length} khách hàng!`);
-            setSelectedCustomerId(null);
-            router.refresh();
-          } catch (err: any) {
-            alert("Lỗi lưu dữ liệu: " + err.message);
-          }
-        });
+        setImportCustomersData(processedData);
+        setImportMode("append");
+        setShowImportModal(true);
       } catch (err: any) {
         alert("Lỗi đọc file Excel: " + err.message);
       }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = ""; // Reset input
+  };
+
+  const executeImport = () => {
+    if (importCustomersData.length === 0) return;
+    
+    startTransition(async () => {
+      try {
+        await importCustomers(importCustomersData, importMode);
+        alert(`Import thành công ${importCustomersData.length} khách hàng!`);
+        setShowImportModal(false);
+        setImportCustomersData([]);
+        setSelectedCustomerId(null);
+        router.refresh();
+      } catch (err: any) {
+        alert("Lỗi lưu dữ liệu: " + err.message);
+      }
+    });
   };
 
   return (
@@ -988,6 +1077,101 @@ export default function CustomerTable({
           recordId={historyRecordId}
           onClose={() => setHistoryRecordId(null)}
         />
+      )}
+
+      {showImportModal && (
+        <div className="confirm-overlay" onClick={() => setShowImportModal(false)}>
+          <div className="confirm-modal animate-slide-up" style={{ maxWidth: "450px", padding: "1.5rem" }} onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-icon-box" style={{ backgroundColor: "#eff6ff", color: "#2563eb", width: "48px", height: "48px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem auto" }}>
+              <Upload size={24} />
+            </div>
+            <h4 className="confirm-title" style={{ marginTop: "0.5rem", fontSize: "16px", fontWeight: 700, textAlign: "center", color: "#003466" }}>
+              Nhập Excel Khách hàng
+            </h4>
+            <p className="confirm-message" style={{ margin: "0.5rem 0 1rem 0", fontSize: "13px", color: "#475569", textAlign: "center" }}>
+              Phát hiện <strong>{importCustomersData.length}</strong> khách hàng từ file Excel. Vui lòng chọn phương thức nhập dữ liệu:
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
+              <label style={{ 
+                display: "flex", 
+                alignItems: "flex-start", 
+                gap: "0.75rem", 
+                padding: "10px 12px", 
+                border: "1px solid #cbd5e1", 
+                borderRadius: "6px", 
+                cursor: "pointer",
+                backgroundColor: importMode === "append" ? "#eff6ff" : "white",
+                borderColor: importMode === "append" ? "#3b82f6" : "#cbd5e1",
+                transition: "all 0.2s"
+              }}>
+                <input 
+                  type="radio" 
+                  name="importMode" 
+                  value="append" 
+                  checked={importMode === "append"} 
+                  onChange={() => setImportMode("append")}
+                  style={{ marginTop: "3px" }}
+                />
+                <div>
+                  <strong style={{ display: "block", fontSize: "13px", color: "#0f172a" }}>Cập nhật thêm</strong>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>Thêm khách hàng mới và cập nhật thông tin khách hàng đã tồn tại (trùng mã hoặc tên). Tự động cấp mã khách hàng mới nếu thiếu.</span>
+                </div>
+              </label>
+
+              <label style={{ 
+                display: "flex", 
+                alignItems: "flex-start", 
+                gap: "0.75rem", 
+                padding: "10px 12px", 
+                border: "1px solid #cbd5e1", 
+                borderRadius: "6px", 
+                cursor: "pointer",
+                backgroundColor: importMode === "replace" ? "#fef2f2" : "white",
+                borderColor: importMode === "replace" ? "#ef4444" : "#cbd5e1",
+                transition: "all 0.2s"
+              }}>
+                <input 
+                  type="radio" 
+                  name="importMode" 
+                  value="replace" 
+                  checked={importMode === "replace"} 
+                  onChange={() => setImportMode("replace")}
+                  style={{ marginTop: "3px" }}
+                />
+                <div>
+                  <strong style={{ display: "block", fontSize: "13px", color: "#b91c1c" }}>Thay thế tất cả</strong>
+                  <span style={{ fontSize: "11px", color: "#991b1b" }}>Xóa toàn bộ dữ liệu khách hàng hiện tại và nhập dữ liệu mới từ file Excel. Mã khách hàng mới được tự động cấp lại từ 0001.HCM.</span>
+                </div>
+              </label>
+            </div>
+
+            <div className="confirm-actions" style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button type="button" className="confirm-btn btn-cancel" onClick={() => setShowImportModal(false)} style={{ flex: 1, padding: "8px 16px", borderRadius: "4px", fontSize: "13px" }}>
+                Hủy
+              </button>
+              <button 
+                type="button" 
+                className="confirm-btn" 
+                onClick={executeImport} 
+                disabled={isPending}
+                style={{ 
+                  flex: 1, 
+                  padding: "8px 16px", 
+                  borderRadius: "4px", 
+                  fontSize: "13px", 
+                  backgroundColor: importMode === "replace" ? "#ef4444" : "#22c55e",
+                  color: "white",
+                  border: "none",
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                {isPending ? "Đang xử lý..." : "Đồng ý"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showDeleteModal && (

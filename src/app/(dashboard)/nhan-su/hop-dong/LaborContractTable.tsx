@@ -10,6 +10,7 @@ import { Check, FileSpreadsheet, Upload, Download, Plus, RotateCcw, Filter, Cloc
 import HistoryModal from "../../HistoryModal";
 import { formatNumber } from "@/lib/format";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 type LaborContract = {
   id: string;
@@ -51,14 +52,24 @@ const CONTRACT_TYPES = ["Hợp đồng chính thức", "Hợp đồng thử vi�
 
 interface LaborContractTableProps { 
   initialContracts: LaborContract[], 
-  employees: { fullName: string, position: string | null, department: string | null }[], 
+  employees: { fullName: string, position: string | null, department: string | null, branch: string | null }[], 
   positions: { name: string }[], 
   departments: { name: string }[],
-  approvers: { fullName: string, position: string | null, department: string | null }[],
+  approvers: { fullName: string, position: string | null, department: string | null, branch: string | null }[],
   currentUserName: string,
   salaryLevels: any[],
   isAdmin: boolean
 }
+
+const formatDate = (dateVal: string | Date | null | undefined): string => {
+  if (!dateVal) return "";
+  const date = new Date(dateVal);
+  if (isNaN(date.getTime())) return "";
+  const day = date.getUTCDate().toString().padStart(2, '0');
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const year = date.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+};
 
 export default function LaborContractTable({ 
   initialContracts, 
@@ -297,12 +308,151 @@ export default function LaborContractTable({
     "Ghi chú": "note"
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     const headers = Object.keys(fieldMapping);
-    const ws = XLSX.utils.aoa_to_sheet([headers]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template_HDLD");
-    XLSX.writeFile(wb, "mau_hop_dong_lao_dong.xlsx");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Template_HDLD");
+
+    // Add headers
+    worksheet.addRow(headers);
+
+    // Style headers
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { name: "Segoe UI", bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF003466" } // Sapo Blue color
+    };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 25;
+
+    // Create a hidden data list worksheet
+    const dataListsSheet = workbook.addWorksheet("Data_Lists");
+    dataListsSheet.state = "hidden";
+
+    // Write option lists
+    const employeeNames = employees.map(e => e.fullName).filter(Boolean);
+    employeeNames.forEach((name, idx) => {
+      dataListsSheet.getCell(`A${idx + 1}`).value = name;
+    });
+
+    CONTRACT_TYPES.forEach((type, idx) => {
+      dataListsSheet.getCell(`B${idx + 1}`).value = type;
+    });
+
+    const activePositions = positions.map(p => p.name).filter(Boolean);
+    activePositions.forEach((pos, idx) => {
+      dataListsSheet.getCell(`C${idx + 1}`).value = pos;
+    });
+
+    const activeDepartments = departments.map(d => d.name).filter(Boolean);
+    activeDepartments.forEach((dept, idx) => {
+      dataListsSheet.getCell(`D${idx + 1}`).value = dept;
+    });
+
+    const activeBranches = Array.from(new Set(employees.map(e => e.branch).filter(Boolean) as string[]));
+    activeBranches.forEach((branch, idx) => {
+      dataListsSheet.getCell(`E${idx + 1}`).value = branch;
+    });
+
+    const activeSalaryLevels = salaryLevels.map(l => l.levelCode).filter(Boolean);
+    activeSalaryLevels.forEach((level, idx) => {
+      dataListsSheet.getCell(`F${idx + 1}`).value = level;
+    });
+
+    // Add validations for columns 2 to 500
+    // Col A: Nhân viên
+    if (employeeNames.length > 0) {
+      (worksheet as any).dataValidations.add("A2:A500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$A$1:$A$${employeeNames.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Nhân viên trong danh sách."
+      });
+    }
+
+    // Col B: Loại hợp đồng
+    (worksheet as any).dataValidations.add("B2:B500", {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Data_Lists!$B$1:$B$${CONTRACT_TYPES.length}`],
+      showErrorMessage: true,
+      errorTitle: "Dữ liệu không hợp lệ",
+      error: "Vui lòng chọn Loại hợp đồng trong danh sách."
+    });
+
+    // Col F: Chức vụ
+    if (activePositions.length > 0) {
+      (worksheet as any).dataValidations.add("F2:F500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$C$1:$C$${activePositions.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Chức vụ trong danh sách."
+      });
+    }
+
+    // Col G: Bộ phận
+    if (activeDepartments.length > 0) {
+      (worksheet as any).dataValidations.add("G2:G500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$D$1:$D$${activeDepartments.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Bộ phận trong danh sách."
+      });
+    }
+
+    // Col H: Chi nhánh
+    if (activeBranches.length > 0) {
+      (worksheet as any).dataValidations.add("H2:H500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$E$1:$E$${activeBranches.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Chi nhánh trong danh sách."
+      });
+    }
+
+    // Col I: Bậc lương
+    if (activeSalaryLevels.length > 0) {
+      (worksheet as any).dataValidations.add("I2:I500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$F$1:$F$${activeSalaryLevels.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Bậc lương trong danh sách."
+      });
+    }
+
+    // Auto-fit column widths
+    worksheet.columns.forEach(column => {
+      let maxLen = 0;
+      column.eachCell?.({ includeEmpty: true }, cell => {
+        const value = cell.value ? String(cell.value) : "";
+        if (value.length > maxLen) {
+          maxLen = value.length;
+        }
+      });
+      column.width = Math.max(maxLen + 4, 15);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "mau_hop_dong_lao_dong.xlsx";
+    anchor.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const handleExportExcel = () => {
@@ -312,7 +462,7 @@ export default function LaborContractTable({
         const field = fieldMapping[header];
         let val = (c as any)[field];
         if (val instanceof Date || (typeof val === 'string' && val.includes('T') && !isNaN(Date.parse(val)))) {
-          val = new Date(val).toLocaleDateString("vi-VN");
+          val = formatDate(val);
         }
         row[header] = val || "";
       });
@@ -343,7 +493,11 @@ export default function LaborContractTable({
           if (row[header] !== undefined) {
             let val = row[header];
             if (val instanceof Date) {
-              val = val.toISOString();
+              const useUTC = val.getUTCHours() === 0 && val.getUTCMinutes() === 0 && val.getUTCSeconds() === 0;
+              const year = useUTC ? val.getUTCFullYear() : val.getFullYear();
+              const month = ((useUTC ? val.getUTCMonth() : val.getMonth()) + 1).toString().padStart(2, '0');
+              const day = (useUTC ? val.getUTCDate() : val.getDate()).toString().padStart(2, '0');
+              val = `${year}-${month}-${day}`;
             }
             item[fieldMapping[header]] = val;
           }
@@ -767,8 +921,8 @@ export default function LaborContractTable({
                         <td style={{ fontWeight: 600, color: "#000" }}>{c.employeeName}</td>
                         <td style={{ color: "#000", fontWeight: 600 }}>{c.branch || "—"}</td>
                         <td style={{ color: "#000", fontWeight: 600 }}>{c.contractType}</td>
-                        <td style={{ color: "#000", fontWeight: 600 }}>{new Date(c.contractDate).toLocaleDateString("vi-VN")}</td>
-                        <td style={{ color: "#000", fontWeight: 600 }}>{c.endDate ? new Date(c.endDate).toLocaleDateString("vi-VN") : "Vô thời hạn"}</td>
+                        <td style={{ color: "#000", fontWeight: 600 }}>{formatDate(c.contractDate)}</td>
+                        <td style={{ color: "#000", fontWeight: 600 }}>{c.endDate ? formatDate(c.endDate) : "Vô thời hạn"}</td>
                         <td className="nowrap" style={{ textAlign: "center" }}>
                           <span style={{ color: statusColor, fontWeight: 700 }}>
                             {c.status}

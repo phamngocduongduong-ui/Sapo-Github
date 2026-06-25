@@ -6,6 +6,13 @@ import { User, LogOut, ChevronDown, Bell, Menu as MenuIcon } from "lucide-react"
 import { logout, changeActiveBranch } from "@/app/login/actions";
 import { getNotifications, markNotificationAsRead } from "@/app/(dashboard)/nhan-su/tang-giam-luong/actions";
 
+const isArrayEqual = (a: string[], b: string[]) => {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((val, index) => val === sortedB[index]);
+};
+
 export default function Header({
   onMenuClick,
   isSidebarCollapsed,
@@ -23,30 +30,76 @@ export default function Header({
   const mobileBranchRef = useRef<HTMLDivElement>(null);
 
   const [notifLimit, setNotifLimit] = useState(3);
-  const [userInfo, setUserInfo] = useState<{ name: string, branch: string, allowedBranches?: string[] } | null>(null);
+  const [userInfo, setUserInfo] = useState<{
+    name: string;
+    branch: string;
+    allowedBranches: string[];
+    permissions: string[];
+    isAdmin: boolean;
+    role: string;
+  } | null>(null);
   const [branchSelectorOpen, setBranchSelectorOpen] = useState(false);
+  const [showAuthChangedModal, setShowAuthChangedModal] = useState(false);
 
   useEffect(() => {
-    fetch("/api/user-permissions")
-      .then(res => {
-        if (!res.ok) {
-          // Xoá cookie session trên client side để tránh vòng lặp chuyển hướng của middleware
-          document.cookie = "session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          window.location.href = "/login";
-          throw new Error("Không xác định được người dùng");
-        }
-        return res.json();
-      })
-      .then(data => {
-        setUserInfo({
-          name: data.employeeName || "Người dùng",
-          branch: data.branch || "Tất cả chi nhánh",
-          allowedBranches: data.allowedBranches || []
+    let active = true;
+
+    const fetchUserPermissions = () => {
+      fetch("/api/user-permissions")
+        .then(res => {
+          if (!res.ok) {
+            // Xoá cookie session trên client side để tránh vòng lặp chuyển hướng của middleware
+            document.cookie = "session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            window.location.href = "/login";
+            throw new Error("Không xác định được người dùng");
+          }
+          return res.json();
+        })
+        .then(data => {
+          if (!active) return;
+          const newBranch = data.branch || "Tất cả chi nhánh";
+          const newAllowedBranches = data.allowedBranches || [];
+          const newPermissions = data.permissions || [];
+          
+          setUserInfo(prev => {
+            if (prev) {
+              const isBranchesEqual = isArrayEqual(prev.allowedBranches, newAllowedBranches);
+              const isPermissionsEqual = isArrayEqual(prev.permissions, newPermissions);
+              const isAdminEqual = prev.isAdmin === !!data.isAdmin;
+              const isRoleEqual = prev.role === (data.role || "");
+              
+              if (!isBranchesEqual || !isPermissionsEqual || !isAdminEqual || !isRoleEqual) {
+                setShowAuthChangedModal(true);
+                return prev;
+              }
+
+              // If the active branch has changed after the initial load, trigger page reload
+              if (prev.branch !== newBranch) {
+                window.location.reload();
+              }
+            }
+            return {
+              name: data.employeeName || "Người dùng",
+              branch: newBranch,
+              allowedBranches: newAllowedBranches,
+              permissions: newPermissions,
+              isAdmin: !!data.isAdmin,
+              role: data.role || ""
+            };
+          });
+        })
+        .catch(err => {
+          console.error("Lỗi xác thực người dùng:", err);
         });
-      })
-      .catch(err => {
-        console.error("Lỗi xác thực người dùng:", err);
-      });
+    };
+
+    fetchUserPermissions();
+    const interval = setInterval(fetchUserPermissions, 3000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -103,7 +156,8 @@ export default function Header({
       color: "white",
       borderBottom: "4px solid #ff5c00",
       width: "100%",
-      margin: 0
+      margin: 0,
+      zIndex: showAuthChangedModal ? 1000000 : 1010
     }}>
 
       {/* Header Left: Sapo Logo & Title */}
@@ -412,6 +466,104 @@ export default function Header({
           </div>
         </div>
       </div>
+      {showAuthChangedModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          backgroundColor: "rgba(15, 23, 42, 0.75)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 999999,
+          padding: "1rem"
+        }}>
+          <div style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "16px",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)",
+            width: "100%",
+            maxWidth: "440px",
+            padding: "2rem",
+            textAlign: "center",
+            borderTop: "6px solid #ff5c00",
+            animation: "modalFadeIn 0.3s ease-out"
+          }}>
+            <div style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              backgroundColor: "#fff7ed",
+              color: "#ea580c",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 1.25rem",
+              fontSize: "1.75rem"
+            }}>
+              ⚠️
+            </div>
+            
+            <h2 style={{
+              fontSize: "18px",
+              fontWeight: 700,
+              color: "#0f172a",
+              marginBottom: "0.75rem",
+              textTransform: "uppercase"
+            }}>
+              Cập nhật quyền truy cập
+            </h2>
+            
+            <p style={{
+              fontSize: "14px",
+              color: "#475569",
+              lineHeight: "1.6",
+              marginBottom: "1.75rem"
+            }}>
+              Tài khoản của bạn vừa có thay đổi về <strong>chi nhánh</strong> hoặc <strong>quyền truy cập</strong> hệ thống từ Quản trị viên. 
+              Vui lòng đăng nhập lại để áp dụng cài đặt mới.
+            </p>
+            
+            <button
+              onClick={async () => {
+                try {
+                  document.cookie = "session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                  await logout();
+                } catch (err) {
+                  window.location.href = "/login";
+                }
+              }}
+              style={{
+                width: "100%",
+                padding: "10px 20px",
+                backgroundColor: "#003466",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "8px",
+                fontWeight: 600,
+                fontSize: "14px",
+                cursor: "pointer",
+                transition: "background-color 0.2s, transform 0.1s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#002244"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#003466"}
+            >
+              Đồng ý
+            </button>
+          </div>
+          <style dangerouslySetInnerHTML={{
+            __html: `
+              @keyframes modalFadeIn {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+              }
+            `
+          }} />
+        </div>
+      )}
     </header>
   );
 }

@@ -50,7 +50,8 @@ async function main() {
       data: adminKeysToInsert.map(key => ({
         permissionId: adminPermission.id,
         moduleKey: key,
-        canAccess: true
+        canAccess: true,
+        allBranches: true
       }))
     });
     console.log(`Inserted ${adminKeysToInsert.length} keys for ADMIN_FULL.`);
@@ -71,6 +72,12 @@ async function main() {
     }
   });
   console.log(`Updated ${updated.count} keys to canAccess = true for ADMIN_FULL.`);
+
+  const adminDetailsUpdated = await prisma.permissiondetail.updateMany({
+    where: { permissionId: adminPermission.id },
+    data: { allBranches: true }
+  });
+  console.log(`Updated ${adminDetailsUpdated.count} keys to allBranches = true for ADMIN_FULL.`);
 }
 
 main()

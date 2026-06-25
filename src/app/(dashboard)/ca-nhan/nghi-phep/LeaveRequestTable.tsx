@@ -777,18 +777,18 @@ export default function LeaveRequestTable({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              margin: "0 auto 1.5rem",
+              margin: "0 auto 1.25rem",
               color: "#f97316"
             }}>
               <Clock size={32} />
             </div>
-            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 auto 0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
               {confirmUpdate.status === "Chờ phê duyệt" ? "Gửi phê duyệt" :
                 confirmUpdate.status === "Tạo mới" ? "Thu hồi hồ sơ" :
                   confirmUpdate.status === "Đã phê duyệt" ? "Phê duyệt hồ sơ" :
                     "Xác nhận thay đổi"}
             </h3>
-            <div style={{ color: "#475569", marginBottom: "2rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+            <div style={{ color: "#475569", margin: "0 auto 1.75rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
               {confirmUpdate.status === "Chờ phê duyệt" ? (
                 <>
                   <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc muốn gửi hồ sơ để chờ phê duyệt không?</p>
@@ -814,9 +814,47 @@ export default function LeaveRequestTable({
                 <p>Bạn có chắc chắn muốn chuyển trạng thái đơn này sang <strong>"{confirmUpdate.status}"</strong> không?</p>
               )}
             </div>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmUpdate(null)}>Hủy bỏ</button>
-              <button className="btn btn-primary" style={{ flex: 1, background: confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy" ? "#ef4444" : "#2563eb" }} onClick={executeStatusChange}>Xác nhận</button>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button 
+                type="button"
+                className="sapo-btn sapo-btn-secondary" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={() => setConfirmUpdate(null)}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                type="button"
+                className="sapo-btn" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy" ? "#ef4444" : "#003466",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={executeStatusChange}
+              >
+                Xác nhận
+              </button>
             </div>
           </div>
         </div>
@@ -824,30 +862,26 @@ export default function LeaveRequestTable({
 
       {/* Custom Cancel Confirmation Modal */}
       {showCancelModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(15, 23, 42, 0.65)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 9999, backdropFilter: "blur(4px)", animation: "fadeIn 0.2s ease"
-        }}>
-          <div style={{
-            width: "100%", maxWidth: "400px", background: "#fff",
-            borderRadius: "16px", overflow: "hidden",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-            animation: "slideUp 0.3s ease"
-          }}>
-            <div style={{ padding: "1.5rem", textAlign: "center" }}>
-              <div style={{
-                width: "60px", height: "60px", borderRadius: "50%", background: "#fee2e2",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                margin: "0 auto 1.25rem", color: "#ef4444"
-              }}>
-                <Trash2 size={30} />
-              </div>
-              <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
-                Hủy hồ sơ
-              </h3>
-              <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+        <div className="modal-overlay-base" style={{ zIndex: 9999 }}>
+          <div className="modal-content-base" style={{ maxWidth: "400px", width: "90%", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem", textAlign: "center" }}>
+            <div style={{
+              width: "60px",
+              height: "60px",
+              borderRadius: "50%",
+              background: "#fee2e2",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 1.25rem",
+              color: "#ef4444"
+            }}>
+              <Trash2 size={30} />
+            </div>
+            <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#1e293b", margin: "0 auto 0.75rem", fontFamily: "'Segoe UI', sans-serif" }}>
+              Hủy hồ sơ
+            </h3>
+            <div style={{ color: "#475569", margin: "0 auto 1.75rem", lineHeight: "1.6", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+              <p style={{ fontSize: "14px", marginBottom: "0.75rem" }}>
                 Bạn có chắc hủy hồ sơ này không?
               </p>
               <div style={{
@@ -860,28 +894,44 @@ export default function LeaveRequestTable({
               </div>
             </div>
 
-            <div style={{
-              padding: "1rem 1.5rem", background: "#f8fafc",
-              display: "flex", gap: "1rem", borderTop: "1px solid #f1f5f9"
-            }}>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
               <button
+                type="button"
+                className="sapo-btn sapo-btn-secondary"
                 onClick={() => setShowCancelModal(false)}
                 style={{
-                  flex: 1, height: "42px", borderRadius: "10px", border: "1px solid #e2e8f0",
-                  background: "#fff", fontWeight: 600, color: "#475569", cursor: "pointer",
-                  fontSize: "14px", transition: "all 0.2s"
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
                 }}
               >
                 Giữ lại
               </button>
               <button
+                type="button"
+                className="sapo-btn"
                 onClick={confirmCancel}
                 disabled={isPending}
                 style={{
-                  flex: 1, height: "42px", borderRadius: "10px", border: "none",
-                  background: "#ef4444", fontWeight: 700, color: "#fff", cursor: "pointer",
-                  fontSize: "14px", boxShadow: "0 4px 6px -1px rgba(239, 68, 68, 0.2)",
-                  transition: "all 0.2s"
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: "#ef4444",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
                 }}
               >
                 {isPending ? "Đang xử lý..." : "Hủy hồ sơ"}

@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import { RotateCcw, Filter, AlertTriangle, Clock } from "lucide-react";
-import { getTransferPromotions, createTransferPromotion, updateTransferStatus } from "./actions";
+import { getTransferPromotions, createTransferPromotion, updateTransferStatus, getActiveDepartments, getActivePositions } from "./actions";
 import { getEmployees } from "../tang-giam-luong/actions";
 
 export default function TransferPromotionPage() {
   const [items, setItems] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [positions, setPositions] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [confirmUpdate, setConfirmUpdate] = useState<{ id: string, status: string, info: string } | null>(null);
@@ -62,14 +64,18 @@ export default function TransferPromotionPage() {
   }, []);
 
   async function fetchData() {
-    const [data, empData, permRes] = await Promise.all([
+    const [data, empData, permRes, deptData, posData] = await Promise.all([
       getTransferPromotions(),
       getEmployees(),
-      fetch('/api/user-permissions').then(r => r.json()).catch(() => ({}))
+      fetch('/api/user-permissions').then(r => r.json()).catch(() => ({})),
+      getActiveDepartments(),
+      getActivePositions()
     ]);
     setItems(data);
     setEmployees(empData);
     setIsAdmin(permRes.isAdmin || false);
+    setDepartments(deptData);
+    setPositions(posData);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -534,11 +540,17 @@ export default function TransferPromotionPage() {
                 <div className="drawer-form-row">
                   <div className="form-group-base">
                     <label className="filter-label">Bộ phận mới</label>
-                    <input type="text" name="newDepartment" className="input" required style={{ fontSize: "13px" }} />
+                    <select name="newDepartment" className="input" required style={{ fontSize: "13px" }}>
+                      <option value="">-- Chọn bộ phận mới --</option>
+                      {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                    </select>
                   </div>
                   <div className="form-group-base">
                     <label className="filter-label">Chức vụ mới</label>
-                    <input type="text" name="newPosition" className="input" required style={{ fontSize: "13px" }} />
+                    <select name="newPosition" className="input" required style={{ fontSize: "13px" }}>
+                      <option value="">-- Chọn chức vụ mới --</option>
+                      {positions.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                    </select>
                   </div>
                 </div>
                 
@@ -582,18 +594,18 @@ export default function TransferPromotionPage() {
               display: "flex", 
               alignItems: "center", 
               justifyContent: "center", 
-              margin: "0 auto 1.5rem",
+              margin: "0 auto 1.25rem",
               color: "#f97316"
             }}>
               <Clock size={32} />
             </div>
-            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 auto 0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
               {confirmUpdate.status === "Chờ phê duyệt" ? "Gửi phê duyệt" : 
                confirmUpdate.status === "Tạo mới" ? "Thu hồi hồ sơ" : 
                confirmUpdate.status === "Đã phê duyệt" ? "Phê duyệt hồ sơ" : 
                "Xác nhận thay đổi"}
             </h3>
-            <div style={{ color: "#475569", marginBottom: "2rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
+            <div style={{ color: "#475569", margin: "0 auto 1.75rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
               {confirmUpdate.status === "Chờ phê duyệt" ? (
                 <>
                   <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc muốn gửi hồ sơ để chờ phê duyệt không?</p>
@@ -619,9 +631,47 @@ export default function TransferPromotionPage() {
                 <p>Bạn có chắc chắn muốn chuyển trạng thái hồ sơ này sang <strong>"{confirmUpdate.status}"</strong> không?</p>
               )}
             </div>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button className="sapo-btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmUpdate(null)}>Hủy bỏ</button>
-              <button className="sapo-btn" style={{ flex: 1, backgroundColor: confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy" ? "#ef4444" : "#003466" }} onClick={executeStatusUpdate}>Xác nhận</button>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button 
+                type="button"
+                className="sapo-btn sapo-btn-secondary" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={() => setConfirmUpdate(null)}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                type="button"
+                className="sapo-btn" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy" ? "#ef4444" : "#003466",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={executeStatusUpdate}
+              >
+                Xác nhận
+              </button>
             </div>
           </div>
         </div>

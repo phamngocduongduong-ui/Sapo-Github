@@ -1,12 +1,17 @@
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
-import ApprovalTabs from "../../nhan-su/phe-duyet/ApprovalTabs";
+import PaymentProposalClient from "./PaymentProposalClient";
+import { generateNextProposalNumber } from "./actions";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function PaymentApprovalPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
+  // Fetch current user and check permissions
   const user = await (prisma as any).user.findUnique({
     where: { id: session.userId },
     include: { permission: { include: { permissiondetail: true } } }
@@ -24,8 +29,8 @@ export default async function PaymentApprovalPage() {
     });
   }
 
-  const hasThanhToan = isAdmin || permissions.has("PD_THANH_TOAN");
-  if (!hasThanhToan) {
+  const hasAccess = isAdmin || permissions.has("PD_THANH_TOAN");
+  if (!hasAccess) {
     return (
       <div className="main-content" style={{ padding: "2rem" }}>
         <h1>Bạn không có quyền truy cập trang này.</h1>
@@ -33,26 +38,66 @@ export default async function PaymentApprovalPage() {
     );
   }
 
-  const [pendingPOs, approvedPOs] = await Promise.all([
-    (prisma as any).purchaseorder.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
-    (prisma as any).purchaseorder.findMany({ where: { status: "Đã phê duyệt" }, orderBy: { createdAt: "desc" }, take: 100 })
-  ]);
+  // Fetch active suppliers list
+  const suppliersDb = await (prisma as any).supplier.findMany({
+    where: { status: "Hoạt động" },
+    orderBy: { code: "asc" }
+  });
 
-  const hrData = {
-    pending: {
-      purchaseOrders: pendingPOs
+  // Map to matching client interface
+  const suppliers = suppliersDb.map((s: any) => ({
+    id: s.id,
+    code: s.code,
+    name: s.name,
+    bankAccountInfo: s.bankAccountInfo || ""
+  }));
+
+  // Fetch all payment proposals
+  const proposalsDb = await (prisma as any).paymentproposal.findMany({
+    include: {
+      items: true
     },
-    approved: {
-      purchaseOrders: approvedPOs
+    orderBy: {
+      createdAt: "desc"
     }
-  };
+  });
+
+  const proposals = proposalsDb.map((p: any) => ({
+    id: p.id,
+    proposalNumber: p.proposalNumber,
+    date: p.date,
+    proposer: p.proposer,
+    supplierCode: p.supplierCode,
+    supplierName: p.supplierName,
+    accountInfo: p.accountInfo,
+    purpose: p.purpose,
+    status: p.status,
+    note: p.note,
+    createdAt: p.createdAt,
+    items: p.items.map((item: any) => ({
+      id: item.id,
+      content: item.content,
+      unit: item.unit,
+      quantity: item.quantity,
+      price: item.price,
+      amount: item.amount,
+      rate: item.rate,
+      total: item.total
+    }))
+  }));
+
+  const currentUserName = user?.employeeName || user?.username || "Nhân viên";
+  const nextProposalNumber = await generateNextProposalNumber();
 
   return (
-    <ApprovalTabs 
-      pending={hrData.pending}
-      approved={hrData.approved}
-      isEmbedded={false}
-      showThanhToanOnly={true}
-    />
+    <div className="main-content">
+      <PaymentProposalClient
+        initialProposals={proposals}
+        suppliers={suppliers}
+        currentUserName={currentUserName}
+        nextProposalNumber={nextProposalNumber}
+        isApprovalPage={true}
+      />
+    </div>
   );
 }

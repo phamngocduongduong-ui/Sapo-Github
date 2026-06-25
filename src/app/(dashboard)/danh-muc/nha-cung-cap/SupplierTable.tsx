@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Pencil, Search, Info, Plus, History, User, MapPin, Hash, Trash2, Eye, Ban, CheckCircle
+  Pencil, Search, Info, Plus, History, User, MapPin, Hash, Trash2, Eye, Ban, CheckCircle, Upload
 } from "lucide-react";
 import {
   deleteSupplier,
@@ -12,7 +12,8 @@ import {
   updateSupplier,
   checkSupplierHasPOs,
   bulkReplaceSuppliers,
-  generateNextSupplierCode
+  generateNextSupplierCode,
+  importSuppliers
 } from "./actions";
 import HistoryModal from "@/app/(dashboard)/HistoryModal";
 import * as XLSX from "xlsx";
@@ -61,6 +62,11 @@ export default function SupplierTable({
   // Selection state
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
   const selectedSupplier = suppliers.find(s => s.id === selectedSupplierId) || null;
+
+  // Import state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importSuppliersData, setImportSuppliersData] = useState<any[]>([]);
+  const [importMode, setImportMode] = useState<"append" | "replace">("append");
 
   useEffect(() => {
     setSuppliers(initialSuppliers);
@@ -185,7 +191,7 @@ export default function SupplierTable({
   };
 
   const handleDownloadTemplate = () => {
-    const headers = Object.keys(fieldMapping);
+    const headers = Object.keys(fieldMapping).filter(key => key !== "Mã NCC" && key !== "Trạng thái");
     const ws = XLSX.utils.aoa_to_sheet([headers]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
@@ -242,29 +248,39 @@ export default function SupplierTable({
             }
           });
           return item;
-        }).filter(item => item.code && item.name);
+        }).filter(item => item.name);
 
         if (processedData.length === 0) {
           alert("Không tìm thấy dữ liệu hợp lệ (vui lòng kiểm tra tiêu đề cột trong file Excel)!");
           return;
         }
 
-        startTransition(async () => {
-          try {
-            await bulkReplaceSuppliers(processedData);
-            alert(`Import thành công ${processedData.length} nhà cung cấp!`);
-            setSelectedSupplierId(null);
-            router.refresh();
-          } catch (err: any) {
-            alert("Lỗi lưu dữ liệu: " + err.message);
-          }
-        });
+        setImportSuppliersData(processedData);
+        setImportMode("append");
+        setShowImportModal(true);
       } catch (err: any) {
         alert("Lỗi đọc file Excel: " + err.message);
       }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = ""; // Reset input
+  };
+
+  const executeImport = () => {
+    if (importSuppliersData.length === 0) return;
+
+    startTransition(async () => {
+      try {
+        await importSuppliers(importSuppliersData, importMode);
+        alert(`Import thành công ${importSuppliersData.length} nhà cung cấp!`);
+        setShowImportModal(false);
+        setImportSuppliersData([]);
+        setSelectedSupplierId(null);
+        router.refresh();
+      } catch (err: any) {
+        alert("Lỗi lưu dữ liệu: " + err.message);
+      }
+    });
   };
 
   return (
@@ -820,22 +836,7 @@ export default function SupplierTable({
                     </div>
                   </div>
 
-                  <div className="form-row">
-                    <div className="form-group-base">
-                      <label>Số ngày công nợ</label>
-                      <input
-                        type="number"
-                        name="debtDays"
-                        className="input-base"
-                        placeholder="Nhập số ngày công nợ..."
-                        defaultValue={editingSupplier?.debtDays ?? 0}
-                        readOnly={isViewOnly}
-                        min="0"
-                      />
-                    </div>
-                    <div className="form-group-base">
-                    </div>
-                  </div>
+
                 </div>
 
                 <div className="form-section">
@@ -963,6 +964,101 @@ export default function SupplierTable({
               </button>
               <button type="button" className="confirm-btn btn-confirm danger" onClick={confirmDelete} disabled={isPending}>
                 {isPending ? "Đang xóa..." : "Đồng ý xóa"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showImportModal && (
+        <div className="confirm-overlay" onClick={() => setShowImportModal(false)}>
+          <div className="confirm-modal animate-slide-up" style={{ maxWidth: "450px", padding: "1.5rem" }} onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-icon-box" style={{ backgroundColor: "#eff6ff", color: "#2563eb", width: "48px", height: "48px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem auto" }}>
+              <Upload size={24} />
+            </div>
+            <h4 className="confirm-title" style={{ marginTop: "0.5rem", fontSize: "16px", fontWeight: 700, textAlign: "center", color: "#003466" }}>
+              Nhập Excel Nhà cung cấp
+            </h4>
+            <p className="confirm-message" style={{ margin: "0.5rem 0 1rem 0", fontSize: "13px", color: "#475569", textAlign: "center" }}>
+              Phát hiện <strong>{importSuppliersData.length}</strong> nhà cung cấp từ file Excel. Vui lòng chọn phương thức nhập dữ liệu:
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
+              <label style={{ 
+                display: "flex", 
+                alignItems: "flex-start", 
+                gap: "0.75rem", 
+                padding: "10px 12px", 
+                border: "1px solid #cbd5e1", 
+                borderRadius: "6px", 
+                cursor: "pointer",
+                backgroundColor: importMode === "append" ? "#eff6ff" : "white",
+                borderColor: importMode === "append" ? "#3b82f6" : "#cbd5e1",
+                transition: "all 0.2s"
+              }}>
+                <input 
+                  type="radio" 
+                  name="importMode" 
+                  value="append" 
+                  checked={importMode === "append"} 
+                  onChange={() => setImportMode("append")}
+                  style={{ marginTop: "3px" }}
+                />
+                <div>
+                  <strong style={{ display: "block", fontSize: "13px", color: "#0f172a" }}>Cập nhật thêm</strong>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>Thêm nhà cung cấp mới và cập nhật thông tin nhà cung cấp đã tồn tại (trùng mã hoặc tên). Tự động cấp mã nhà cung cấp mới nếu thiếu.</span>
+                </div>
+              </label>
+
+              <label style={{ 
+                display: "flex", 
+                alignItems: "flex-start", 
+                gap: "0.75rem", 
+                padding: "10px 12px", 
+                border: "1px solid #cbd5e1", 
+                borderRadius: "6px", 
+                cursor: "pointer",
+                backgroundColor: importMode === "replace" ? "#fef2f2" : "white",
+                borderColor: importMode === "replace" ? "#ef4444" : "#cbd5e1",
+                transition: "all 0.2s"
+              }}>
+                <input 
+                  type="radio" 
+                  name="importMode" 
+                  value="replace" 
+                  checked={importMode === "replace"} 
+                  onChange={() => setImportMode("replace")}
+                  style={{ marginTop: "3px" }}
+                />
+                <div>
+                  <strong style={{ display: "block", fontSize: "13px", color: "#b91c1c" }}>Thay thế tất cả</strong>
+                  <span style={{ fontSize: "11px", color: "#991b1b" }}>Xóa toàn bộ dữ liệu nhà cung cấp hiện tại và nhập dữ liệu mới từ file Excel. Mã nhà cung cấp mới được tự động cấp lại từ NCC0001.</span>
+                </div>
+              </label>
+            </div>
+
+            <div className="confirm-actions" style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button type="button" className="confirm-btn btn-cancel" onClick={() => setShowImportModal(false)} style={{ flex: 1, padding: "8px 16px", borderRadius: "4px", fontSize: "13px" }}>
+                Hủy
+              </button>
+              <button 
+                type="button" 
+                className="confirm-btn" 
+                onClick={executeImport} 
+                disabled={isPending}
+                style={{ 
+                  flex: 1, 
+                  padding: "8px 16px", 
+                  borderRadius: "4px", 
+                  fontSize: "13px", 
+                  backgroundColor: importMode === "replace" ? "#ef4444" : "#22c55e",
+                  color: "white",
+                  border: "none",
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                {isPending ? "Đang xử lý..." : "Đồng ý"}
               </button>
             </div>
           </div>

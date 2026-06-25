@@ -67,7 +67,7 @@ async function main() {
     // 1. Pack source code locally
     console.log('Step 1: Compressing local project source code...');
     // We package only source files, config files, and DB schemas (excluding node_modules, .next, etc.)
-    await runLocalCommand(`tar -czf ${archiveName} src prisma public package.json package-lock.json next.config.js tsconfig.json next-env.d.ts`);
+    await runLocalCommand(`tar -czf ${archiveName} src prisma public scratch package.json package-lock.json next.config.js tsconfig.json next-env.d.ts`);
     console.log('✔ Compression complete.\n');
 
     // 2. Establish SSH connection
@@ -164,6 +164,7 @@ async function main() {
       npm install
       npx prisma generate
       npx prisma db push --accept-data-loss
+      node scratch/sync_admin_permissions.js
       NODE_OPTIONS="--max-old-space-size=1024" npm run build
     `;
     await runRemoteCommand(conn, `bash -c '${appSetupCmds}'`);

@@ -77,9 +77,26 @@ export default async function PrintContractPage({ params }: { params: { id: stri
     }
   }
 
+  // Fetch bank details from the bank catalog matching the contract's bankAccount
+  let bank: any = null;
+  if (contract.bankAccount) {
+    bank = await prisma.bank.findFirst({
+      where: { bankAccount: contract.bankAccount },
+    });
+  }
+
+  const enrichedContract = {
+    ...contract,
+    bankName: bank?.bankName || null,
+    bankAddress: bank?.bankAddress || null,
+    beneficiaryName: bank?.beneficiaryName || null,
+    beneficiaryAddress: bank?.beneficiaryAddress || null,
+    swiftCode: bank?.swiftCode || null,
+  };
+
   return (
     <PrintContractClient 
-      contract={JSON.parse(JSON.stringify(contract))} 
+      contract={JSON.parse(JSON.stringify(enrichedContract))} 
       customer={JSON.parse(JSON.stringify(customer))} 
       sellerDetails={JSON.parse(JSON.stringify(sellerDetails))}
     />

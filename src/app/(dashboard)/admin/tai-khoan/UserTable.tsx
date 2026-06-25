@@ -37,7 +37,6 @@ export default function UserTable({ users, activeEmployees, branches, availableP
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-
   const selectedUser = users.find(u => u.id === selectedUserId);
 
   function handleClose() {
@@ -326,30 +325,7 @@ export default function UserTable({ users, activeEmployees, branches, availableP
         .base-table .status-pill.status-inactive {
           color: #dc2626 !important;
         }
-        .custom-modal-overlay {
-          position: fixed;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
-        @media (min-width: 769px) {
-          .custom-modal-overlay {
-            left: 220px !important;
-            top: 140px !important;
-            right: 0 !important;
-            bottom: 0 !important;
-          }
-        }
-        @media (max-width: 768px) {
-          .custom-modal-overlay {
-            left: 0 !important;
-            top: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-          }
-        }
+
         .filter-label { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; font-weight: 700; color: #003466; text-transform: uppercase; }
         
         .custom-modal-overlay .input {
@@ -714,101 +690,125 @@ export default function UserTable({ users, activeEmployees, branches, availableP
       {showModal && (
         <div className="custom-modal-overlay">
           <div
+            className="user-modal-card"
             style={{
               width: "95%",
-              maxWidth: "500px",
+              maxWidth: "800px",
               maxHeight: "90%",
+              height: "480px",
               margin: "auto",
               display: "flex",
               flexDirection: "column",
-              padding: "24px",
+              padding: 0,
               background: "#ffffff",
               borderRadius: "16px",
               border: "1px solid #cbd5e1",
               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-              overflowY: "auto"
+              overflow: "hidden"
             }}
           >
-            <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "12px", marginTop: 0 }}>
+            {/* Sticky Header */}
+            <h3 style={{ borderBottom: "1px solid #e2e8f0", padding: "10px 24px", margin: 0, background: "#fff", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", fontSize: "16px", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
               {editingUser ? "✏️ Sửa tài khoản" : "🛡️ Thêm tài khoản"}
             </h3>
-            {error && <div style={{ color: "#e74c3c", marginBottom: "1rem", fontSize: "13px" }}>⚠️ {error}</div>}
-            
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div>
-                <label className="filter-label">Nhân viên *</label>
-                <select name="employeeName" className="input" required defaultValue={editingUser?.employeeName ?? ""} disabled={!!editingUser}>
-                  {editingUser ? (
-                    <option value={editingUser.employeeName}>{editingUser.employeeName}</option>
-                  ) : (
-                    <>
-                      <option value="">-- Chọn nhân viên (Chỉ hiện người chưa có TK) --</option>
-                      {filteredEmployees.map(name => <option key={name} value={name}>{name}</option>)}
-                    </>
-                  )}
-                </select>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <div>
-                  <label className="filter-label">Tài khoản *</label>
-                  <input type="text" name="username" className="input" required defaultValue={editingUser?.username ?? ""} disabled={!!editingUser} placeholder="Nhập tài khoản" />
-                </div>
-                {!editingUser && (
+
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+              {/* Scrollable Form Body Container */}
+              <div className="scrollable-body" style={{ flex: 1, overflowX: "auto", overflowY: "auto", padding: "16px 1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {error && <div style={{ color: "#e74c3c", fontSize: "13px" }}>⚠️ {error}</div>}
+                
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                   <div>
-                    <label className="filter-label">Mật khẩu *</label>
-                    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                      <input 
-                        type={showPassword ? "text" : "password"} 
-                        name="password" 
-                        className="input" 
-                        required 
-                        defaultValue="123" 
-                        style={{ paddingRight: "40px" }}
-                      />
-                      <div style={{ position: "absolute", right: "10px", display: "flex", alignItems: "center" }}>
-                        <input 
-                          type="checkbox" 
-                          checked={showPassword} 
-                          onChange={() => setShowPassword(!showPassword)}
-                          title="Hiện mật khẩu"
-                          style={{ cursor: "pointer" }}
-                        />
-                      </div>
-                    </div>
+                    <label className="filter-label">Nhân viên *</label>
+                    <select name="employeeName" className="input" required defaultValue={editingUser?.employeeName ?? ""} disabled={!!editingUser}>
+                      {editingUser ? (
+                        <option value={editingUser.employeeName}>{editingUser.employeeName}</option>
+                      ) : (
+                        <>
+                          <option value="">-- Chọn nhân viên (Chỉ hiện người chưa có TK) --</option>
+                          {filteredEmployees.map(name => <option key={name} value={name}>{name}</option>)}
+                        </>
+                      )}
+                    </select>
                   </div>
-                )}
-              </div>
-              <div>
-                <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem" }}>Mục quyền (Chọn nhiều) *</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: "8px" }}>
-                  {availablePermissions.map(p => (
-                    <button key={p.id} type="button" 
-                      onClick={() => togglePermission(p.id)}
-                      style={{ padding: "4px 10px", borderRadius: "15px", border: "1px solid", fontSize: "0.8rem", cursor: "pointer",
-                        background: selectedPermissions.includes(p.id) ? "#f39c12" : "none",
-                        color: selectedPermissions.includes(p.id) ? "#fff" : "#888",
-                        borderColor: selectedPermissions.includes(p.id) ? "#f39c12" : "#ddd"
-                      }}>{p.name}</button>
-                  ))}
-                  {availablePermissions.length === 0 && <span style={{ color: "#888", fontSize: "0.8rem" }}>Chưa có mục quyền nào</span>}
+                  <div style={{ display: "grid", gridTemplateColumns: editingUser ? "1fr" : "1fr 1fr", gap: "1rem" }}>
+                    <div>
+                      <label className="filter-label">Tài khoản *</label>
+                      <input type="text" name="username" className="input" required defaultValue={editingUser?.username ?? ""} disabled={!!editingUser} placeholder="Nhập tài khoản" />
+                    </div>
+                    {!editingUser && (
+                      <div>
+                        <label className="filter-label">Mật khẩu *</label>
+                        <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                          <input 
+                            type={showPassword ? "text" : "password"} 
+                            name="password" 
+                            className="input" 
+                            required 
+                            defaultValue="123" 
+                            style={{ paddingRight: "40px" }}
+                          />
+                          <div style={{ position: "absolute", right: "10px", display: "flex", alignItems: "center" }}>
+                            <input 
+                              type="checkbox" 
+                              checked={showPassword} 
+                              onChange={() => setShowPassword(!showPassword)}
+                              title="Hiện mật khẩu"
+                              style={{ cursor: "pointer" }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem" }}>Mục quyền (Chọn nhiều) *</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: "8px", maxHeight: "145px", overflowY: "auto" }}>
+                    {availablePermissions.map(p => (
+                      <button key={p.id} type="button" 
+                        onClick={() => togglePermission(p.id)}
+                        style={{ padding: "4px 10px", borderRadius: "15px", border: "1px solid", fontSize: "0.8rem", cursor: "pointer",
+                          background: selectedPermissions.includes(p.id) ? "#f39c12" : "none",
+                          color: selectedPermissions.includes(p.id) ? "#fff" : "#888",
+                          borderColor: selectedPermissions.includes(p.id) ? "#f39c12" : "#ddd"
+                        }}>{p.name}</button>
+                    ))}
+                    {availablePermissions.length === 0 && <span style={{ color: "#888", fontSize: "0.8rem" }}>Chưa có mục quyền nào</span>}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem" }}>Chi nhánh (Chọn nhiều) *</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: "8px", maxHeight: "145px", overflowY: "auto" }}>
+                    {branches.map(b => (
+                      <button key={b} type="button" 
+                        onClick={() => toggleBranch(b)}
+                        style={{ padding: "4px 10px", borderRadius: "15px", border: "1px solid", fontSize: "0.8rem", cursor: "pointer",
+                          background: selectedBranches.includes(b) ? "#3498db" : "none",
+                          color: selectedBranches.includes(b) ? "#fff" : "#888",
+                          borderColor: selectedBranches.includes(b) ? "#3498db" : "#ddd"
+                        }}>{b}</button>
+                    ))}
+                    {branches.length === 0 && <span style={{ color: "#888", fontSize: "0.8rem" }}>Chưa có chi nhánh nào</span>}
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="filter-label" style={{ display: "block", marginBottom: "0.5rem" }}>Chi nhánh (Chọn nhiều) *</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: "8px" }}>
-                  {branches.map(b => (
-                    <button key={b} type="button" 
-                      onClick={() => toggleBranch(b)}
-                      style={{ padding: "4px 10px", borderRadius: "15px", border: "1px solid", fontSize: "0.8rem", cursor: "pointer",
-                        background: selectedBranches.includes(b) ? "#3498db" : "none",
-                        color: selectedBranches.includes(b) ? "#fff" : "#888",
-                        borderColor: selectedBranches.includes(b) ? "#3498db" : "#ddd"
-                      }}>{b}</button>
-                  ))}
-                  {branches.length === 0 && <span style={{ color: "#888", fontSize: "0.8rem" }}>Chưa có chi nhánh nào</span>}
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "1rem" }}>
+
+              {/* Sticky Action Footer */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "0.75rem",
+                  justifyContent: "flex-end",
+                  borderTop: "1px solid #eee",
+                  padding: "12px 24px",
+                  background: "#fff",
+                  borderBottomLeftRadius: "16px",
+                  borderBottomRightRadius: "16px",
+                }}
+              >
                 <button type="button" className="sapo-btn sapo-btn-secondary" onClick={handleClose}>Hủy</button>
                 <button type="submit" className="sapo-btn" disabled={isPending}>{isPending ? "Đang lưu..." : "Lưu lại"}</button>
               </div>

@@ -284,6 +284,21 @@ export default function CountryClient({ initialCountries }: { initialCountries: 
         }
         .table-container {
           margin-left: 0px;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          width: 100%;
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e0 #f7fafc;
+        }
+        .table-container::-webkit-scrollbar {
+          height: 6px;
+        }
+        .table-container::-webkit-scrollbar-track {
+          background: #f7fafc;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+          background: #cbd5e0;
+          border-radius: 3px;
         }
         .table th {
           text-transform: uppercase !important;

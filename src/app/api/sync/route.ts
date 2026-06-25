@@ -1,8 +1,35 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { getUserModuleBranchFilter, getUserPermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
+
+async function getUserPosition(employeeName: string | null) {
+  if (!employeeName) return "";
+
+  // Check in transferpromotion table for the latest approved request
+  const latestTransfer = await (prisma as any).transferpromotion.findFirst({
+    where: {
+      employeeName: employeeName,
+      status: "Đã phê duyệt"
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
+  if (latestTransfer) {
+    return latestTransfer.newPosition || "";
+  }
+
+  // Fallback to employee table
+  const employee = await prisma.employee.findFirst({
+    where: { fullName: employeeName }
+  });
+
+  return employee?.position || "";
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -21,64 +48,120 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "ACCOUNT_INACTIVE" }, { status: 403 });
   }
 
+  const position = await getUserPosition(user.employeeName);
   const isAdmin = user.username === "admin" || user.role === "Admin";
-  const isStaff = user.role?.includes("Nhân viên") && !isAdmin;
+  const isManager = isAdmin || user.role?.includes("Trưởng phòng") || position.includes("Trưởng phòng") || position.includes("Giám đốc");
+  const isStaff = !isManager;
   const userBranches = user.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
   const userName = user.employeeName || user.username || "";
 
   try {
     switch (module) {
-      case "employees":
+      case "employees": {
+        const filter = await getUserModuleBranchFilter(user.id, "NS_NHAN_VIEN", session.activeBranch, {
+          branchField: "branch",
+          creatorField: "creator",
+          employeeField: "fullName"
+        });
         return NextResponse.json(await prisma.employee.findMany({ 
-          where: isAdmin ? {} : { branch: { in: userBranches } },
+          where: filter,
           orderBy: { createdAt: "desc" } 
         }));
-      case "contracts":
+      }
+      case "contracts": {
+        const filter = await getUserModuleBranchFilter(user.id, "KD_HOP_DONG", session.activeBranch, {
+          employeeInBranchField: "salesEmployee",
+          employeeField: "salesEmployee"
+        });
         return NextResponse.json(await (prisma as any).contract.findMany({ 
-          where: isStaff ? { salesEmployee: userName } : {},
+          where: filter,
           include: { contractitem: true }, 
           orderBy: { createdAt: "desc" } 
         }));
-      case "orders":
+      }
+      case "orders": {
+        const filter = await getUserModuleBranchFilter(user.id, "KD_DON_HANG", session.activeBranch, {
+          branchField: "branch",
+          employeeField: "employeeName"
+        });
         return NextResponse.json(await (prisma as any).order.findMany({ 
-          where: isStaff ? { employeeName: userName } : {},
+          where: filter,
           include: { orderitem: true }, 
           orderBy: { createdAt: "desc" } 
         }));
-      case "attendance":
+      }
+      case "attendance": {
+        const filter = await getUserModuleBranchFilter(user.id, "LB_CHAM_CONG", session.activeBranch, {
+          branchField: "branch",
+          employeeField: "employeeName"
+        });
         return NextResponse.json(await prisma.attendance.findMany({ 
-          where: isAdmin ? {} : { branch: { in: userBranches } },
+          where: filter,
           orderBy: { createdAt: "desc" } 
         }));
-      case "payroll":
+      }
+      case "payroll": {
+        const filter = await getUserModuleBranchFilter(user.id, "NS_BANG_LUONG", session.activeBranch, {
+          branchField: "branch",
+          creatorField: "creator"
+        });
         return NextResponse.json(await prisma.payroll.findMany({ 
-          where: isAdmin ? {} : { branch: { in: userBranches } },
+          where: filter,
           include: { _count: { select: { payrolldetail: true } } }, 
           orderBy: { createdAt: "desc" } 
         }));
+      }
       case "salary-levels":
         return NextResponse.json(await (prisma as any).salarylevel.findMany({ orderBy: { stt: "asc" } }));
-      case "labor-contracts":
+      case "labor-contracts": {
+        const filter = await getUserModuleBranchFilter(user.id, "NS_HOP_DONG", session.activeBranch, {
+          branchField: "branch",
+          creatorField: "creator",
+          employeeField: "employeeName"
+        });
         return NextResponse.json(await (prisma as any).laborcontract.findMany({ 
-          where: isAdmin ? {} : { branch: { in: userBranches } },
+          where: filter,
           orderBy: { createdAt: "desc" } 
         }));
+      }
       case "departments":
         return NextResponse.json(await prisma.department.findMany({ orderBy: { createdAt: "desc" } }));
       case "positions":
         return NextResponse.json(await prisma.position.findMany({ orderBy: { createdAt: "desc" } }));
-      case "salary-changes":
+      case "salary-changes": {
+        const filter = await getUserModuleBranchFilter(user.id, "NS_TANG_GIAM_LUONG", session.activeBranch, {
+          branchField: "branch",
+          creatorField: "creator",
+          employeeField: "employeeName"
+        });
         return NextResponse.json(await (prisma as any).salarychange.findMany({ 
-          where: isAdmin ? {} : { branch: { in: userBranches } },
+          where: filter,
           orderBy: { createdAt: "desc" } 
         }));
-      case "transfer-promotions":
+      }
+      case "transfer-promotions": {
+        const filter = await getUserModuleBranchFilter(user.id, "NS_DIEU_DONG", session.activeBranch, {
+          branchField: "branch",
+          creatorField: "creator",
+          employeeField: "employeeName"
+        });
         return NextResponse.json(await (prisma as any).transferpromotion.findMany({ 
-          where: isAdmin ? {} : { branch: { in: userBranches } },
+          where: filter,
           orderBy: { createdAt: "desc" } 
         }));
+      }
       case "material-plans":
-        return NextResponse.json(await (prisma as any).materialplan.findMany({ include: { order: true }, orderBy: { createdAt: "desc" } }));
+        return NextResponse.json(await (prisma as any).materialplan.findMany({ 
+          where: session.activeBranch ? {
+            order: {
+              some: {
+                branch: session.activeBranch
+              }
+            }
+          } : {},
+          include: { order: true }, 
+          orderBy: { createdAt: "desc" } 
+        }));
       case "purchasing-plans":
         return NextResponse.json(await (prisma as any).purchasingplan.findMany({ include: { order: true, items: true }, orderBy: { createdAt: "desc" } }));
       case "dispatch-orders":
@@ -88,17 +171,23 @@ export async function GET(request: Request) {
           where: isAdmin ? {} : { branch: { in: userBranches } },
           orderBy: { createdAt: "desc" } 
         }));
-      case "leave-requests":
+      case "leave-requests": {
         const isEmployee = user.role !== "Admin" && user.role !== "Manager" && user.role !== "HR";
         return NextResponse.json(await (prisma as any).leaverequest.findMany({ 
           where: isEmployee ? { employeeName: userName } : {},
           orderBy: { createdAt: "desc" } 
         }));
-      case "security-registrations":
+      }
+      case "security-registrations": {
+        const filter = await getUserModuleBranchFilter(user.id, "AN_DANH_SACH", session.activeBranch, {
+          branchField: "branch",
+          creatorField: "creator"
+        });
         return NextResponse.json(await (prisma as any).securityregistration.findMany({ 
-          where: session.activeBranch ? { branch: session.activeBranch } : {},
+          where: filter,
           orderBy: { createdAt: 'desc' } 
         }));
+      }
       case "approvals":
         const [pContracts, pLeaves, pSalaryChanges, pTransfers, pResignations, pPayrolls] = await Promise.all([
           (prisma as any).laborcontract.findMany({ where: { status: "Chờ phê duyệt" }, orderBy: { createdAt: "desc" } }),
@@ -120,6 +209,11 @@ export async function GET(request: Request) {
         return NextResponse.json(await (prisma as any).customer.findMany({
           select: { code: true, name: true, abbreviation: true }
         }));
+      case "suppliers":
+        return NextResponse.json(await (prisma as any).supplier.findMany({
+          where: { status: "Hoạt động" },
+          orderBy: { name: "asc" }
+        }));
       case "products":
         return NextResponse.json(await prisma.product.findMany({
           select: { code: true, name: true, englishName: true, packaging: true, unit: { select: { name: true } } }
@@ -135,21 +229,48 @@ export async function GET(request: Request) {
           include: { purchaseinvoicedetail: true },
           orderBy: { createdAt: "desc" }
         }));
-      case "purchase-orders":
+      case "purchase-orders": {
+        let filter: any = {};
+        if (!isAdmin) {
+          const { allBranches } = await getUserPermission(user.id, "TM_LENH_MUA");
+          if (allBranches) {
+            // See all branches
+          } else {
+            const activeBranch = session.activeBranch || user.branch?.split(",")[0]?.trim() || "";
+            filter = { branch: activeBranch };
+          }
+        }
         return NextResponse.json(await (prisma as any).purchaseorder.findMany({
-          where: isAdmin ? {} : {
-            branch: { in: userBranches }
-          },
+          where: filter,
           include: { purchaseorderdetail: true },
           orderBy: { createdAt: "desc" }
         }));
-      case "maintenance-proposals":
-        const proposals = await (prisma as any).maintenanceproposal.findMany({
-          where: isAdmin ? {} : {
-            branch: { in: userBranches }
-          },
-          include: { items: true },
-          orderBy: { createdAt: "desc" }
+      }
+      case "purchasing-proposals": {
+        let filter: any = {};
+        if (!isAdmin) {
+          const { allBranches } = await getUserPermission(user.id, "TM_LENH_MUA");
+          if (allBranches) {
+            // See all branches
+          } else {
+            const activeBranch = session.activeBranch || user.branch?.split(",")[0]?.trim() || "";
+            filter = { branch: activeBranch };
+          }
+        }
+        const [mProposals, pProposals] = await Promise.all([
+          (prisma as any).maintenanceproposal.findMany({
+            where: filter,
+            include: { items: true },
+            orderBy: { createdAt: "desc" }
+          }),
+          (prisma as any).purchasingproposal.findMany({
+            where: filter,
+            include: { items: true },
+            orderBy: { createdAt: "desc" }
+          })
+        ]);
+        const proposals = [...mProposals, ...pProposals].sort((a: any, b: any) => {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
         for (const proposal of proposals) {
           const proposalCode = proposal.proposalCode;
@@ -158,6 +279,9 @@ export async function GET(request: Request) {
               purchaseorder: {
                 purpose: {
                   contains: proposalCode
+                },
+                status: {
+                  notIn: ["Tạo mới", "Từ chối"]
                 }
               }
             },
@@ -185,6 +309,153 @@ export async function GET(request: Request) {
           }
         }
         return NextResponse.json(proposals);
+      }
+      case "purchasing-proposals-direct": {
+        const filter = await getUserModuleBranchFilter(user.id, "TM_DE_NGHI", session.activeBranch, {
+          branchField: "branch",
+          creatorField: "proposer"
+        });
+        const proposals = await (prisma as any).purchasingproposal.findMany({
+          where: filter,
+          include: { items: true },
+          orderBy: { createdAt: "desc" }
+        });
+        for (const proposal of proposals) {
+          const proposalCode = proposal.proposalCode;
+          const poDetails = await (prisma as any).purchaseorderdetail.findMany({
+            where: {
+              purchaseorder: {
+                purpose: { contains: proposalCode },
+                status: { notIn: ["Tạo mới", "Từ chối"] }
+              }
+            },
+            select: {
+              proposalProductName: true,
+              requestedQuantity: true,
+              purchaseorder: { select: { status: true } }
+            }
+          });
+          for (const item of proposal.items) {
+            const matchedDetails = poDetails.filter((d: any) => d.proposalProductName === item.productName);
+            const orderedQty = matchedDetails.reduce((sum: number, d: any) => sum + (d.requestedQuantity || 0), 0);
+            (item as any).orderedQuantity = orderedQty;
+            
+            if (orderedQty > 0) {
+              const statuses = Array.from(new Set(matchedDetails.map((d: any) => d.purchaseorder?.status).filter(Boolean)));
+              (item as any).poStatus = statuses.join(", ");
+            } else {
+              (item as any).poStatus = "";
+            }
+          }
+        }
+        return NextResponse.json(proposals);
+      }
+      case "purchasing-proposal-approvals": {
+        const filter = await getUserModuleBranchFilter(user.id, "TM_PHE_DUYET_DE_NGHI", session.activeBranch, {
+          branchField: "branch"
+        });
+        const proposals = await (prisma as any).purchasingproposal.findMany({
+          where: {
+            ...filter,
+            status: { in: ["Chờ duyệt", "Chờ mua", "Đã phê duyệt", "Từ chối", "Hoàn thành"] }
+          },
+          include: { items: true },
+          orderBy: { createdAt: "desc" }
+        });
+        for (const proposal of proposals) {
+          const proposalCode = proposal.proposalCode;
+          const poDetails = await (prisma as any).purchaseorderdetail.findMany({
+            where: {
+              purchaseorder: {
+                purpose: { contains: proposalCode },
+                status: { notIn: ["Tạo mới", "Từ chối"] }
+              }
+            },
+            select: {
+              proposalProductName: true,
+              requestedQuantity: true,
+              purchaseorder: { select: { status: true } }
+            }
+          });
+          for (const item of proposal.items) {
+            const matchedDetails = poDetails.filter((d: any) => d.proposalProductName === item.productName);
+            const orderedQty = matchedDetails.reduce((sum: number, d: any) => sum + (d.requestedQuantity || 0), 0);
+            (item as any).orderedQuantity = orderedQty;
+            
+            if (orderedQty > 0) {
+              const statuses = Array.from(new Set(matchedDetails.map((d: any) => d.purchaseorder?.status).filter(Boolean)));
+              (item as any).poStatus = statuses.join(", ");
+            } else {
+              (item as any).poStatus = "";
+            }
+          }
+        }
+        return NextResponse.json(proposals);
+      }
+      case "payment-proposals": {
+        const proposalsDb = await (prisma as any).paymentproposal.findMany({
+          include: {
+            items: true
+          },
+          orderBy: {
+            createdAt: "desc"
+          }
+        });
+        const proposals = proposalsDb.map((p: any) => ({
+          id: p.id,
+          proposalNumber: p.proposalNumber,
+          date: p.date,
+          proposer: p.proposer,
+          supplierCode: p.supplierCode,
+          supplierName: p.supplierName,
+          accountInfo: p.accountInfo,
+          purpose: p.purpose,
+          status: p.status,
+          note: p.note,
+          createdAt: p.createdAt,
+          items: p.items.map((item: any) => ({
+            id: item.id,
+            content: item.content,
+            unit: item.unit,
+            quantity: item.quantity,
+            price: item.price,
+            amount: item.amount,
+            rate: item.rate,
+            total: item.total
+          }))
+        }));
+        return NextResponse.json(proposals);
+      }
+      case "payment-vouchers": {
+        const vouchersDb = await (prisma as any).paymentvoucher.findMany({
+          include: {
+            items: true
+          },
+          orderBy: {
+            createdAt: "desc"
+          }
+        });
+        return NextResponse.json(vouchersDb);
+      }
+      case "receipt-vouchers": {
+        const vouchersDb = await (prisma as any).receiptvoucher.findMany({
+          orderBy: {
+            createdAt: "desc"
+          }
+        });
+        return NextResponse.json(vouchersDb);
+      }
+
+      case "weighing-slips": {
+        const filter = await getUserModuleBranchFilter(user.id, "KT_CAN_XE", session.activeBranch, {
+          branchField: "branch"
+        });
+        if ((filter as any).id === "NO_ACCESS") return NextResponse.json([]);
+        return NextResponse.json(await prisma.weighingslip.findMany({
+          where: filter,
+          orderBy: { createdAt: "desc" }
+        }));
+      }
       default:
         return NextResponse.json({ error: "Invalid module" }, { status: 400 });
     }

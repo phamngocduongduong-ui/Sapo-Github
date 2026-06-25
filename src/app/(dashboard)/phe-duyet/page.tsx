@@ -32,7 +32,7 @@ export default async function ApprovalCenterPage() {
   if (permissions.has("PD_LUONG_THUONG")) redirect("/phe-duyet/luong-thuong");
   if (permissions.has("PD_THANH_TOAN")) redirect("/phe-duyet/thanh-toan");
   if (permissions.has("PD_MUA_HANG")) redirect("/phe-duyet/mua-hang");
-  if (permissions.has("PD_BAO_TRI")) redirect("/phe-duyet/bao-tri");
+  if (permissions.has("PD_DE_NGHI_MH")) redirect("/phe-duyet/de-nghi-mua-hang");
 
   redirect("/");
 }

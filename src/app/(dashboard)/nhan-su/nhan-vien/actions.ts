@@ -300,49 +300,234 @@ export async function updateEmployeeStatus(id: string, status: string) {
   revalidatePath("/admin/tai-khoan");
 }
 
-export async function bulkUpsertEmployees(dataList: any[]) {
+function parseExcelDate(val: any): Date | null {
+  if (!val) return null;
+  
+  if (val instanceof Date) {
+    if (!isNaN(val.getTime())) {
+      const useUTC = val.getUTCHours() === 0 && val.getUTCMinutes() === 0 && val.getUTCSeconds() === 0;
+      const year = useUTC ? val.getUTCFullYear() : val.getFullYear();
+      const month = useUTC ? val.getUTCMonth() : val.getMonth();
+      const day = useUTC ? val.getUTCDate() : val.getDate();
+      return new Date(Date.UTC(year, month, day));
+    }
+    return null;
+  }
+
+  if (typeof val === 'number' || (!isNaN(Number(val)) && !isNaN(parseFloat(val)))) {
+    const num = Number(val);
+    const date = new Date((num - 25569) * 86400 * 1000);
+    if (!isNaN(date.getTime())) {
+      const useUTC = date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0;
+      const year = useUTC ? date.getUTCFullYear() : date.getFullYear();
+      const month = useUTC ? date.getUTCMonth() : date.getMonth();
+      const day = useUTC ? date.getUTCDate() : date.getDate();
+      return new Date(Date.UTC(year, month, day));
+    }
+  }
+
+  const str = val.toString().trim();
+  if (!str) return null;
+
+  const dmyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1; // 0-indexed
+    const year = parseInt(dmyMatch[3], 10);
+    return new Date(Date.UTC(year, month, day));
+  }
+
+  const ymdMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (ymdMatch) {
+    const year = parseInt(ymdMatch[1], 10);
+    const month = parseInt(ymdMatch[2], 10) - 1;
+    const day = parseInt(ymdMatch[3], 10);
+    return new Date(Date.UTC(year, month, day));
+  }
+
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const year = parsed.getUTCFullYear();
+    const month = parsed.getUTCMonth();
+    const day = parsed.getUTCDate();
+    return new Date(Date.UTC(year, month, day));
+  }
+
+  return null;
+}
+
+export async function importEmployees(dataList: any[], mode: "append" | "replace") {
   const session = await getSession();
   const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
   const creator = user?.employeeName || user?.username || "Hệ thống";
 
-  for (const item of dataList) {
-    const { employeeCode, fullName, branch, ...rest } = item;
-    
-    // Convert dates if any
-    const updateData: any = { fullName, branch, ...rest };
-    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
-    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
-    if (updateData.idCardDate) updateData.idCardDate = new Date(updateData.idCardDate);
+  const dbBranches = await prisma.branch.findMany({});
+  const dbPositions = await prisma.position.findMany({});
+  const dbDepartments = await prisma.department.findMany({});
 
-    // Try to find existing employee by code or by (name + branch)
-    let existing;
-    if (employeeCode) {
-      existing = await prisma.employee.findUnique({ where: { employeeCode } });
-    } else {
-      existing = await prisma.employee.findFirst({
-        where: { fullName, branch: branch || "" }
-      });
+  function resolveGender(input: string): string {
+    if (!input) return "Nam";
+    const normalized = input.toString().trim().toLowerCase();
+    if (normalized.includes("nữ") || normalized.includes("nu") || normalized === "f" || normalized === "female") {
+      return "Nữ";
     }
+    return "Nam";
+  }
 
-    if (existing) {
-      await prisma.employee.update({
-        where: { id: existing.id },
-        data: updateData
-      });
-    } else {
-      // Generate new code if missing
-      const finalCode = employeeCode || (await generateNextEmployeeCode(branch));
+  function resolveBranch(input: string): string {
+    if (!input) return "";
+    const normalized = input.toString().trim().toLowerCase();
+    const match = dbBranches.find(b =>
+      b.code.toLowerCase() === normalized ||
+      b.name.toLowerCase() === normalized
+    );
+    return match ? match.name : input.toString().trim();
+  }
+
+  function resolvePosition(input: string): string {
+    if (!input) return "";
+    const normalized = input.toString().trim().toLowerCase();
+    const match = dbPositions.find(p =>
+      p.code.toLowerCase() === normalized ||
+      p.name.toLowerCase() === normalized
+    );
+    return match ? match.name : input.toString().trim();
+  }
+
+  function resolveDepartment(input: string): string {
+    if (!input) return "";
+    const normalized = input.toString().trim().toLowerCase();
+    const match = dbDepartments.find(d =>
+      d.code.toLowerCase() === normalized ||
+      d.name.toLowerCase() === normalized
+    );
+    return match ? match.name : input.toString().trim();
+  }
+
+  function resolveStatus(inputStatus: string): string {
+    if (!inputStatus) return "Đang làm việc";
+    const normalized = inputStatus.toString().trim().toLowerCase();
+    if (normalized === "hoạt động" || normalized === "active" || normalized === "đang làm việc" || normalized === "dang lam viec") {
+      return "Đang làm việc";
+    }
+    if (normalized === "ngưng hoạt động" || normalized === "inactive" || normalized === "nghỉ việc" || normalized === "nghi viec") {
+      return "Nghỉ việc";
+    }
+    return "Đang làm việc";
+  }
+
+  if (mode === "replace") {
+    // 1. Delete all existing employees
+    await prisma.employee.deleteMany({});
+
+    // 2. We need to track sequential code generation per branch
+    const branchCounts: Record<string, number> = {};
+
+    for (const item of dataList) {
+      const { employeeCode, fullName, branch, position, department, gender, ...rest } = item;
+      
+      const resolvedBranch = resolveBranch(branch);
+      const resolvedPosition = resolvePosition(position);
+      const resolvedDepartment = resolveDepartment(department);
+      const resolvedGender = resolveGender(gender);
+
+      const updateData: any = { 
+        fullName, 
+        branch: resolvedBranch, 
+        position: resolvedPosition,
+        department: resolvedDepartment,
+        gender: resolvedGender,
+        ...rest 
+      };
+      if (updateData.startDate) updateData.startDate = parseExcelDate(updateData.startDate);
+      if (updateData.endDate) updateData.endDate = parseExcelDate(updateData.endDate);
+      if (updateData.idCardDate) updateData.idCardDate = parseExcelDate(updateData.idCardDate);
+      
+      updateData.status = resolveStatus(updateData.status);
+
+      // Generate sequence for branch starting from 001
+      if (!branchCounts[resolvedBranch]) {
+        branchCounts[resolvedBranch] = 0;
+      }
+      branchCounts[resolvedBranch]++;
+
+      const branchObj = dbBranches.find((b: any) => b.name === resolvedBranch);
+      const branchCode = branchObj?.code || "HCM";
+      const code = `${branchCounts[resolvedBranch].toString().padStart(3, '0')}.${branchCode}`;
+
       await prisma.employee.create({
         data: {
           id: crypto.randomUUID(),
-          employeeCode: finalCode,
+          employeeCode: code,
           ...updateData,
-          status: "Đang làm việc",
           creator
         }
       });
     }
+  } else {
+    // mode === "append"
+    const existingEmployees = await prisma.employee.findMany({});
+
+    for (const item of dataList) {
+      const { employeeCode, fullName, branch, position, department, gender, ...rest } = item;
+      
+      const resolvedBranch = resolveBranch(branch);
+      const resolvedPosition = resolvePosition(position);
+      const resolvedDepartment = resolveDepartment(department);
+      const resolvedGender = resolveGender(gender);
+
+      const updateData: any = { 
+        fullName, 
+        branch: resolvedBranch, 
+        position: resolvedPosition,
+        department: resolvedDepartment,
+        gender: resolvedGender,
+        ...rest 
+      };
+      if (updateData.startDate) updateData.startDate = parseExcelDate(updateData.startDate);
+      if (updateData.endDate) updateData.endDate = parseExcelDate(updateData.endDate);
+      if (updateData.idCardDate) updateData.idCardDate = parseExcelDate(updateData.idCardDate);
+
+      updateData.status = resolveStatus(updateData.status);
+
+      const inputCode = (employeeCode || "").toString().trim().toUpperCase();
+      let existing = existingEmployees.find((emp: any) =>
+        (inputCode && emp.employeeCode.toUpperCase() === inputCode) ||
+        (emp.fullName.toUpperCase() === fullName.toString().trim().toUpperCase() && emp.branch === resolvedBranch)
+      );
+
+      if (existing) {
+        await prisma.employee.update({
+          where: { id: existing.id },
+          data: updateData
+        });
+      } else {
+        const branchObj = dbBranches.find((b: any) => b.name === resolvedBranch);
+        const branchCode = branchObj?.code || "HCM";
+
+        const branchEmployees = existingEmployees.filter((e: any) => e.branch === resolvedBranch);
+
+        const nums = branchEmployees
+          .map((e: any) => parseInt(e.employeeCode.split(".")[0]))
+          .filter((n: any) => !isNaN(n));
+          
+        const max = nums.length > 0 ? Math.max(...nums) : 0;
+        const finalCode = `${(max + 1).toString().padStart(3, '0')}.${branchCode}`;
+
+        const newEmp = await prisma.employee.create({
+          data: {
+            id: crypto.randomUUID(),
+            employeeCode: finalCode,
+            ...updateData,
+            creator
+          }
+        });
+        
+        existingEmployees.push(newEmp);
+      }
+    }
   }
+
   revalidatePath("/nhan-su/nhan-vien");
   revalidatePath("/admin/tai-khoan");
 }

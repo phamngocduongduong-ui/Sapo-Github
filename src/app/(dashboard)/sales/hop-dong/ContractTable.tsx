@@ -27,6 +27,7 @@ interface ContractTableProps {
   products: Product[];
   currentUser: string;
   initialEmployees: any[];
+  banks: any[];
 }
 
 const DEFAULT_DOCUMENTS = [
@@ -65,7 +66,7 @@ export function parseLocaleNumber(str: string): number {
   return isNaN(num) ? 0 : num;
 }
 
-export default function ContractTable({ initialContracts, customers: initialCustomers, products: initialProducts, currentUser, initialEmployees }: ContractTableProps) {
+export default function ContractTable({ initialContracts, customers: initialCustomers, products: initialProducts, currentUser, initialEmployees, banks = [] }: ContractTableProps) {
   const router = useRouter();
   const [contracts, setContracts] = useState<any[]>(initialContracts);
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
@@ -75,6 +76,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
   const [activeTab, setActiveTab] = useState(1);
   const [isViewMode, setIsViewMode] = useState(false);
   const [editingContract, setEditingContract] = useState<any | null>(null);
+  const [isDuplicateMode, setIsDuplicateMode] = useState(false);
 
   useEffect(() => {
     setContracts(initialContracts);
@@ -100,10 +102,11 @@ export default function ContractTable({ initialContracts, customers: initialCust
   
   // Goods list items state
   const [items, setItems] = useState<any[]>([
-    { productCode: "", productName: "", unit: "", quantity: 1, price: 0, amount: 0, packaging: "", note: "", quantityInput: "1", priceInput: "$ 0", productSearch: "" }
+    { productCode: "", productName: "", unit: "", quantity: 1, price: 0, amount: 0, brix: "", packaging: "", note: "", quantityInput: "1", priceInput: "$ 0", productSearch: "" }
   ]);
   
   const [docList, setDocList] = useState<any[]>(DEFAULT_DOCUMENTS);
+  const [attachmentList, setAttachmentList] = useState<any[]>([]);
   const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
   const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
 
@@ -129,6 +132,11 @@ export default function ContractTable({ initialContracts, customers: initialCust
   const [expiryDate, setExpiryDate] = useState("");
   const [contractNumber, setContractNumber] = useState("");
   const [salesEmployee, setSalesEmployee] = useState("");
+  const [selectedBankAccount, setSelectedBankAccount] = useState("");
+
+  const currentSelectedBank = useMemo(() => {
+    return banks.find(b => b.bankAccount === selectedBankAccount) || null;
+  }, [banks, selectedBankAccount]);
 
   const calculateExpiryDate = (dateStr: string): string => {
     if (!dateStr) return "";
@@ -175,21 +183,29 @@ export default function ContractTable({ initialContracts, customers: initialCust
       setSelectedSeller(editingContract.seller || "");
       setBuyerSearch(editingContract.buyer || "");
       setSelectedBuyer(editingContract.buyer || "");
-      setContractNumber(editingContract.contractNumber || "");
       setSalesEmployee(editingContract.salesEmployee || "");
-
-      const cDate = editingContract.contractDate
-        ? new Date(editingContract.contractDate).toISOString().split("T")[0]
-        : new Date().toISOString().split("T")[0];
-      setContractDate(cDate);
-
-      const eDate = editingContract.expiryDate
-        ? new Date(editingContract.expiryDate).toISOString().split("T")[0]
-        : "";
-      setExpiryDate(eDate);
       setPaymentMethod(editingContract.paymentMethod || "L/C at sight");
       setThermometerChecked(!!editingContract.thermometer);
       setThermometerQty(editingContract.thermometerQty || 0);
+      setSelectedBankAccount(editingContract.bankAccount || "");
+
+      if (isDuplicateMode) {
+        const today = new Date().toISOString().split("T")[0];
+        setContractDate(today);
+        setExpiryDate(calculateExpiryDate(today));
+        const generated = generateContractNumber(editingContract.buyer, today);
+        setContractNumber(generated);
+      } else {
+        setContractNumber(editingContract.contractNumber || "");
+        const cDate = editingContract.contractDate
+          ? new Date(editingContract.contractDate).toISOString().split("T")[0]
+          : new Date().toISOString().split("T")[0];
+        setContractDate(cDate);
+        const eDate = editingContract.expiryDate
+          ? new Date(editingContract.expiryDate).toISOString().split("T")[0]
+          : "";
+        setExpiryDate(eDate);
+      }
     } else {
       setSellerSearch("");
       setSelectedSeller("");
@@ -206,16 +222,17 @@ export default function ContractTable({ initialContracts, customers: initialCust
       setPaymentMethod("L/C at sight");
       setThermometerChecked(false);
       setThermometerQty(0);
+      setSelectedBankAccount("");
     }
-  }, [editingContract, showModal]);
+  }, [editingContract, showModal, isDuplicateMode]);
 
-  // Auto-generate contract number when creating new contract
+  // Auto-generate contract number when creating new contract or duplicating
   useEffect(() => {
-    if (!editingContract && showModal) {
+    if ((!editingContract || isDuplicateMode) && showModal) {
       const generated = generateContractNumber(selectedBuyer, contractDate);
       setContractNumber(generated);
     }
-  }, [selectedBuyer, contractDate, editingContract, showModal]);
+  }, [selectedBuyer, contractDate, editingContract, showModal, isDuplicateMode]);
 
   // For Seller suggestions:
   const filteredSellers = useMemo(() => {
@@ -355,26 +372,31 @@ export default function ContractTable({ initialContracts, customers: initialCust
     setShowModal(false);
     setEditingContract(null);
     setIsViewMode(false);
+    setIsDuplicateMode(false);
     setItems([
-      { productCode: "", productName: "", unit: "", quantity: 1, price: 0, amount: 0, packaging: "", note: "", quantityInput: "1", priceInput: "$ 0", productSearch: "" }
+      { productCode: "", productName: "", unit: "", quantity: 1, price: 0, amount: 0, brix: "", packaging: "", note: "", quantityInput: "1", priceInput: "$ 0", productSearch: "" }
     ]);
     setDocList(DEFAULT_DOCUMENTS);
+    setAttachmentList([]);
     setActiveTab(1);
     setError(null);
   }
 
-  function handleEdit(contract: any) {
+  function handleDuplicate(contract: any) {
     setEditingContract(contract);
     setIsViewMode(false);
+    setIsDuplicateMode(true);
     setItems(
       contract.contractitem.length > 0
         ? contract.contractitem.map((item: any) => ({
             ...item,
+            id: undefined,
+            contractId: undefined,
             quantityInput: formatLocaleNumber(item.quantity),
             priceInput: `$ ${formatLocaleNumber(item.price)}`,
             productSearch: item.productCode ? `${item.productCode} - ${item.productName}` : ""
           }))
-        : [{ productCode: "", productName: "", unit: "", quantity: 1, price: 0, amount: 0, packaging: "", note: "", quantityInput: "1", priceInput: "$ 0", productSearch: "" }]
+        : [{ productCode: "", productName: "", unit: "", quantity: 1, price: 0, amount: 0, brix: "", packaging: "", note: "", quantityInput: "1", priceInput: "$ 0", productSearch: "" }]
     );
     
     // Parse accompanying documents JSON
@@ -396,6 +418,94 @@ export default function ContractTable({ initialContracts, customers: initialCust
       }
     } else {
       setDocList(DEFAULT_DOCUMENTS);
+    }
+
+    // Parse attachments JSON
+    if (contract.attachments) {
+      try {
+        const parsed = JSON.parse(contract.attachments);
+        if (Array.isArray(parsed)) {
+          setAttachmentList(parsed);
+        } else {
+          setAttachmentList([]);
+        }
+      } catch (e) {
+        setAttachmentList([]);
+      }
+    } else {
+      setAttachmentList([]);
+    }
+
+    setSellerSearch(contract.seller || "");
+    setSelectedSeller(contract.seller || "");
+    setBuyerSearch(contract.buyer || "");
+    setSelectedBuyer(contract.buyer || "");
+    setSalesEmployee(contract.salesEmployee || "");
+
+    const today = new Date().toISOString().split("T")[0];
+    setContractDate(today);
+    setExpiryDate(calculateExpiryDate(today));
+    setPaymentMethod(contract.paymentMethod || "L/C at sight");
+    setThermometerChecked(!!contract.thermometer);
+    setThermometerQty(contract.thermometerQty || 0);
+
+    // Auto-generate contract number immediately
+    const generated = generateContractNumber(contract.buyer, today);
+    setContractNumber(generated);
+
+    setActiveTab(1);
+    setShowModal(true);
+  }
+
+  function handleEdit(contract: any) {
+    setEditingContract(contract);
+    setIsViewMode(false);
+    setItems(
+      contract.contractitem.length > 0
+        ? contract.contractitem.map((item: any) => ({
+            ...item,
+            quantityInput: formatLocaleNumber(item.quantity),
+            priceInput: `$ ${formatLocaleNumber(item.price)}`,
+            productSearch: item.productCode ? `${item.productCode} - ${item.productName}` : ""
+          }))
+        : [{ productCode: "", productName: "", unit: "", quantity: 1, price: 0, amount: 0, brix: "", packaging: "", note: "", quantityInput: "1", priceInput: "$ 0", productSearch: "" }]
+    );
+    
+    // Parse accompanying documents JSON
+    if (contract.accompanyingDocuments) {
+      try {
+        const parsed = JSON.parse(contract.accompanyingDocuments);
+        if (Array.isArray(parsed)) {
+          const sanitized = parsed.map((doc: any) => ({
+            ...doc,
+            original: doc.original === true ? 1 : (typeof doc.original === "number" ? doc.original : 0),
+            copy: doc.copy === true ? 1 : (typeof doc.copy === "number" ? doc.copy : 0),
+          }));
+          setDocList(sanitized);
+        } else {
+          setDocList(DEFAULT_DOCUMENTS);
+        }
+      } catch (e) {
+        setDocList(DEFAULT_DOCUMENTS);
+      }
+    } else {
+      setDocList(DEFAULT_DOCUMENTS);
+    }
+
+    // Parse attachments JSON
+    if (contract.attachments) {
+      try {
+        const parsed = JSON.parse(contract.attachments);
+        if (Array.isArray(parsed)) {
+          setAttachmentList(parsed);
+        } else {
+          setAttachmentList([]);
+        }
+      } catch (e) {
+        setAttachmentList([]);
+      }
+    } else {
+      setAttachmentList([]);
     }
 
     setActiveTab(1);
@@ -437,6 +547,22 @@ export default function ContractTable({ initialContracts, customers: initialCust
       setDocList(DEFAULT_DOCUMENTS);
     }
 
+    // Parse attachments JSON
+    if (contract.attachments) {
+      try {
+        const parsed = JSON.parse(contract.attachments);
+        if (Array.isArray(parsed)) {
+          setAttachmentList(parsed);
+        } else {
+          setAttachmentList([]);
+        }
+      } catch (e) {
+        setAttachmentList([]);
+      }
+    } else {
+      setAttachmentList([]);
+    }
+
     setActiveTab(1);
     setShowModal(true);
   }
@@ -476,7 +602,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
 
   function addItem() {
     if (isViewMode) return;
-    setItems([...items, { productCode: "", productName: "", unit: "", quantity: 1, price: 0, amount: 0, packaging: "", note: "", quantityInput: "1", priceInput: "$ 0", productSearch: "" }]);
+    setItems([...items, { productCode: "", productName: "", unit: "", quantity: 1, price: 0, amount: 0, brix: "", packaging: "", note: "", quantityInput: "1", priceInput: "$ 0", productSearch: "" }]);
   }
 
   function removeItem(index: number) {
@@ -536,10 +662,93 @@ export default function ContractTable({ initialContracts, customers: initialCust
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (isViewMode) return;
+
+    // Validate goods list items
+    if (items.length === 0) {
+      setActiveTab(3);
+      setError("Vui lòng thêm ít nhất một dòng hàng hóa.");
+      setTimeout(() => {
+        const scrollable = document.querySelector(".scrollable-body");
+        if (scrollable) scrollable.scrollTop = 0;
+      }, 100);
+      return;
+    }
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!item.productCode) {
+        setActiveTab(3);
+        setError(`Vui lòng chọn sản phẩm cho dòng hàng hóa thứ ${i + 1}.`);
+        setTimeout(() => {
+          const scrollable = document.querySelector(".scrollable-body");
+          if (scrollable) scrollable.scrollTop = 0;
+        }, 100);
+        return;
+      }
+      if (item.brix === undefined || item.brix === null || item.brix.toString().trim() === "") {
+        setActiveTab(3);
+        setError(`Vui lòng nhập độ Brix cho dòng hàng hóa thứ ${i + 1}.`);
+        setTimeout(() => {
+          const scrollable = document.querySelector(".scrollable-body");
+          if (scrollable) scrollable.scrollTop = 0;
+        }, 100);
+        return;
+      }
+      if (!item.unit || !item.unit.trim()) {
+        setActiveTab(3);
+        setError(`Vui lòng nhập ĐVT cho dòng hàng hóa thứ ${i + 1}.`);
+        setTimeout(() => {
+          const scrollable = document.querySelector(".scrollable-body");
+          if (scrollable) scrollable.scrollTop = 0;
+        }, 100);
+        return;
+      }
+      if (!item.quantity || item.quantity <= 0) {
+        setActiveTab(3);
+        setError(`Vui lòng nhập Số lượng hợp lệ (lớn hơn 0) cho dòng hàng hóa thứ ${i + 1}.`);
+        setTimeout(() => {
+          const scrollable = document.querySelector(".scrollable-body");
+          if (scrollable) scrollable.scrollTop = 0;
+        }, 100);
+        return;
+      }
+      if (item.price === undefined || item.price === null || item.price <= 0) {
+        setActiveTab(3);
+        setError(`Vui lòng nhập Đơn giá hợp lệ (lớn hơn 0) cho dòng hàng hóa thứ ${i + 1}.`);
+        setTimeout(() => {
+          const scrollable = document.querySelector(".scrollable-body");
+          if (scrollable) scrollable.scrollTop = 0;
+        }, 100);
+        return;
+      }
+    }
+
+    // Validate attachments
+    for (let i = 0; i < attachmentList.length; i++) {
+      if (!attachmentList[i].name || !attachmentList[i].name.trim()) {
+        setActiveTab(5); // Switch to Tab 5 (Tệp đính kèm)
+        setError(`Vui lòng nhập tên tài liệu / mô tả cho tệp đính kèm dòng số ${i + 1}.`);
+        setTimeout(() => {
+          const scrollable = document.querySelector(".scrollable-body");
+          if (scrollable) scrollable.scrollTop = 0;
+        }, 100);
+        return;
+      }
+      if (!attachmentList[i].fileName) {
+        setActiveTab(5); // Switch to Tab 5
+        setError(`Vui lòng tải lên tệp PDF cho tệp đính kèm dòng số ${i + 1}.`);
+        setTimeout(() => {
+          const scrollable = document.querySelector(".scrollable-body");
+          if (scrollable) scrollable.scrollTop = 0;
+        }, 100);
+        return;
+      }
+    }
+
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       try {
-        if (editingContract) await updateContract(editingContract.id, formData, items);
+        if (editingContract && !isDuplicateMode) await updateContract(editingContract.id, formData, items);
         else await createContract(formData, items);
         router.refresh();
         handleClose();
@@ -596,7 +805,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
     borderBottom: activeTab === tabNum ? "2px solid #0066cc" : "2px solid transparent",
     fontWeight: activeTab === tabNum ? 700 : 500,
     color: activeTab === tabNum ? "#0066cc" : "#4b5563",
-    fontSize: "13px",
+    fontSize: "12px",
     transition: "all 0.15s ease",
     marginBottom: "-2px",
     whiteSpace: "nowrap",
@@ -943,6 +1152,14 @@ export default function ContractTable({ initialContracts, customers: initialCust
                   Lịch sử
                 </button>
 
+                <button
+                  type="button"
+                  className="sapo-btn"
+                  onClick={() => handleDuplicate(selectedContract)}
+                >
+                  Nhân bản
+                </button>
+
                 {selectedContract.status === "Tạo mới" && (
                   <button
                     type="button"
@@ -1230,10 +1447,15 @@ export default function ContractTable({ initialContracts, customers: initialCust
             }}
           >
             {/* Sticky Header */}
-            <h3 style={{ borderBottom: "1px solid #e2e8f0", padding: "16px 24px", margin: 0, background: "#fff", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", fontSize: "1.25rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
+            <h3 style={{ borderBottom: "1px solid #e2e8f0", padding: "10px 24px", margin: 0, background: "#fff", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", fontSize: "16px", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
               {isViewMode ? (
                 <>
                   <span>🔍 Xem chi tiết hợp đồng:</span>
+                  <span style={{ color: "#ff5c00" }}>{editingContract?.contractNumber}</span>
+                </>
+              ) : isDuplicateMode ? (
+                <>
+                  <span>📋 Nhân bản hợp đồng xuất khẩu:</span>
                   <span style={{ color: "#ff5c00" }}>{editingContract?.contractNumber}</span>
                 </>
               ) : editingContract ? (
@@ -1274,14 +1496,14 @@ export default function ContractTable({ initialContracts, customers: initialCust
                 onClick={() => setActiveTab(4)}
                 style={getTabButtonStyle(4)}
               >
-                4. Ngân hàng
+                4. Chứng từ kèm theo
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab(5)}
                 style={getTabButtonStyle(5)}
               >
-                5. Chứng từ kèm theo
+                5. Tệp đính kèm
               </button>
             </div>
 
@@ -1308,7 +1530,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                         className="input"
                         value={contractNumber}
                         onChange={(e) => setContractNumber(e.target.value)}
-                        disabled={!!editingContract || isViewMode}
+                        disabled={(!!editingContract && !isDuplicateMode) || isViewMode}
                         required
                         placeholder="Số hợp đồng sẽ tự động tạo"
                         style={{ width: "150px" }}
@@ -1356,7 +1578,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                     </div>
                   </div>
                   {/* Seller + Buyer: side-by-side, 50% each */}
-                  <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+                  <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", rowGap: "10px", columnGap: "1.25rem" }}>
                     <div style={{ position: "relative", width: "100%" }}>
                       <label className="filter-label">Người bán <span style={{ color: "red" }}>(*)</span></label>
                       <input
@@ -1489,8 +1711,40 @@ export default function ContractTable({ initialContracts, customers: initialCust
                         </div>
                       )}
                     </div>
+
+                    {/* Ghi chú chung */}
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <label className="filter-label">Ghi chú chung</label>
+                      <textarea
+                        name="note"
+                        className="input"
+                        disabled={isViewMode}
+                        defaultValue={editingContract?.note ?? ""}
+                        placeholder="Nhập ghi chú (nếu có)"
+                        ref={(el) => {
+                          if (el) {
+                            el.style.height = "auto";
+                            el.style.height = `${el.scrollHeight}px`;
+                          }
+                        }}
+                        onInput={(e: any) => {
+                          e.target.style.height = "auto";
+                          e.target.style.height = `${e.target.scrollHeight}px`;
+                        }}
+                        rows={1}
+                        style={{
+                          width: "100%",
+                          minHeight: "36px",
+                          resize: "vertical",
+                          padding: "8px 12px",
+                          lineHeight: "1.4",
+                          fontFamily: "inherit",
+                          overflow: "auto"
+                        }}
+                      />
+                    </div>
                   </div>
-                  {editingContract ? (
+                  {editingContract && !isDuplicateMode ? (
                     <>
                       <div>
                         <label className="filter-label">Ngày hết hạn hợp đồng</label>
@@ -1527,17 +1781,58 @@ export default function ContractTable({ initialContracts, customers: initialCust
                   ) : (
                     <input type="hidden" name="expiryDate" value={expiryDate} />
                   )}
-                  <div style={{ gridColumn: "span 2" }}>
-                    <label className="filter-label">Ghi chú chung</label>
-                    <input
-                      type="text"
-                      name="note"
-                      className="input"
-                      disabled={isViewMode}
-                      defaultValue={editingContract?.note ?? ""}
-                      placeholder="Nhập ghi chú (nếu có)"
-                    />
+                  {/* Banking Info Section */}
+                  <div style={{ gridColumn: "1 / -1", margin: "15px 0 5px 0", borderBottom: "1px solid #e2e8f0", paddingBottom: "5px" }}>
+                    <span style={{ fontWeight: 700, color: "#003466", fontSize: "12px", textTransform: "uppercase" }}>Thông tin ngân hàng</span>
                   </div>
+
+                  <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(2, 1fr)", rowGap: "10px", columnGap: "1.25rem" }}>
+                    <div style={{ gridColumn: "1 / -1", display: "flex", gap: "1.25rem" }}>
+                      <div style={{ width: "calc(50% - 150px - 0.625rem)", flexShrink: 0 }}>
+                        <label className="filter-label">Số tài khoản ngân hàng <span style={{ color: "red" }}>(*)</span></label>
+                        {isViewMode ? (
+                          <input
+                            type="text"
+                            className="input"
+                            value={selectedBankAccount}
+                            disabled
+                            style={{ width: "100%" }}
+                          />
+                        ) : (
+                          <select
+                            name="bankAccount"
+                            className="input"
+                            value={selectedBankAccount}
+                            onChange={(e) => setSelectedBankAccount(e.target.value)}
+                            style={{ width: "100%" }}
+                            required
+                          >
+                            <option value="">-- Chọn số tài khoản --</option>
+                            {banks.map(b => {
+                              if (b.status !== "Hoạt động" && b.bankAccount !== selectedBankAccount) return null;
+                              return (
+                                <option key={b.id} value={b.bankAccount}>
+                                  {b.code} - {b.bankAccount}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        )}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label className="filter-label">Tên ngân hàng</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={currentSelectedBank?.bankName || ""}
+                          disabled
+                          placeholder="Tên ngân hàng..."
+                          style={{ width: "100%", backgroundColor: "#f8fafc" }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
 
                 {/* Tab 2: Delivery & Payments */}
@@ -1770,15 +2065,16 @@ export default function ContractTable({ initialContracts, customers: initialCust
                 {/* Tab 3: List of Goods */}
                 <div style={{ display: activeTab === 3 ? "block" : "none" }}>
                   <div style={{ overflow: "visible", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
-                    <table className="table tab3-goods-table" style={{ fontSize: "13px", width: "100%", minWidth: "1000px", tableLayout: "fixed" }}>
+                    <table className="table tab3-goods-table" style={{ fontSize: "13px", width: "100%", minWidth: "1280px", tableLayout: "fixed" }}>
                       <thead style={{ background: "#f8fafc" }}>
                         <tr>
-                          <th style={{ width: "350px", padding: "5px 6px", textAlign: "center" }}>Mã / Tên sản phẩm</th>
-                          <th style={{ width: "80px", padding: "5px 6px", textAlign: "center" }}>ĐVT</th>
-                          <th style={{ width: "100px", padding: "5px 6px", textAlign: "center" }}>Số lượng</th>
-                          <th style={{ width: "90px", padding: "5px 6px", textAlign: "center" }}>Đơn giá</th>
+                          <th style={{ width: "350px", padding: "5px 6px", textAlign: "center" }}>Mã / Tên sản phẩm <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "80px", padding: "5px 6px", textAlign: "center" }}>Brix <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "80px", padding: "5px 6px", textAlign: "center" }}>ĐVT <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "100px", padding: "5px 6px", textAlign: "center" }}>Số lượng <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "90px", padding: "5px 6px", textAlign: "center" }}>Đơn giá <span style={{ color: "red" }}>(*)</span></th>
                           <th style={{ width: "115px", padding: "5px 6px", textAlign: "center" }}>Thành tiền</th>
-                          <th style={{ width: "200px", padding: "5px 6px", textAlign: "center" }}>Ghi chú sản phẩm</th>
+                          <th style={{ width: "400px", padding: "5px 6px", textAlign: "center" }}>Ghi chú sản phẩm</th>
                           {!isViewMode && <th style={{ width: "50px", padding: "5px 6px", textAlign: "center" }}>#</th>}
                         </tr>
                       </thead>
@@ -1956,6 +2252,24 @@ export default function ContractTable({ initialContracts, customers: initialCust
                               </td>
                               <td style={{ padding: "5px 6px" }}>
                                 <input
+                                  type="number"
+                                  step="any"
+                                  className="input-sm"
+                                  value={item.brix ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const newItems = [...items];
+                                    newItems[idx].brix = val;
+                                    setItems(newItems);
+                                  }}
+                                  disabled={isViewMode}
+                                  required
+                                  placeholder="Brix"
+                                  style={{ textAlign: "right" }}
+                                />
+                              </td>
+                              <td style={{ padding: "5px 6px" }}>
+                                <input
                                   type="text"
                                   className="input-sm"
                                   value={item.unit || ""}
@@ -1999,14 +2313,29 @@ export default function ContractTable({ initialContracts, customers: initialCust
                                   disabled={true}
                                 />
                               </td>
-                              <td style={{ padding: "5px 6px" }}>
-                                <input
-                                  type="text"
-                                  className="input-sm"
+                               <td style={{ padding: "5px 6px" }}>
+                                <textarea
+                                  className="input-sm auto-resize-textarea"
                                   value={item.note || ""}
                                   onChange={(e) => updateItem(idx, "note", e.target.value)}
+                                  ref={(el) => {
+                                    if (el) {
+                                      el.style.height = "auto";
+                                      el.style.height = `${el.scrollHeight}px`;
+                                    }
+                                  }}
                                   disabled={isViewMode}
-                                  placeholder="Ghi chú sản phẩm..."
+                                  placeholder={isViewMode ? "" : "Ghi chú sản phẩm..."}
+                                  rows={1}
+                                  style={{
+                                    width: "100%",
+                                    minHeight: "26px",
+                                    resize: "vertical",
+                                    padding: "5px 10px",
+                                    lineHeight: "1.4",
+                                    fontFamily: "inherit",
+                                    overflow: "auto"
+                                  }}
                                 />
                               </td>
                               {!isViewMode && (
@@ -2034,105 +2363,34 @@ export default function ContractTable({ initialContracts, customers: initialCust
                       </tbody>
                     </table>
                   </div>
-                  {!isViewMode && (
-                    <button
-                      type="button"
-                      onClick={addItem}
-                      className="btn"
-                      style={{ marginTop: "1rem", background: "#f1f5f9" }}
-                    >
-                      + Thêm dòng hàng hóa
-                    </button>
-                  )}
-                </div>
-
-                {/* Tab 4: Banking details */}
-                <div
-                  style={{
-                    display: activeTab === 4 ? "grid" : "none",
-                    gridTemplateColumns: "repeat(2, 1fr)",
-                    rowGap: "10px",
-                    columnGap: "1.25rem",
-                  }}
-                >
-                  <div style={{ gridColumn: "1 / -1", display: "flex", gap: "1.25rem" }}>
-                    <div style={{ width: "calc(50% - 150px - 0.625rem)", flexShrink: 0 }}>
-                      <label className="filter-label">Số tài khoản ngân hàng <span style={{ color: "red" }}>(*)</span></label>
-                      <input
-                        type="text"
-                        name="bankAccount"
-                        className="input"
-                        defaultValue={editingContract?.bankAccount ?? ""}
-                        disabled={isViewMode}
-                        placeholder="Nhập số tài khoản..."
-                        required
-                      />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
+                    {!isViewMode ? (
+                      <button
+                        type="button"
+                        onClick={addItem}
+                        className="sapo-btn"
+                        style={{ fontSize: "12px" }}
+                      >
+                        Thêm dòng hàng
+                      </button>
+                    ) : (
+                      <div />
+                    )}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "5px" }}>
+                      <div style={{ fontSize: "14px", fontWeight: "700", color: "#003466" }}>
+                        Tổng giá trị hợp đồng: <span style={{ color: "#2563eb", marginLeft: "5px" }}>$ {formatLocaleNumber2Dec(items.reduce((sum, item) => sum + (item.amount || 0), 0))}</span>
+                      </div>
+                      <div style={{ fontSize: "14px", fontWeight: "700", color: "#003466" }}>
+                        Tổng số sản phẩm: <span style={{ color: "#2563eb", marginLeft: "5px" }}>{items.length}</span>
+                      </div>
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <label className="filter-label">Tên ngân hàng <span style={{ color: "red" }}>(*)</span></label>
-                      <input
-                        type="text"
-                        name="bankName"
-                        className="input"
-                        defaultValue={editingContract?.bankName ?? ""}
-                        disabled={isViewMode}
-                        placeholder="Nhập tên ngân hàng giao dịch..."
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div style={{ gridColumn: "span 2" }}>
-                    <label className="filter-label">Địa chỉ ngân hàng <span style={{ color: "red" }}>(*)</span></label>
-                    <input
-                      type="text"
-                      name="bankAddress"
-                      className="input"
-                      defaultValue={editingContract?.bankAddress ?? ""}
-                      disabled={isViewMode}
-                      placeholder="Địa chỉ chi nhánh ngân hàng..."
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="filter-label">Người thụ hưởng (Beneficiary) <span style={{ color: "red" }}>(*)</span></label>
-                    <input
-                      type="text"
-                      name="beneficiaryName"
-                      className="input"
-                      defaultValue={editingContract?.beneficiaryName ?? ""}
-                      disabled={isViewMode}
-                      placeholder="Tên đơn vị thụ hưởng..."
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="filter-label">Mã SWIFT Code <span style={{ color: "red" }}>(*)</span></label>
-                    <input
-                      type="text"
-                      name="swiftCode"
-                      className="input"
-                      defaultValue={editingContract?.swiftCode ?? ""}
-                      disabled={isViewMode}
-                      placeholder="Mã SWIFT Code..."
-                      required
-                    />
-                  </div>
-                  <div style={{ gridColumn: "span 2" }}>
-                    <label className="filter-label">Địa chỉ người thụ hưởng <span style={{ color: "red" }}>(*)</span></label>
-                    <input
-                      type="text"
-                      name="beneficiaryAddress"
-                      className="input"
-                      defaultValue={editingContract?.beneficiaryAddress ?? ""}
-                      disabled={isViewMode}
-                      placeholder="Địa chỉ đăng ký của người thụ hưởng..."
-                      required
-                    />
                   </div>
                 </div>
 
-                {/* Tab 5: Accompanying Documents Checklist */}
-                <div style={{ display: activeTab === 5 ? "block" : "none", fontSize: "13px" }} className="tab5-container">
+
+
+                {/* Tab 4: Accompanying Documents Checklist */}
+                <div style={{ display: activeTab === 4 ? "block" : "none", fontSize: "12px" }} className="tab5-container">
                   <input type="hidden" name="accompanyingDocuments" value={JSON.stringify(docList)} />
                   
                   {!isViewMode && (
@@ -2172,18 +2430,18 @@ export default function ContractTable({ initialContracts, customers: initialCust
                   )}
                   
                   <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
-                    <table className="table tab5-docs-table" style={{ fontSize: "13px", width: "100%", borderCollapse: "collapse" }}>
+                    <table className="table tab5-docs-table" style={{ fontSize: "12px", width: "100%", borderCollapse: "collapse" }}>
                       <thead style={{ background: "#f8fafc" }}>
                         <tr>
-                          <th style={{ textAlign: "center" }}>Tên chứng từ</th>
-                          <th style={{ width: "180px", textAlign: "center" }}>Bản gốc (Original)</th>
-                          <th style={{ width: "180px", textAlign: "center" }}>Bản sao (Copy)</th>
+                          <th style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tên chứng từ</th>
+                          <th style={{ width: "180px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Bản gốc (Original)</th>
+                          <th style={{ width: "180px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Bản sao (Copy)</th>
                         </tr>
                       </thead>
                       <tbody>
                         {docList.map((doc, idx) => (
                           <tr key={doc.key} style={{ borderBottom: "1px solid #e2e8f0" }}>
-                            <td style={{ fontWeight: 500, padding: "12px 14px" }}>
+                            <td style={{ fontWeight: 600, padding: "12px 14px", color: "#334155" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
                                 <span>{doc.label}</span>
                                 {doc.key.startsWith("custom_") && !isViewMode && (
@@ -2305,6 +2563,127 @@ export default function ContractTable({ initialContracts, customers: initialCust
                     </table>
                   </div>
                 </div>
+
+                {/* Tab 5: Tệp đính kèm */}
+                <div style={{ display: activeTab === 5 ? "block" : "none", fontSize: "12px" }} className="tab6-container">
+                  <input type="hidden" name="attachments" value={JSON.stringify(attachmentList)} />
+                  
+                  {!isViewMode && (
+                    <button
+                      type="button"
+                      className="sapo-btn"
+                      style={{ fontSize: "12px", marginBottom: "12px" }}
+                      onClick={() => {
+                        setAttachmentList([...attachmentList, { name: "", fileName: "", fileContent: "" }]);
+                      }}
+                    >
+                      Thêm tệp đính kèm
+                    </button>
+                  )}
+                  
+                  <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
+                    <table className="table" style={{ fontSize: "12px", width: "100%", borderCollapse: "collapse" }}>
+                      <thead style={{ background: "#f8fafc" }}>
+                        <tr>
+                          <th style={{ width: "40px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>STT</th>
+                          <th style={{ textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tên tài liệu / mô tả <span style={{ color: "red" }}>(*)</span></th>
+                          <th style={{ width: "300px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tệp PDF đính kèm</th>
+                          {!isViewMode && <th style={{ width: "80px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Thao tác</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attachmentList.length === 0 ? (
+                          <tr>
+                            <td colSpan={isViewMode ? 3 : 4} style={{ textAlign: "center", color: "#334155", padding: "12px" }}>
+                              Không có tệp đính kèm nào.
+                            </td>
+                          </tr>
+                        ) : (
+                          attachmentList.map((att, idx) => (
+                            <tr key={idx} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                              <td style={{ textAlign: "center", fontWeight: 500 }}>{idx + 1}</td>
+                              <td style={{ padding: "8px" }}>
+                                <input
+                                  type="text"
+                                  className="input"
+                                  placeholder="Nhập tên/mô tả tài liệu..."
+                                  value={att.name}
+                                  disabled={isViewMode}
+                                  onChange={(e) => {
+                                    const newList = [...attachmentList];
+                                    newList[idx].name = e.target.value;
+                                    setAttachmentList(newList);
+                                  }}
+                                  required
+                                  style={{ width: "100%" }}
+                                />
+                              </td>
+                              <td style={{ padding: "8px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  {!isViewMode && (
+                                    <input
+                                      type="file"
+                                      accept=".pdf"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          if (file.type !== "application/pdf") {
+                                            alert("Vui lòng chỉ chọn tệp tin định dạng PDF.");
+                                            e.target.value = "";
+                                            return;
+                                          }
+                                          
+
+                                          const reader = new FileReader();
+                                          reader.onload = (evt) => {
+                                             const content = evt.target?.result as string;
+                                             const newList = [...attachmentList];
+                                             newList[idx].fileName = file.name;
+                                             newList[idx].fileContent = content;
+                                             setAttachmentList(newList);
+                                           };
+                                          reader.readAsDataURL(file);
+                                        }
+                                      }}
+                                      style={{ fontSize: "12px", width: "100%" }}
+                                    />
+                                  )}
+                                  {att.fileName ? (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                                      <span style={{ fontSize: "12px", color: "#1e293b", fontWeight: 500 }}>📄 {att.fileName}</span>
+                                      <a
+                                        href={att.fileContent}
+                                        download={att.fileName}
+                                        style={{ fontSize: "11px", color: "#2563eb", textDecoration: "underline" }}
+                                      >
+                                        Tải xuống
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: "12px", color: "#64748b" }}>Chưa đính kèm tệp PDF</span>
+                                  )}
+                                </div>
+                              </td>
+                              {!isViewMode && (
+                                <td style={{ textAlign: "center", padding: "8px" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAttachmentList(attachmentList.filter((_, i) => i !== idx));
+                                    }}
+                                    style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontWeight: 600 }}
+                                  >
+                                    Xóa
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
 
               {/* Sticky Action Footer */}
@@ -2325,7 +2704,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                 </button>
                 {!isViewMode && (
                   <button type="submit" className="modal-footer-btn-success" disabled={isPending}>
-                    {isPending ? "Đang lưu..." : "💾 Lưu hợp đồng"}
+                    {isPending ? "Đang lưu..." : "Lưu hợp đồng"}
                   </button>
                 )}
               </div>
@@ -2369,8 +2748,8 @@ export default function ContractTable({ initialContracts, customers: initialCust
           text-transform: uppercase !important;
           color: #003466 !important;
           font-weight: 700 !important;
-          margin-bottom: 0.35rem !important;
-          font-size: 0.85rem !important;
+          margin-bottom: 5px !important;
+          font-size: 12px !important;
         }
         .custom-modal-overlay .scrollable-body::-webkit-scrollbar {
           display: none !important;
@@ -2384,8 +2763,8 @@ export default function ContractTable({ initialContracts, customers: initialCust
           color: white !important;
           font-weight: 500 !important;
           border-radius: 6px !important;
-          padding: 8px 20px !important;
-          font-size: 14px !important;
+          padding: 6px 15px !important;
+          font-size: 12px !important;
           border: none !important;
           cursor: pointer !important;
           transition: background-color 0.2s, transform 0.1s !important;
@@ -2394,27 +2773,33 @@ export default function ContractTable({ initialContracts, customers: initialCust
           background-color: #1e293b !important;
         }
         .custom-modal-overlay .modal-footer-btn-success {
-          background-color: #22c55e !important;
+          background-color: #003466 !important;
           color: white !important;
           font-weight: 500 !important;
           border-radius: 6px !important;
-          padding: 8px 20px !important;
-          font-size: 14px !important;
+          padding: 6px 15px !important;
+          font-size: 12px !important;
           border: none !important;
           cursor: pointer !important;
           transition: background-color 0.2s, transform 0.1s !important;
         }
         .custom-modal-overlay .modal-footer-btn-success:hover {
-          background-color: #16a34a !important;
+          background-color: #002244 !important;
         }
         
         /* Modal elements rounded corners styling */
         .custom-modal-overlay .input {
           border-radius: 8px !important;
           border: 1px solid #cbd5e1 !important;
-          padding: 6px 12px !important;
-          height: 34px !important;
+          padding: 2px 10px !important;
+          font-size: 12px !important;
           transition: border-color 0.2s, box-shadow 0.2s !important;
+        }
+        .custom-modal-overlay input.input {
+          height: 26px !important;
+        }
+        .custom-modal-overlay textarea.input {
+          padding: 8px 12px !important;
         }
         .custom-modal-overlay .input:focus {
           border-color: #ff5c00 !important;
@@ -2423,8 +2808,9 @@ export default function ContractTable({ initialContracts, customers: initialCust
         .custom-modal-overlay select.input {
           border-radius: 8px !important;
           border: 1px solid #cbd5e1 !important;
-          padding: 6px 12px !important;
-          height: 34px !important;
+          padding: 2px 10px !important;
+          height: 26px !important;
+          font-size: 12px !important;
           transition: border-color 0.2s, box-shadow 0.2s !important;
         }
         .custom-modal-overlay select.input:focus {
@@ -2435,6 +2821,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
           border-radius: 6px !important;
           border: 1px solid #cbd5e1 !important;
           padding: 5px 10px !important;
+          font-size: 12px !important;
           transition: border-color 0.2s, box-shadow 0.2s !important;
         }
         .custom-modal-overlay .input-sm:focus {
@@ -2460,6 +2847,16 @@ export default function ContractTable({ initialContracts, customers: initialCust
         }
         .search-item-hover:hover {
           background-color: #f1f5f9 !important;
+        }
+        .search-item-hover {
+          font-size: 12px !important;
+        }
+        .search-item-hover div {
+          font-size: 12px !important;
+        }
+        .custom-modal-overlay select.input option,
+        .custom-modal-overlay select option {
+          font-size: 12px !important;
         }
 
         /* Overrides to remove status backgrounds as requested (bỏ nền trạng thái) */
@@ -2507,7 +2904,11 @@ export default function ContractTable({ initialContracts, customers: initialCust
         }
         .tab5-container input,
         .tab5-container button {
-          font-size: 13px !important;
+          font-size: 12px !important;
+        }
+        .doc-counter-btn,
+        .doc-counter-input {
+          font-size: 12px !important;
         }
 
         /* Optimized Counter styles for Tab 5 */
@@ -2575,7 +2976,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 1.5rem",
+                margin: "0 auto 1.25rem",
                 color: "#f97316",
               }}
             >
@@ -2583,10 +2984,10 @@ export default function ContractTable({ initialContracts, customers: initialCust
             </div>
             <h3
               style={{
-                fontSize: "1.25rem",
+                fontSize: "18px",
                 fontWeight: "700",
-                marginBottom: "0.75rem",
-                color: "#000000",
+                margin: "0 auto 0.75rem",
+                color: "#1e293b",
                 textAlign: "center",
                 fontFamily: "'Segoe UI', sans-serif",
               }}
@@ -2605,9 +3006,8 @@ export default function ContractTable({ initialContracts, customers: initialCust
             </h3>
             <div
               style={{
-                color: "#000000",
-                fontWeight: 600,
-                marginBottom: "2rem",
+                color: "#475569",
+                margin: "0 auto 1.75rem",
                 lineHeight: "1.6",
                 textAlign: "center",
                 padding: "0 0.5rem",
@@ -2699,7 +3099,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                       borderRadius: "6px",
                     }}
                   >
-                    <XCircle size={16} /> Trạng thái hợp đồng sẽ chuyển thành Từ chối.
+                    <Check size={16} /> Trạng thái hợp đồng sẽ chuyển thành Từ chối.
                   </p>
                 </>
               ) : confirmUpdate.status === "Đã hủy" ? (
@@ -2721,7 +3121,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                       borderRadius: "6px",
                     }}
                   >
-                    <XCircle size={16} /> Trạng thái hợp đồng sẽ chuyển thành Đã hủy.
+                    <Check size={16} /> Trạng thái hợp đồng sẽ chuyển thành Đã hủy.
                   </p>
                 </>
               ) : (
@@ -2730,15 +3130,42 @@ export default function ContractTable({ initialContracts, customers: initialCust
                 </p>
               )}
             </div>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmUpdate(null)}>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button 
+                type="button"
+                className="sapo-btn sapo-btn-secondary" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={() => setConfirmUpdate(null)}
+              >
                 Hủy bỏ
               </button>
               <button
-                className="btn btn-primary"
+                type="button"
+                className="sapo-btn"
                 style={{
                   flex: 1,
-                  background: (confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy") ? "#ef4444" : undefined
+                  padding: "10px 20px",
+                  backgroundColor: (confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy") ? "#ef4444" : "#003466",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
                 }}
                 onClick={executeStatusChange}
               >
@@ -2762,7 +3189,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 1.5rem",
+                margin: "0 auto 1.25rem",
                 color: "#ea580c",
               }}
             >
@@ -2770,10 +3197,10 @@ export default function ContractTable({ initialContracts, customers: initialCust
             </div>
             <h3
               style={{
-                fontSize: "1.25rem",
+                fontSize: "18px",
                 fontWeight: "700",
-                marginBottom: "0.75rem",
-                color: "#000000",
+                margin: "0 auto 0.75rem",
+                color: "#1e293b",
                 textAlign: "center",
                 fontFamily: "'Segoe UI', sans-serif",
               }}
@@ -2782,9 +3209,8 @@ export default function ContractTable({ initialContracts, customers: initialCust
             </h3>
             <div
               style={{
-                color: "#000000",
-                fontWeight: 600,
-                marginBottom: "2rem",
+                color: "#475569",
+                margin: "0 auto 1.75rem",
                 lineHeight: "1.6",
                 textAlign: "center",
                 padding: "0 0.5rem",
@@ -2811,15 +3237,42 @@ export default function ContractTable({ initialContracts, customers: initialCust
                 <Printer size={16} /> Hồ sơ chưa được phê duyệt, chỉ có thể in bản nháp.
               </p>
             </div>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setPrintWarningContract(null)}>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button 
+                type="button"
+                className="sapo-btn sapo-btn-secondary" 
+                style={{
+                  flex: 1,
+                  padding: "10px 20px",
+                  backgroundColor: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
+                }} 
+                onClick={() => setPrintWarningContract(null)}
+              >
                 Hủy bỏ
               </button>
               <button
-                className="btn btn-primary"
+                type="button"
+                className="sapo-btn"
                 style={{
                   flex: 1,
-                  background: "#2563eb",
+                  padding: "10px 20px",
+                  backgroundColor: "#003466",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  justifyContent: "center",
+                  height: "40px"
                 }}
                 onClick={() => {
                   window.open(`/sales/hop-dong/in/${printWarningContract.id}`, "_blank");

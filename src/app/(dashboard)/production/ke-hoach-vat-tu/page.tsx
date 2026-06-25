@@ -5,8 +5,17 @@ import { getSession } from "@/lib/session";
 export default async function KeHoachVatTuPage() {
   const session = await getSession();
 
+  const activeBranch = session?.activeBranch;
+
   // Lấy danh sách kế hoạch vật tư
   const plans = await (prisma as any).materialplan.findMany({
+    where: activeBranch ? {
+      order: {
+        some: {
+          branch: activeBranch
+        }
+      }
+    } : {},
     include: { 
       order: {
         include: { orderitem: true }
@@ -20,7 +29,8 @@ export default async function KeHoachVatTuPage() {
     where: {
       order: {
         status: "Chờ kế hoạch",
-        materialPlanId: null
+        materialPlanId: null,
+        ...(activeBranch ? { branch: activeBranch } : {})
       }
     },
     include: {

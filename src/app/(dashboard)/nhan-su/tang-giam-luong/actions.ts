@@ -38,7 +38,7 @@ export async function getEmployees() {
 
   return await (prisma as any).employee.findMany({
     where: { 
-      status: "ACTIVE",
+      status: { notIn: ["Nghỉ việc", "INACTIVE"] },
       ...(isAdmin ? {} : { branch: { in: userBranches } })
     },
     select: { id: true, fullName: true, employeeCode: true, branch: true }

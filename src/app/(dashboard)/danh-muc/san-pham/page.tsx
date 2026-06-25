@@ -16,6 +16,15 @@ export default function ProductPage() {
   const [isPending, startTransition] = useTransition();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isViewOnly, setIsViewOnly] = useState(false);
+  const [formCategoryId, setFormCategoryId] = useState("");
+  const [formCode, setFormCode] = useState("");
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+  const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([]);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [formWarehouseId, setFormWarehouseId] = useState("");
+  const [isWarehouseDropdownOpen, setIsWarehouseDropdownOpen] = useState(false);
+  const [formStatus, setFormStatus] = useState("Hoạt động");
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   
   // History state
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
@@ -97,18 +106,45 @@ export default function ProductPage() {
     setEditingItem(null);
     setIsViewOnly(false);
     setSelectedItemId(null);
+    setFormCategoryId("");
+    setFormCode("");
+    setFormWarehouseId("");
+    setFormStatus("Hoạt động");
+    setSelectedUnitIds([]);
+    setIsUnitDropdownOpen(false);
+    setIsCategoryDropdownOpen(false);
+    setIsWarehouseDropdownOpen(false);
+    setIsStatusDropdownOpen(false);
     setIsModalOpen(true);
   };
 
   const openEditModal = (item: any) => {
     setEditingItem(item);
     setIsViewOnly(false);
+    setFormCategoryId(item.categoryId || "");
+    setFormCode(item.code || "");
+    setFormWarehouseId(item.warehouseId || "");
+    setFormStatus(item.status || "Hoạt động");
+    setSelectedUnitIds(item.unit?.map((u: any) => u.id) || []);
+    setIsUnitDropdownOpen(false);
+    setIsCategoryDropdownOpen(false);
+    setIsWarehouseDropdownOpen(false);
+    setIsStatusDropdownOpen(false);
     setIsModalOpen(true);
   };
 
   const openViewModal = (item: any) => {
     setEditingItem(item);
     setIsViewOnly(true);
+    setFormCategoryId(item.categoryId || "");
+    setFormCode(item.code || "");
+    setFormWarehouseId(item.warehouseId || "");
+    setFormStatus(item.status || "Hoạt động");
+    setSelectedUnitIds(item.unit?.map((u: any) => u.id) || []);
+    setIsUnitDropdownOpen(false);
+    setIsCategoryDropdownOpen(false);
+    setIsWarehouseDropdownOpen(false);
+    setIsStatusDropdownOpen(false);
     setIsModalOpen(true);
   };
 
@@ -206,7 +242,7 @@ export default function ProductPage() {
           height: auto !important;
           width: 100% !important;
           min-width: 1220px !important;
-          table-layout: fixed !important;
+          table-layout: auto !important;
         }
         .base-table th {
           text-transform: uppercase !important;
@@ -304,6 +340,50 @@ export default function ProductPage() {
           border-color: #2563eb !important;
           box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1) !important;
         }
+        .custom-modal-overlay .form-group-base label {
+          text-transform: uppercase !important;
+          color: #003466 !important;
+          font-weight: 700 !important;
+          margin-bottom: 5px !important;
+          font-size: 12px !important;
+          display: block !important;
+        }
+        .custom-modal-overlay .form-group-base.no-flex {
+          flex: none !important;
+        }
+        .custom-modal-overlay .input-base, 
+        .custom-modal-overlay select.input-base,
+        .custom-modal-overlay textarea.input-base {
+          border-radius: 8px !important;
+          border: 1px solid #cbd5e1 !important;
+          padding: 2px 10px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          color: #000000 !important;
+          background-color: #fff !important;
+          outline: none !important;
+          width: 100% !important;
+          transition: border-color 0.2s, box-shadow 0.2s !important;
+        }
+        .custom-modal-overlay input.input-base,
+        .custom-modal-overlay select.input-base {
+          height: 26px !important;
+        }
+        .custom-modal-overlay textarea.input-base {
+          padding: 8px 12px !important;
+        }
+         .custom-modal-overlay .input-base:focus, 
+         .custom-modal-overlay select.input-base:focus,
+         .custom-modal-overlay textarea.input-base:focus {
+           border-color: #ff5c00 !important;
+           box-shadow: 0 0 0 2px rgba(255, 92, 0, 0.1) !important;
+         }
+         .custom-modal-overlay .input-base:disabled,
+         .custom-modal-overlay .input-base[readOnly] {
+           color: #000000 !important;
+           -webkit-text-fill-color: #000000 !important;
+           opacity: 1 !important;
+         }
         .section-title {
           font-size: 13px !important;
           font-weight: 700 !important;
@@ -329,6 +409,94 @@ export default function ProductPage() {
         .required {
           color: #ef4444 !important;
           margin-left: 2px !important;
+        }
+        /* Custom Dropdown Styles */
+        .custom-dropdown-container {
+          position: relative !important;
+          width: 100% !important;
+        }
+        .custom-dropdown-trigger {
+          padding: 2px 10px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          color: #000000 !important;
+          background-color: #fff !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 8px !important;
+          height: 26px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          cursor: pointer !important;
+          user-select: none !important;
+          transition: border-color 0.2s, box-shadow 0.2s !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        .custom-dropdown-trigger:focus,
+        .custom-dropdown-trigger.active {
+          border-color: #ff5c00 !important;
+          box-shadow: 0 0 0 2px rgba(255, 92, 0, 0.1) !important;
+          outline: none !important;
+        }
+        .custom-dropdown-trigger.disabled {
+          background-color: #f1f5f9 !important;
+          cursor: not-allowed !important;
+          color: #000000 !important;
+        }
+        .custom-dropdown-menu {
+          position: absolute !important;
+          top: 100% !important;
+          left: 0 !important;
+          right: 0 !important;
+          background: #fff !important;
+          border: 1px solid #cbd5e1 !important;
+          border-radius: 8px !important;
+          box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05) !important;
+          max-height: 116px !important; /* exactly 4 items * 28px + 4px padding = 116px */
+          overflow-y: auto !important;
+          padding: 2px 0 !important;
+          margin-top: 4px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          box-sizing: border-box !important;
+          z-index: 100000 !important;
+        }
+        .custom-dropdown-menu.dropup {
+          top: auto !important;
+          bottom: 100% !important;
+          margin-top: auto !important;
+          margin-bottom: 4px !important;
+        }
+        .custom-dropdown-item {
+          height: 28px !important;
+          display: flex !important;
+          align-items: center !important;
+          padding: 0 10px !important;
+          font-size: 12px !important;
+          font-weight: 500 !important;
+          color: #475569 !important;
+          cursor: pointer !important;
+          user-select: none !important;
+          transition: background 0.15s !important;
+          box-sizing: border-box !important;
+          gap: 15px !important;
+        }
+        .custom-dropdown-item input[type="checkbox"] {
+          margin: 0 !important;
+          margin-right: 15px !important;
+          cursor: pointer !important;
+        }
+        .custom-dropdown-item:hover {
+          background-color: #f1f5f9 !important;
+        }
+        .custom-dropdown-item.selected {
+          background-color: #f0f7ff !important;
+          color: #2563eb !important;
+          font-weight: 600 !important;
+        }
+        .custom-dropdown-item.placeholder {
+          color: #94a3b8 !important;
         }
       `
       }} />
@@ -466,113 +634,521 @@ export default function ProductPage() {
       </div>
 
       {isModalOpen && (
-        <div className="drawer-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="drawer-content animate-drawer-in" onClick={(e) => e.stopPropagation()}>
-            <div className="drawer-header">
-              <div className="header-titles">
-                <h3>{isViewOnly ? "👁️ Chi tiết sản phẩm" : (editingItem ? "✏️ Hiệu chỉnh sản phẩm" : "📦 Tiếp nhận sản phẩm")}</h3>
-                <p className="header-sub">Danh mục Sản phẩm • {editingItem ? editingItem.code : "Mới"}</p>
+        <div className="custom-modal-overlay">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "95%",
+              maxWidth: "850px",
+              maxHeight: "90%",
+              display: "flex",
+              flexDirection: "column",
+              padding: 0,
+              background: "#ffffff",
+              borderRadius: "16px",
+              border: "1px solid #cbd5e1",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              overflow: "hidden"
+            }}
+          >
+            {/* Sticky Header */}
+            <h3 style={{ borderBottom: "1px solid #e2e8f0", padding: "12px 24px", margin: 0, background: "#fff", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", fontSize: "16px", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {isViewOnly ? (
+                  <>
+                    <span>👁️ Chi tiết sản phẩm:</span>
+                    <span style={{ color: "#ff5c00" }}>{editingItem?.code}</span>
+                  </>
+                ) : editingItem ? (
+                  <>
+                    <span>✏️ Hiệu chỉnh sản phẩm:</span>
+                    <span style={{ color: "#ff5c00" }}>{editingItem?.code}</span>
+                  </>
+                ) : (
+                  <span>📦 Tiếp nhận sản phẩm mới</span>
+                )}
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="drawer-close-btn">&times;</button>
-            </div>
+              <button 
+                onClick={() => setIsModalOpen(false)} 
+                style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#64748b", padding: "0 4px" }}
+              >
+                &times;
+              </button>
+            </h3>
 
-            <div className="drawer-body">
-              <form id="product-form" onSubmit={handleSubmit} className="drawer-form">
-                {/* Section: Thông tin chung */}
-                <div className="form-section">
-                  <h4 className="section-title">Thông tin chung</h4>
+            {/* Scrollable Form Body */}
+            <form id="product-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", margin: 0 }}>
+              <div className="scrollable-body" style={{ flex: 1, overflowY: "auto", padding: "1.5rem" }}>
+                {/* Two Column Layout */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
                   
-                  <div className="form-row">
-                    <div className="form-group-base">
-                      <label>Mã sản phẩm <span className="required">*</span></label>
-                      <input type="text" name="code" className="input-base" required disabled={isViewOnly} defaultValue={editingItem?.code || ""} placeholder="Ví dụ: SP001" />
+                  {/* Left Column: General Info */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <h4 className="section-title" style={{ marginTop: 0 }}>Thông tin chung</h4>
+                    
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                      <div className="form-group-base">
+                        <label>Mã sản phẩm <span className="required">*</span></label>
+                        <input 
+                          type="text" 
+                          name="code" 
+                          className="input-base" 
+                          required 
+                          readOnly={isViewOnly || !editingItem} 
+                          value={formCode}
+                          onChange={(e) => setFormCode(e.target.value)}
+                          placeholder={formCategoryId ? "Ví dụ: SP0001" : "Chọn nhóm để tự động tạo mã"} 
+                          style={(isViewOnly || !editingItem) ? { background: "#f1f5f9", cursor: "not-allowed" } : undefined}
+                        />
+                      </div>
+                      <div className="form-group-base no-flex" style={{ position: "relative", zIndex: isCategoryDropdownOpen ? 10000 : undefined }}>
+                        <label>Nhóm sản phẩm <span className="required">*</span></label>
+                        
+                        {/* Trigger Header */}
+                        <div 
+                          tabIndex={isViewOnly ? undefined : 0}
+                          onClick={() => {
+                            if (!isViewOnly) {
+                              setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
+                              setIsUnitDropdownOpen(false);
+                              setIsWarehouseDropdownOpen(false);
+                              setIsStatusDropdownOpen(false);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              if (!isViewOnly) {
+                                setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
+                                setIsUnitDropdownOpen(false);
+                                setIsWarehouseDropdownOpen(false);
+                                setIsStatusDropdownOpen(false);
+                              }
+                            }
+                          }}
+                          className={`custom-dropdown-trigger ${isCategoryDropdownOpen ? "active" : ""} ${isViewOnly ? "disabled" : ""}`}
+                        >
+                          <span style={{ 
+                            whiteSpace: "nowrap", 
+                            overflow: "hidden", 
+                            textOverflow: "ellipsis",
+                            width: "90%",
+                            color: formCategoryId ? "#000000" : "#94a3b8"
+                          }}>
+                            {formCategoryId 
+                              ? (categories.find(c => c.id === formCategoryId)?.name || "-- Chọn nhóm --")
+                              : "-- Chọn nhóm --"}
+                          </span>
+                          <span style={{ fontSize: "8px", color: "#64748b" }}>▼</span>
+                        </div>
+
+                        {/* Dropdown Menu Overlay */}
+                        {isCategoryDropdownOpen && !isViewOnly && (
+                          <>
+                            <div 
+                              style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} 
+                              onClick={() => setIsCategoryDropdownOpen(false)}
+                            />
+                            <div className="custom-dropdown-menu" style={{ maxHeight: "144px", overflowY: "auto", zIndex: 1000 }}>
+                              <div 
+                                style={{ height: "28px", display: "flex", alignItems: "center", boxSizing: "border-box" }}
+                                className={`custom-dropdown-item placeholder ${!formCategoryId ? "selected" : ""}`}
+                                onClick={() => {
+                                  setFormCategoryId("");
+                                  setIsCategoryDropdownOpen(false);
+                                }}
+                              >
+                                -- Chọn nhóm --
+                              </div>
+                              {categories.map(cat => {
+                                const isSelected = formCategoryId === cat.id;
+                                return (
+                                  <div 
+                                    key={cat.id} 
+                                    style={{ height: "28px", display: "flex", alignItems: "center", boxSizing: "border-box" }}
+                                    className={`custom-dropdown-item ${isSelected ? "selected" : ""}`}
+                                    onClick={() => {
+                                      setFormCategoryId(cat.id);
+                                      setIsCategoryDropdownOpen(false);
+                                      
+                                      if (!editingItem) {
+                                        const categoryName = cat.name || "";
+                                        let prefix = "KC";
+                                        const normalized = categoryName.trim().toLowerCase();
+                                        if (normalized === "thành phẩm sản xuất") {
+                                          prefix = "SP";
+                                        } else if (normalized === "vật tư, bao bì đóng gói" || normalized === "vật tư bao bì đóng gói") {
+                                          prefix = "VT";
+                                        } else if (normalized === "hóa chất") {
+                                          prefix = "HC";
+                                        } else if (normalized === "công cụ dụng cụ sản xuất" || normalized === "công cụ, dụng cụ sản xuất") {
+                                          prefix = "CC";
+                                        }
+                                        const count = items.filter(item => item.categoryId === cat.id).length;
+                                        const nextCode = `${prefix}${String(count + 1).padStart(4, '0')}`;
+                                        setFormCode(nextCode);
+                                      }
+                                    }}
+                                  >
+                                    {cat.name}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+
+                        <select 
+                          name="categoryId" 
+                          required 
+                          value={formCategoryId} 
+                          onChange={() => {}} 
+                          tabIndex={-1}
+                          style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }}
+                        >
+                          <option value="" disabled>-- Chọn nhóm --</option>
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
+
                     <div className="form-group-base">
-                      <label>Nhóm sản phẩm <span className="required">*</span></label>
-                      <select name="categoryId" className="input-base" required disabled={isViewOnly} defaultValue={editingItem?.categoryId || ""}>
-                        <option value="" disabled>-- Chọn nhóm --</option>
-                        {categories.map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      <label>Tên sản phẩm <span className="required">*</span></label>
+                      <input type="text" name="name" className="input-base" required disabled={isViewOnly} defaultValue={editingItem?.name || ""} placeholder="Ví dụ: Áo thun nam" />
+                    </div>
+
+                    <div className="form-group-base">
+                      <label>Tên tiếng Anh</label>
+                      <input type="text" name="englishName" className="input-base" disabled={isViewOnly} defaultValue={editingItem?.englishName || ""} placeholder="Ví dụ: Men's T-shirt" />
+                    </div>
+
+                    <div className="form-group-base">
+                      <label>Quy cách <span className="required">*</span></label>
+                      <input type="text" name="packaging" className="input-base" required disabled={isViewOnly} defaultValue={editingItem?.packaging || ""} placeholder="Ví dụ: Chai 500ml, Thùng 24 lon..." />
+                    </div>
+                  </div>
+
+                  {/* Right Column: Units & Additional Info */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <h4 className="section-title" style={{ marginTop: 0 }}>Đơn vị tính & Thông tin bổ sung</h4>
+                    
+                    <div className="form-group-base no-flex" style={{ position: "relative", zIndex: isUnitDropdownOpen ? 10000 : undefined }}>
+                      <label>Đơn vị tính (Chọn nhiều) <span className="required">*</span></label>
+                      
+                      {/* Dropdown Header */}
+                      <div 
+                        tabIndex={isViewOnly ? undefined : 0}
+                        onClick={() => {
+                          if (!isViewOnly) {
+                            setIsUnitDropdownOpen(!isUnitDropdownOpen);
+                            setIsCategoryDropdownOpen(false);
+                            setIsWarehouseDropdownOpen(false);
+                            setIsStatusDropdownOpen(false);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            if (!isViewOnly) {
+                              setIsUnitDropdownOpen(!isUnitDropdownOpen);
+                              setIsCategoryDropdownOpen(false);
+                              setIsWarehouseDropdownOpen(false);
+                              setIsStatusDropdownOpen(false);
+                            }
+                          }
+                        }}
+                        className={`custom-dropdown-trigger ${isUnitDropdownOpen ? "active" : ""} ${isViewOnly ? "disabled" : ""}`}
+                      >
+                        <span style={{ 
+                          whiteSpace: "nowrap", 
+                          overflow: "hidden", 
+                          textOverflow: "ellipsis",
+                          width: "90%",
+                          color: selectedUnitIds.length > 0 ? "#000000" : "#94a3b8"
+                        }}>
+                          {selectedUnitIds.length > 0 
+                            ? units.filter(u => selectedUnitIds.includes(u.id)).map(u => u.name).join(", ") 
+                            : "-- Chọn đơn vị tính --"}
+                        </span>
+                        <span style={{ fontSize: "8px", color: "#64748b" }}>▼</span>
+                      </div>
+
+                      {/* Dropdown Menu Overlay */}
+                      {isUnitDropdownOpen && !isViewOnly && (
+                        <>
+                          <div 
+                            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} 
+                            onClick={() => setIsUnitDropdownOpen(false)}
+                          />
+                          <div className="custom-dropdown-menu" style={{ maxHeight: "116px", overflowY: "auto", zIndex: 1000 }}>
+                            {units.map(unit => {
+                              const isChecked = selectedUnitIds.includes(unit.id);
+                              return (
+                                <label 
+                                  key={unit.id} 
+                                  style={{ height: "28px", display: "flex", alignItems: "center", boxSizing: "border-box", gap: "15px" }}
+                                  className={`custom-dropdown-item ${isChecked ? "selected" : ""}`}
+                                >
+                                  <input 
+                                    type="checkbox" 
+                                    value={unit.id} 
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedUnitIds([...selectedUnitIds, unit.id]);
+                                      } else {
+                                        setSelectedUnitIds(selectedUnitIds.filter(id => id !== unit.id));
+                                      }
+                                    }}
+                                    style={{ cursor: "pointer", marginRight: "15px" }}
+                                  />
+                                  {unit.name}
+                                </label>
+                              );
+                            })}
+                            {units.length === 0 && <span style={{ color: "#888", fontSize: "12px", padding: "4px 10px" }}>Chưa có đơn vị tính nào hoạt động</span>}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Hidden select for HTML validation */}
+                      <select
+                        required
+                        multiple
+                        value={selectedUnitIds}
+                        onChange={() => {}}
+                        tabIndex={-1}
+                        style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }}
+                      >
+                        {selectedUnitIds.map(id => (
+                          <option key={id} value={id}>{id}</option>
                         ))}
                       </select>
+
+                      {/* Hidden inputs to make sure form submission works unchanged */}
+                      {selectedUnitIds.map(id => (
+                        <input key={id} type="hidden" name="unitIds" value={id} />
+                      ))}
                     </div>
-                  </div>
 
-                  <div className="form-group-base" style={{ width: "100%" }}>
-                    <label>Tên sản phẩm <span className="required">*</span></label>
-                    <input type="text" name="name" className="input-base" required disabled={isViewOnly} defaultValue={editingItem?.name || ""} placeholder="Ví dụ: Áo thun nam" />
-                  </div>
-
-                  <div className="form-group-base" style={{ width: "100%" }}>
-                    <label>Tên tiếng Anh</label>
-                    <input type="text" name="englishName" className="input-base" disabled={isViewOnly} defaultValue={editingItem?.englishName || ""} placeholder="Ví dụ: Men's T-shirt" />
-                  </div>
-
-                  <div className="form-group-base" style={{ width: "100%" }}>
-                    <label>Quy cách <span className="required">*</span></label>
-                    <input type="text" name="packaging" className="input-base" required disabled={isViewOnly} defaultValue={editingItem?.packaging || ""} placeholder="Ví dụ: Chai 500ml, Thùng 24 lon..." />
-                  </div>
-
-                  <div className="form-group-base" style={{ width: "100%" }}>
+                  <div className="form-group-base no-flex" style={{ position: "relative", zIndex: isWarehouseDropdownOpen ? 10000 : undefined }}>
                     <label>Kho mặc định <span className="required">*</span></label>
-                    <select name="warehouseId" className="input-base" required disabled={isViewOnly} defaultValue={editingItem?.warehouseId || ""}>
+                    
+                    {/* Trigger Header */}
+                    <div 
+                      tabIndex={isViewOnly ? undefined : 0}
+                      onClick={() => {
+                        if (!isViewOnly) {
+                          setIsWarehouseDropdownOpen(!isWarehouseDropdownOpen);
+                          setIsCategoryDropdownOpen(false);
+                          setIsUnitDropdownOpen(false);
+                          setIsStatusDropdownOpen(false);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          if (!isViewOnly) {
+                            setIsWarehouseDropdownOpen(!isWarehouseDropdownOpen);
+                            setIsCategoryDropdownOpen(false);
+                            setIsUnitDropdownOpen(false);
+                            setIsStatusDropdownOpen(false);
+                          }
+                        }
+                      }}
+                      className={`custom-dropdown-trigger ${isWarehouseDropdownOpen ? "active" : ""} ${isViewOnly ? "disabled" : ""}`}
+                    >
+                      <span style={{ 
+                        whiteSpace: "nowrap", 
+                        overflow: "hidden", 
+                        textOverflow: "ellipsis",
+                        width: "90%",
+                        color: formWarehouseId ? "#000000" : "#94a3b8"
+                      }}>
+                        {formWarehouseId 
+                          ? (warehouses.find(wh => wh.id === formWarehouseId)?.name || "-- Chọn kho mặc định --")
+                          : "-- Chọn kho mặc định --"}
+                      </span>
+                      <span style={{ fontSize: "8px", color: "#64748b" }}>▼</span>
+                    </div>
+
+                    {/* Dropdown Menu Overlay */}
+                    {isWarehouseDropdownOpen && !isViewOnly && (
+                      <>
+                        <div 
+                          style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} 
+                          onClick={() => setIsWarehouseDropdownOpen(false)}
+                        />
+                        <div className="custom-dropdown-menu" style={{ maxHeight: "144px", overflowY: "auto", zIndex: 1000 }}>
+                          <div 
+                            style={{ height: "28px", display: "flex", alignItems: "center", boxSizing: "border-box" }}
+                            className={`custom-dropdown-item placeholder ${!formWarehouseId ? "selected" : ""}`}
+                            onClick={() => {
+                              setFormWarehouseId("");
+                              setIsWarehouseDropdownOpen(false);
+                            }}
+                          >
+                            -- Chọn kho mặc định --
+                          </div>
+                          {warehouses.map(wh => {
+                            const isSelected = formWarehouseId === wh.id;
+                            return (
+                              <div 
+                                key={wh.id} 
+                                className={`custom-dropdown-item ${isSelected ? "selected" : ""}`}
+                                onClick={() => {
+                                  setFormWarehouseId(wh.id);
+                                  setIsWarehouseDropdownOpen(false);
+                                }}
+                              >
+                                {wh.name}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+
+                    <select 
+                      name="warehouseId" 
+                      required 
+                      value={formWarehouseId} 
+                      onChange={() => {}} 
+                      tabIndex={-1}
+                      style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }}
+                    >
                       <option value="" disabled>-- Chọn kho mặc định --</option>
                       {warehouses.map(wh => (
                         <option key={wh.id} value={wh.id}>{wh.name}</option>
                       ))}
                     </select>
                   </div>
-                </div>
 
-                {/* Section: Đơn vị tính */}
-                <div className="form-section">
-                  <h4 className="section-title">Đơn vị tính (Chọn nhiều) <span className="required">*</span></h4>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "0.5rem", background: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
-                    {units.map(unit => (
-                      <label key={unit.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "13px", cursor: "pointer", fontWeight: 500, color: "#475569" }}>
-                        <input 
-                          type="checkbox" 
-                          name="unitIds" 
-                          value={unit.id} 
-                          disabled={isViewOnly}
-                          defaultChecked={editingItem?.unit?.some((u: any) => u.id === unit.id)}
-                          style={{ cursor: "pointer" }}
-                        />
-                        {unit.name}
-                      </label>
-                    ))}
-                    {units.length === 0 && <span style={{ color: "#888", fontSize: "12px" }}>Chưa có đơn vị tính nào hoạt động</span>}
-                  </div>
-                </div>
-
-                {/* Section: Thông tin bổ sung */}
-                <div className="form-section">
-                  <h4 className="section-title">Thông tin bổ sung</h4>
-                  {editingItem && (
-                    <div className="form-group-base" style={{ width: "100%", marginBottom: "0.25rem" }}>
-                      <label>Trạng thái</label>
-                      <select name="status" className="input-base" disabled={isViewOnly} defaultValue={editingItem?.status || "Hoạt động"}>
-                        <option value="Hoạt động">Hoạt động</option>
-                        <option value="Ngưng hoạt động">Ngưng hoạt động</option>
-                      </select>
+                    <div className="form-group-base">
+                      <label>Ghi chú</label>
+                      <textarea 
+                        ref={(el) => {
+                          if (el) {
+                            setTimeout(() => {
+                              el.style.height = "auto";
+                              el.style.height = `${el.scrollHeight}px`;
+                            }, 50);
+                          }
+                        }}
+                        name="note" 
+                        className="input-base" 
+                        style={{ minHeight: "50px", resize: "none", paddingTop: "0.35rem", overflowY: "hidden" }} 
+                        disabled={isViewOnly} 
+                        defaultValue={editingItem?.note || ""} 
+                        placeholder="Nhập ghi chú..."
+                        onInput={(e) => {
+                          e.currentTarget.style.height = "auto";
+                          e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
+                        }}
+                      />
                     </div>
-                  )}
-                  <div className="form-group-base" style={{ width: "100%" }}>
-                    <label>Ghi chú</label>
-                    <textarea name="note" className="input-base" style={{ height: "70px", resize: "none", paddingTop: "0.35rem" }} disabled={isViewOnly} defaultValue={editingItem?.note || ""} placeholder="Nhập ghi chú..."></textarea>
-                  </div>
-                </div>
-              </form>
-            </div>
 
-            <div className="drawer-footer">
-              <button type="button" className="btn-base btn-outline" onClick={() => setIsModalOpen(false)}>{isViewOnly ? "Đóng" : "Hủy bỏ"}</button>
-              {!isViewOnly && (
-                <button type="submit" form="product-form" className="btn-base btn-primary" disabled={isPending}>
-                  {isPending ? "Đang xử lý..." : (editingItem ? "Cập nhật sản phẩm" : "Lưu sản phẩm")}
-                </button>
-              )}
-            </div>
+                    {editingItem && (
+                      <div className="form-group-base no-flex" style={{ position: "relative", zIndex: isStatusDropdownOpen ? 10000 : undefined }}>
+                        <label>Trạng thái</label>
+                        
+                        {/* Trigger Header */}
+                        <div 
+                          tabIndex={isViewOnly ? undefined : 0}
+                          onClick={() => {
+                            if (!isViewOnly) {
+                              setIsStatusDropdownOpen(!isStatusDropdownOpen);
+                              setIsCategoryDropdownOpen(false);
+                              setIsUnitDropdownOpen(false);
+                              setIsWarehouseDropdownOpen(false);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              if (!isViewOnly) {
+                                setIsStatusDropdownOpen(!isStatusDropdownOpen);
+                                setIsCategoryDropdownOpen(false);
+                                setIsUnitDropdownOpen(false);
+                                setIsWarehouseDropdownOpen(false);
+                              }
+                            }
+                          }}
+                          className={`custom-dropdown-trigger ${isStatusDropdownOpen ? "active" : ""} ${isViewOnly ? "disabled" : ""}`}
+                        >
+                          <span style={{ 
+                            whiteSpace: "nowrap", 
+                            overflow: "hidden", 
+                            textOverflow: "ellipsis",
+                            width: "90%",
+                            color: "#000000"
+                          }}>
+                            {formStatus || "Hoạt động"}
+                          </span>
+                          <span style={{ fontSize: "8px", color: "#64748b" }}>▼</span>
+                        </div>
+
+                        {/* Dropdown Menu Overlay */}
+                        {isStatusDropdownOpen && !isViewOnly && (
+                          <>
+                            <div 
+                              style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} 
+                              onClick={() => setIsStatusDropdownOpen(false)}
+                            />
+                            <div className="custom-dropdown-menu dropup" style={{ maxHeight: "116px", overflowY: "auto", zIndex: 1000 }}>
+                              <div 
+                                style={{ height: "28px", display: "flex", alignItems: "center", boxSizing: "border-box" }}
+                                className={`custom-dropdown-item ${formStatus === "Hoạt động" ? "selected" : ""}`}
+                                onClick={() => {
+                                  setFormStatus("Hoạt động");
+                                  setIsStatusDropdownOpen(false);
+                                }}
+                              >
+                                Hoạt động
+                              </div>
+                              <div 
+                                style={{ height: "28px", display: "flex", alignItems: "center", boxSizing: "border-box" }}
+                                className={`custom-dropdown-item ${formStatus === "Ngưng hoạt động" ? "selected" : ""}`}
+                                onClick={() => {
+                                  setFormStatus("Ngưng hoạt động");
+                                  setIsStatusDropdownOpen(false);
+                                }}
+                              >
+                                Ngưng hoạt động
+                              </div>
+                            </div>
+                          </>
+                        )}
+
+                        <select 
+                          name="status" 
+                          value={formStatus} 
+                          onChange={() => {}} 
+                          tabIndex={-1}
+                          style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }}
+                        >
+                          <option value="Hoạt động">Hoạt động</option>
+                          <option value="Ngưng hoạt động">Ngưng hoạt động</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="drawer-footer" style={{ borderTop: "1px solid #f1f5f9", padding: "0.75rem 1.5rem" }}>
+                <button type="button" className="btn-base btn-outline" onClick={() => setIsModalOpen(false)}>{isViewOnly ? "Đóng" : "Hủy bỏ"}</button>
+                {!isViewOnly && (
+                  <button type="submit" className="btn-base btn-primary" disabled={isPending}>
+                    {isPending ? "Đang xử lý..." : (editingItem ? "Cập nhật sản phẩm" : "Lưu sản phẩm")}
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
         </div>
       )}

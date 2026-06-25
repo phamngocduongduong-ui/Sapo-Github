@@ -508,7 +508,13 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
       return;
     }
 
-    // Retrieve absolute latest, fresh GPS coordinates before submitting
+    // If we already have coordinates from the background watchPosition watcher, use them instantly
+    if (currentCoords) {
+      proceedToggle(`${currentCoords.lat.toFixed(6)}, ${currentCoords.lng.toFixed(6)}`);
+      return;
+    }
+
+    // Retrieve fresh GPS coordinates as fallback if currentCoords is null
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;

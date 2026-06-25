@@ -31,6 +31,7 @@ const MODULES = [
       { key: "DM_QUOC_GIA", label: "Quốc gia" },
       { key: "DM_SAN_PHAM", label: "Sản phẩm" },
       { key: "DM_DON_VI_TINH", label: "Đơn vị tính" },
+      { key: "DM_NGAN_HANG", label: "Ngân hàng" },
       { key: "DM_KHO_HANG", label: "Kho hàng" },
       { key: "DM_VI_TRI", label: "Vị trí kho" },
       { key: "LB_KHU_VUC", label: "Địa điểm chấm công" },
@@ -74,6 +75,8 @@ const MODULES = [
       { key: "TM_DON_MUA", label: "Đơn mua" },
       { key: "TM_DIEU_DONG", label: "Lệnh điều động" },
       { key: "TM_BAO_CAO", label: "Báo cáo" },
+      { key: "TM_DE_NGHI", label: "Đề nghị" },
+      { key: "TM_PHE_DUYET_DE_NGHI", label: "Phê duyệt đề nghị" },
     ]
   },
   {
@@ -85,14 +88,7 @@ const MODULES = [
       { key: "SX_VAT_TU", label: "Kế hoạch vật tư" },
     ]
   },
-  {
-    key: "BAO_TRI",
-    label: "🛠️ Bảo trì",
-    children: [
-      { key: "BT_DE_NGHI_MUA", label: "Đề nghị mua" },
-      { key: "BT_PHE_DUYET", label: "Phê duyệt" },
-    ]
-  },
+
   {
     key: "THU_KHO",
     label: "📦 Thủ kho",
@@ -129,14 +125,16 @@ const MODULES = [
       { key: "PD_LUONG_THUONG", label: "Bảng lương/thưởng" },
       { key: "PD_THANH_TOAN", label: "Thanh toán" },
       { key: "PD_MUA_HANG", label: "Mua hàng" },
-      { key: "PD_BAO_TRI", label: "Bảo trì" },
+      { key: "PD_DE_NGHI_MH", label: "Đề nghị mua hàng" },
     ]
   },
   {
     key: "KE_TOAN",
     label: "💵 Kế toán",
     children: [
-      { key: "KT_THANH_TOAN", label: "Thanh toán" },
+      { key: "KT_PHIEU_THU", label: "Phiếu thu" },
+      { key: "KT_PHIEU_CHI", label: "Phiếu chi" },
+      { key: "KT_CAN_XE", label: "Cân xe" },
     ]
   }
 ];
@@ -153,21 +151,21 @@ MODULES.forEach(m => {
 export default function PermissionAssignment({ categories }: { categories: any[] }) {
   const router = useRouter();
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
-  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
+  const [permissions, setPermissions] = useState<Record<string, { canAccess: boolean; allBranches: boolean }>>({});
   const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const areAllSelected = ALL_KEYS.length > 0 && ALL_KEYS.every(key => permissions[key] === true);
+  const areAllSelected = ALL_KEYS.length > 0 && ALL_KEYS.every(key => permissions[key]?.canAccess === true);
 
   function handleToggleAll() {
     if (areAllSelected) {
       setPermissions({});
     } else {
-      const allPerms: Record<string, boolean> = {};
+      const allPerms: Record<string, { canAccess: boolean; allBranches: boolean }> = {};
       ALL_KEYS.forEach(key => {
-        allPerms[key] = true;
+        allPerms[key] = { canAccess: true, allBranches: false };
       });
       setPermissions(allPerms);
     }
@@ -199,9 +197,12 @@ export default function PermissionAssignment({ categories }: { categories: any[]
     setLoading(true);
     try {
       const data = await getCategoryPermissions(permissionId);
-      const permMap: Record<string, boolean> = {};
+      const permMap: Record<string, { canAccess: boolean; allBranches: boolean }> = {};
       data.forEach(p => {
-        permMap[p.moduleKey] = p.canAccess;
+        permMap[p.moduleKey] = {
+          canAccess: p.canAccess || false,
+          allBranches: p.allBranches || false
+        };
       });
       setPermissions(permMap);
     } catch (e) {
@@ -213,14 +214,19 @@ export default function PermissionAssignment({ categories }: { categories: any[]
 
   function handleParentToggle(parentKey: string, checked: boolean) {
     setPermissions(prev => {
-      const newPerms = { ...prev, [parentKey]: checked };
+      const newPerms = { ...prev };
+      const current = prev[parentKey] || { canAccess: false, allBranches: false };
+      newPerms[parentKey] = {
+        canAccess: checked,
+        allBranches: checked ? current.allBranches : false
+      };
       
       // If unchecking parent, automatically uncheck all children
       if (!checked) {
         const parent = MODULES.find(m => m.key === parentKey);
         if (parent) {
           parent.children.forEach(child => {
-            newPerms[child.key] = false;
+            newPerms[child.key] = { canAccess: false, allBranches: false };
           });
         }
       }
@@ -228,15 +234,60 @@ export default function PermissionAssignment({ categories }: { categories: any[]
     });
   }
 
+  function handleParentAllBranchesToggle(parentKey: string, checked: boolean) {
+    setPermissions(prev => {
+      const newPerms = { ...prev };
+      const current = prev[parentKey] || { canAccess: false, allBranches: false };
+      newPerms[parentKey] = {
+        ...current,
+        allBranches: checked
+      };
+      
+      // Sync children allBranches when parent allBranches changes
+      const parent = MODULES.find(m => m.key === parentKey);
+      if (parent) {
+        parent.children.forEach(child => {
+          const childCurrent = prev[child.key] || { canAccess: false, allBranches: false };
+          newPerms[child.key] = {
+            ...childCurrent,
+            allBranches: childCurrent.canAccess ? checked : false
+          };
+        });
+      }
+      return newPerms;
+    });
+  }
+
   function handleChildToggle(childKey: string, checked: boolean) {
-    setPermissions(prev => ({ ...prev, [childKey]: checked }));
+    setPermissions(prev => {
+      const newPerms = { ...prev };
+      const current = prev[childKey] || { canAccess: false, allBranches: false };
+      newPerms[childKey] = {
+        canAccess: checked,
+        allBranches: checked ? current.allBranches : false
+      };
+      return newPerms;
+    });
+  }
+
+  function handleChildAllBranchesToggle(childKey: string, checked: boolean) {
+    setPermissions(prev => {
+      const newPerms = { ...prev };
+      const current = prev[childKey] || { canAccess: false, allBranches: false };
+      newPerms[childKey] = {
+        ...current,
+        allBranches: checked
+      };
+      return newPerms;
+    });
   }
 
   function handleSave() {
     if (!selectedCategoryId) return;
-    const permList = Object.entries(permissions).map(([moduleKey, canAccess]) => ({
+    const permList = Object.entries(permissions).map(([moduleKey, perm]) => ({
       moduleKey,
-      canAccess
+      canAccess: perm.canAccess,
+      allBranches: perm.allBranches
     }));
     
     startTransition(async () => {
@@ -533,20 +584,22 @@ export default function PermissionAssignment({ categories }: { categories: any[]
                         <tr>
                           <th style={{ width: "250px", textAlign: "left", textTransform: "uppercase", fontWeight: 700, color: "#003466" }}>Phân hệ</th>
                           <th style={{ width: "100px", textAlign: "center", textTransform: "uppercase", fontWeight: 700, color: "#003466" }}>Truy cập</th>
+                          <th style={{ width: "150px", textAlign: "center", textTransform: "uppercase", fontWeight: 700, color: "#003466" }}>Tất cả chi nhánh</th>
                           <th style={{ textAlign: "left", textTransform: "uppercase", fontWeight: 700, color: "#003466" }}>Ghi chú</th>
                         </tr>
                       </thead>
                       <tbody>
                         {loading ? (
                           <tr>
-                            <td colSpan={3} style={{ textAlign: "center", padding: "3rem" }}>
+                            <td colSpan={4} style={{ textAlign: "center", padding: "3rem" }}>
                               <div className="loader" style={{ margin: "0 auto" }}></div>
                               <p style={{ marginTop: "1rem", color: "#64748b" }}>Đang tải dữ liệu quyền...</p>
                             </td>
                           </tr>
                         ) : (
                           MODULES.map(parent => {
-                            const isParentChecked = permissions[parent.key] || false;
+                            const isParentChecked = permissions[parent.key]?.canAccess || false;
+                            const isParentAllBranchesChecked = permissions[parent.key]?.allBranches || false;
                             return (
                               <React.Fragment key={parent.key}>
                                 <tr style={{ background: "#f8fafc" }}>
@@ -567,10 +620,21 @@ export default function PermissionAssignment({ categories }: { categories: any[]
                                       style={{ width: "18px", height: "18px", cursor: "pointer" }}
                                     />
                                   </td>
+                                  <td style={{ textAlign: "center" }}>
+                                    <input 
+                                      id={`parent-allbranches-${parent.key}`}
+                                      type="checkbox" 
+                                      checked={isParentAllBranchesChecked}
+                                      disabled={!isParentChecked}
+                                      onChange={(e) => handleParentAllBranchesToggle(parent.key, e.target.checked)}
+                                      style={{ width: "18px", height: "18px", cursor: isParentChecked ? "pointer" : "not-allowed" }}
+                                    />
+                                  </td>
                                   <td style={{ fontSize: "0.85rem", color: "#64748b", textAlign: "left" }}>Phân hệ mẹ</td>
                                 </tr>
                                 {parent.children.map(child => {
-                                  const isChildChecked = permissions[child.key] || false;
+                                  const isChildChecked = permissions[child.key]?.canAccess || false;
+                                  const isChildAllBranchesChecked = permissions[child.key]?.allBranches || false;
                                   return (
                                     <tr key={child.key} style={{ opacity: isParentChecked ? 1 : 0.6 }}>
                                       <td style={{ paddingLeft: "2.5rem", textAlign: "left" }}>
@@ -591,8 +655,18 @@ export default function PermissionAssignment({ categories }: { categories: any[]
                                           style={{ width: "16px", height: "16px", cursor: isParentChecked ? "pointer" : "not-allowed" }}
                                         />
                                       </td>
+                                      <td style={{ textAlign: "center" }}>
+                                        <input 
+                                          id={`child-allbranches-${child.key}`}
+                                          type="checkbox" 
+                                          checked={isChildAllBranchesChecked}
+                                          disabled={!isParentChecked || !isChildChecked}
+                                          onChange={(e) => handleChildAllBranchesToggle(child.key, e.target.checked)}
+                                          style={{ width: "16px", height: "16px", cursor: (isParentChecked && isChildChecked) ? "pointer" : "not-allowed" }}
+                                        />
+                                      </td>
                                       <td style={{ fontSize: "0.85rem", color: "#94a3b8", textAlign: "left" }}>
-                                        {!isParentChecked && "Bị khóa bởi phân hệ mẹ"}
+                                        {!isParentChecked ? "Bị khóa bởi phân hệ mẹ" : (!isChildChecked ? "Yêu cầu quyền truy cập" : "")}
                                       </td>
                                     </tr>
                                   );

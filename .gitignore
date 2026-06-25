@@ -35,3 +35,9 @@ next-env.d.ts
 # Prisma / Database
 /prisma/dev.db
 /prisma/dev.db-journal
+
+# Local MySQL and scratch files
+/mysql_data/
+/scratch/
+/*.pdf
+/startup_log.txt

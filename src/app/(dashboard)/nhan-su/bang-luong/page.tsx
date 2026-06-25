@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import PayrollTable from "./PayrollTable";
 import { getSession } from "@/lib/session";
+import { getUserModuleBranchFilter } from "@/lib/permissions";
 
 export default async function PayrollPage() {
   const session = await getSession();
@@ -12,11 +13,13 @@ export default async function PayrollPage() {
   const userBranches = user?.branch ? user.branch.split(",").map(b => b.trim()).filter(Boolean) : [];
   const userName = user?.employeeName || user?.username || "User";
 
-  const payrolls = await prisma.payroll.findMany({
-    where: isAdmin ? {} : {
-      branch: { in: userBranches }
-    },
+  const filter = user ? await getUserModuleBranchFilter(user.id, "NS_BANG_LUONG", session?.activeBranch, {
+    branchField: "branch",
+    creatorField: "creator"
+  }) : { id: "NO_ACCESS" };
 
+  const payrolls = await prisma.payroll.findMany({
+    where: filter,
     orderBy: [
       { year: "desc" },
       { month: "desc" }
@@ -29,10 +32,16 @@ export default async function PayrollPage() {
   });
 
 
+  const employeeFilter = user ? await getUserModuleBranchFilter(user.id, "NS_BANG_LUONG", session?.activeBranch, {
+    branchField: "branch",
+    creatorField: "creator",
+    employeeField: "fullName"
+  }) : { id: "NO_ACCESS" };
+
   const employees = await prisma.employee.findMany({
     where: { 
       status: { notIn: ["Nghỉ việc", "INACTIVE"] },
-      ...(isAdmin ? {} : { branch: { in: user?.branch?.split(",").map(b => b.trim()).filter(Boolean) || [] } })
+      ...employeeFilter
     },
     select: { 
       employeeCode: true, 

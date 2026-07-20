@@ -29,7 +29,7 @@ export async function updateBranch(id: string, formData: FormData) {
 
   await prisma.branch.update({
     where: { id },
-    data: { name, address: address || null, status },
+    data: { name, address: address || null, status: status || undefined },
   });
 
   await syncAdminBranches();

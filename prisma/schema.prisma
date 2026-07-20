@@ -881,6 +881,7 @@ model purchasingproposal {
   status       String                   @default("Tạo mới")
   note         String?
   attachments  String?                  @db.LongText
+  deliveryDate DateTime?
   createdAt    DateTime                 @default(now())
   updatedAt    DateTime                 @updatedAt
   items        purchasingproposalitem[]

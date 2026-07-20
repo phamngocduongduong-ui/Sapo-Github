@@ -70,13 +70,9 @@ const MODULES = [
     key: "THU_MUA",
     label: "🛒 Mua hàng",
     children: [
-      { key: "TM_LENH_MUA", label: "Đơn mua hàng" },
-      { key: "TM_APPROVE", label: "Phê duyệt" },
-      { key: "TM_DON_MUA", label: "Đơn mua" },
-      { key: "TM_DIEU_DONG", label: "Lệnh điều động" },
-      { key: "TM_BAO_CAO", label: "Báo cáo" },
       { key: "TM_DE_NGHI", label: "Đề nghị" },
-      { key: "TM_PHE_DUYET_DE_NGHI", label: "Phê duyệt đề nghị" },
+      { key: "TM_LENH_MUA", label: "Đơn mua hàng" },
+      { key: "TM_BAO_CAO", label: "Báo cáo" },
     ]
   },
   {
@@ -88,7 +84,7 @@ const MODULES = [
       { key: "SX_VAT_TU", label: "Kế hoạch vật tư" },
     ]
   },
-
+ 
   {
     key: "THU_KHO",
     label: "📦 Thủ kho",
@@ -104,6 +100,7 @@ const MODULES = [
       { key: "QT_TAI_KHOAN", label: "Tài khoản" },
       { key: "QT_MUC_QUYEN", label: "Mục quyền" },
       { key: "QT_PHAN_QUYEN", label: "Phân quyền" },
+      { key: "QT_SAO_LUU", label: "Sao lưu & Phục hồi" }
     ]
   },
   {

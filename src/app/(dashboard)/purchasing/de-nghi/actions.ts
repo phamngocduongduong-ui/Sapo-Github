@@ -125,6 +125,8 @@ export async function createProposal(formData: FormData, details: any[]) {
   const purpose = formData.get("purpose") as string;
   const urgency = formData.get("urgency") as string;
   const note = formData.get("note") as string;
+  const deliveryDateRaw = formData.get("deliveryDate") as string;
+  const deliveryDate = deliveryDateRaw ? new Date(deliveryDateRaw) : null;
 
   const attachments = formData.get("attachments") as string;
 
@@ -144,6 +146,7 @@ export async function createProposal(formData: FormData, details: any[]) {
       urgency,
       note: note || "",
       attachments: attachments || null,
+      deliveryDate,
       status: "Tạo mới",
       createdAt: now,
       updatedAt: now,
@@ -204,6 +207,8 @@ export async function updateProposal(id: string, formData: FormData, details: an
   const purpose = formData.get("purpose") as string;
   const urgency = formData.get("urgency") as string;
   const note = formData.get("note") as string;
+  const deliveryDateRaw = formData.get("deliveryDate") as string;
+  const deliveryDate = deliveryDateRaw ? new Date(deliveryDateRaw) : null;
 
   const attachments = formData.get("attachments") as string;
 
@@ -224,6 +229,7 @@ export async function updateProposal(id: string, formData: FormData, details: an
       urgency,
       note: note || "",
       attachments: attachments || null,
+      deliveryDate,
       updatedAt: now,
       items: {
         deleteMany: {},

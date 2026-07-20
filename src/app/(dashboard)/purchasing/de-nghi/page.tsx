@@ -27,6 +27,14 @@ export default function PurchasingProposalPage() {
   
   const [isPending, startTransition] = useTransition();
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const noteRef = React.useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (noteRef.current) {
+      noteRef.current.style.setProperty("height", "auto", "important");
+      noteRef.current.style.setProperty("height", `${noteRef.current.scrollHeight}px`, "important");
+    }
+  }, [editingProposal, showModal]);
 
   useRealTimeSync("purchasing-proposals-direct", proposals, setProposals, 3000, showModal);
 
@@ -1128,124 +1136,189 @@ export default function PurchasingProposalPage() {
                 
                 {/* SECTION 1: General Info */}
                 <h4 style={{ margin: "0 0 12px 0", color: "#003466", borderBottom: "2px solid #ff5c00", paddingBottom: "4px", textTransform: "uppercase", fontSize: "0.9rem", fontWeight: 700 }}>I. Thông tin chung</h4>
-                <div
-                  className="responsive-grid"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(4, 1fr)",
-                    rowGap: "10px",
-                    columnGap: "1.25rem",
-                    marginBottom: "1.5rem"
-                  }}
-                >
-                  {/* Row for Số đề nghị & Ngày đề nghị on mobile */}
-                  <div className="proposal-code-date-row" style={{ gridColumn: "span 2", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-                    <div>
-                      <label className="filter-label">Số đề nghị</label>
-                      <input 
-                        type="text" 
-                        className="input" 
-                        style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
-                        value={editingProposal ? editingProposal.proposalCode : "Hệ thống tự tạo"} 
-                        readOnly 
-                      />
-                    </div>
-                    <div>
-                      <label className="filter-label">Ngày đề nghị</label>
-                      <input 
-                        type="text" 
-                        className="input" 
-                        style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
-                        value={editingProposal ? new Date(editingProposal.proposalDate).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN")} 
-                        readOnly 
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="filter-label">Người đề nghị</label>
-                    <input 
-                      type="text" 
-                      className="input" 
-                      style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
-                      value={editingProposal ? editingProposal.proposer : (currentUser?.employeeName || currentUser?.username || "")} 
-                      readOnly 
-                    />
-                  </div>
-
-                  <div>
-                    <label className="filter-label">Chi nhánh <span style={{ color: "red" }}>(*)</span></label>
-                    {editingProposal ? (
-                      <input 
-                        type="text" 
-                        className="input" 
-                        style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
-                        value={editingProposal.branch} 
-                        readOnly 
-                      />
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "1.5rem" }}>
+                  {/* Dòng 1: Các trường thông tin */}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "1.25rem", alignItems: "flex-end" }}>
+                    {isViewMode ? (
+                      <>
+                        <div style={{ width: "170px" }}>
+                          <label className="filter-label">Số đề nghị</label>
+                          <input 
+                            type="text" 
+                            className="input" 
+                            style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
+                            value={editingProposal ? editingProposal.proposalCode : "Hệ thống tự tạo"} 
+                            readOnly 
+                          />
+                        </div>
+                        <div style={{ width: "120px" }}>
+                          <label className="filter-label">Ngày đề nghị</label>
+                          <input 
+                            type="text" 
+                            className="input" 
+                            style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
+                            value={editingProposal ? new Date(editingProposal.proposalDate).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN")} 
+                            readOnly 
+                          />
+                        </div>
+                        <div style={{ width: "150px" }}>
+                          <label className="filter-label">Người đề nghị</label>
+                          <input 
+                            type="text" 
+                            className="input" 
+                            style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
+                            value={editingProposal ? editingProposal.proposer : (currentUser?.employeeName || currentUser?.username || "")} 
+                            readOnly 
+                          />
+                        </div>
+                        <div style={{ width: "150px" }}>
+                          <label className="filter-label">Chi nhánh</label>
+                          <input 
+                            type="text" 
+                            className="input" 
+                            style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
+                            value={editingProposal?.branch || ""} 
+                            readOnly 
+                          />
+                        </div>
+                      </>
                     ) : (
-                      currentUser?.allowedBranches?.length > 1 ? (
-                        <select name="branch" className="input" style={{ width: "100%" }} required defaultValue={currentUser?.branch || ""}>
-                          <option value="" disabled>-- Chọn chi nhánh --</option>
-                          {currentUser.allowedBranches.map((b: string) => (
-                            <option key={b.trim()} value={b.trim()}>{b.trim()}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input 
-                          type="text" 
-                          name="branch" 
-                          className="input" 
-                          style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
-                          value={currentUser?.branch || ""} 
-                          readOnly 
-                        />
-                      )
+                      <>
+                        <div style={{ width: "170px" }}>
+                          <label className="filter-label">Số đề nghị</label>
+                          <input 
+                            type="text" 
+                            className="input" 
+                            style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
+                            value={editingProposal ? editingProposal.proposalCode : "Hệ thống tự tạo"} 
+                            readOnly 
+                          />
+                        </div>
+                        {/* Hidden inputs to pass branch automatically to server actions when adding/editing */}
+                        <input type="hidden" name="branch" value={editingProposal ? editingProposal.branch : (currentUser?.branch || "")} />
+                      </>
+                    )}
+
+                    {/* Chỉ render Mục đích, Tình trạng, Ngày đề nghị giao ở Dòng 1 khi thêm/sửa */}
+                    {!isViewMode && (
+                      <>
+                        <div style={{ width: "250px" }}>
+                          <label className="filter-label">Mục đích *</label>
+                          <select 
+                            name="purpose" 
+                            className="input" 
+                            style={{ width: "100%" }}
+                            required 
+                            defaultValue={editingProposal?.purpose || "Mua nguyên liệu/Hàng hóa"}
+                          >
+                            <option value="Mua nguyên liệu/Hàng hóa">Mua nguyên liệu/Hàng hóa</option>
+                            <option value="Mua vật tư sản xuất">Mua vật tư sản xuất</option>
+                            <option value="Mua vật tư bảo trì">Mua vật tư bảo trì</option>
+                            <option value="Mua TSCD">Mua TSCD</option>
+                            <option value="Mua dịch vụ">Mua dịch vụ</option>
+                            <option value="Mua khác">Mua khác</option>
+                          </select>
+                        </div>
+                        <div style={{ width: "150px" }}>
+                          <label className="filter-label">Tình trạng *</label>
+                          <select 
+                            name="urgency" 
+                            className="input" 
+                            style={{ width: "100%" }}
+                            required 
+                            defaultValue={editingProposal?.urgency || "Không khẩn cấp"}
+                          >
+                            <option value="Khẩn cấp">Khẩn cấp</option>
+                            <option value="Không khẩn cấp">Không khẩn cấp</option>
+                          </select>
+                        </div>
+                        <div style={{ width: "170px" }}>
+                          <label className="filter-label">Ngày đề nghị giao</label>
+                          <input 
+                            type="date" 
+                            name="deliveryDate" 
+                            className="input" 
+                            style={{ width: "100%" }}
+                            defaultValue={editingProposal?.deliveryDate ? new Date(editingProposal.deliveryDate).toISOString().substring(0, 10) : ""} 
+                          />
+                        </div>
+                      </>
                     )}
                   </div>
 
-                  <div>
-                    <label className="filter-label">Mục đích *</label>
-                    <select 
-                      name="purpose" 
-                      className="input" 
-                      style={{ width: "100%" }}
-                      required 
-                      disabled={isViewMode} 
-                      defaultValue={editingProposal?.purpose || "Mua nguyên liệu/Hàng hóa"}
-                    >
-                      <option value="Mua nguyên liệu/Hàng hóa">Mua nguyên liệu/Hàng hóa</option>
-                      <option value="Mua vật tư sản xuất">Mua vật tư sản xuất</option>
-                      <option value="Mua vật tư bảo trì">Mua vật tư bảo trì</option>
-                      <option value="Mua TSCD">Mua TSCD</option>
-                      <option value="Mua dịch vụ">Mua dịch vụ</option>
-                      <option value="Mua khác">Mua khác</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="filter-label">Tình trạng *</label>
-                    <select 
-                      name="urgency" 
-                      className="input" 
-                      style={{ width: "100%" }}
-                      required 
-                      disabled={isViewMode} 
-                      defaultValue={editingProposal?.urgency || "Không khẩn cấp"}
-                    >
-                      <option value="Khẩn cấp">Khẩn cấp</option>
-                      <option value="Không khẩn cấp">Không khẩn cấp</option>
-                    </select>
-                  </div>
-                  <div style={{ gridColumn: "span 2" }}>
+                  {/* Dòng 2: Khi xem chi tiết, hiển thị Mục đích, Tình trạng, Ngày đề nghị giao */}
+                  {isViewMode && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "1.25rem", alignItems: "flex-end" }}>
+                      <div style={{ width: "250px" }}>
+                        <label className="filter-label">Mục đích *</label>
+                        <select 
+                          name="purpose" 
+                          className="input" 
+                          style={{ width: "100%" }}
+                          required 
+                          disabled 
+                          defaultValue={editingProposal?.purpose || "Mua nguyên liệu/Hàng hóa"}
+                        >
+                          <option value="Mua nguyên liệu/Hàng hóa">Mua nguyên liệu/Hàng hóa</option>
+                          <option value="Mua vật tư sản xuất">Mua vật tư sản xuất</option>
+                          <option value="Mua vật tư bảo trì">Mua vật tư bảo trì</option>
+                          <option value="Mua TSCD">Mua TSCD</option>
+                          <option value="Mua dịch vụ">Mua dịch vụ</option>
+                          <option value="Mua khác">Mua khác</option>
+                        </select>
+                      </div>
+                      <div style={{ width: "150px" }}>
+                        <label className="filter-label">Tình trạng *</label>
+                        <select 
+                          name="urgency" 
+                          className="input" 
+                          style={{ width: "100%" }}
+                          required 
+                          disabled 
+                          defaultValue={editingProposal?.urgency || "Không khẩn cấp"}
+                        >
+                          <option value="Khẩn cấp">Khẩn cấp</option>
+                          <option value="Không khẩn cấp">Không khẩn cấp</option>
+                        </select>
+                      </div>
+                      <div style={{ width: "170px" }}>
+                        <label className="filter-label">Ngày đề nghị giao</label>
+                        <input 
+                          type="text" 
+                          className="input" 
+                          style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
+                          value={editingProposal?.deliveryDate ? new Date(editingProposal.deliveryDate).toLocaleDateString("vi-VN") : "Chưa xác định"} 
+                          readOnly 
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ghi chú chung */}
+                  <div style={{ width: "100%" }}>
                     <label className="filter-label">Ghi chú chung</label>
-                    <input 
-                      type="text" 
+                    <textarea 
                       name="note" 
+                      ref={noteRef}
                       className="input" 
-                      style={{ width: "100%" }}
+                      style={{ 
+                        width: "100%",
+                        minHeight: "36px",
+                        height: "auto",
+                        resize: "none",
+                        overflowY: "hidden",
+                        lineHeight: "1.5",
+                        padding: "8px 10px",
+                        fontFamily: "inherit"
+                      }}
                       disabled={isViewMode} 
                       defaultValue={editingProposal?.note || ""} 
                       placeholder="Ghi chú nội dung lý do đề nghị..." 
+                      onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.setProperty("height", "auto", "important");
+                        target.style.setProperty("height", `${target.scrollHeight}px`, "important");
+                      }}
                     />
                   </div>
                 </div>

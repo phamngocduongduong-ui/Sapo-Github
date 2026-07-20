@@ -3,19 +3,41 @@ const prisma = new PrismaClient();
 
 async function main() {
   const ALL_MODULE_KEYS = [
+    // Cá nhân
     "CA_NHAN", "CN_HO_SO", "CN_CHAM_CONG", "CN_NGHI_PHEP", "CN_NGHI_VIEC", "CN_TRA_CUU_LUONG",
-    "DANH_MUC", "DM_BO_PHAN", "DM_CHI_NHANH", "DM_CHUC_VU", "DM_KHACH_HANG", "DM_NHA_CUNG_CAP", "DM_NHOM_SP", "DM_QUOC_GIA", "DM_SAN_PHAM", "DM_DON_VI_TINH", "DM_KHO_HANG", "DM_VI_TRI",
+    
+    // Danh mục
+    "DANH_MUC", "DM_BO_PHAN", "DM_CHI_NHANH", "DM_CHUC_VU", "DM_KHACH_HANG", "DM_NHA_CUNG_CAP", "DM_NHOM_SP", "DM_QUOC_GIA", "DM_SAN_PHAM", "DM_DON_VI_TINH", "DM_NGAN_HANG", "DM_KHO_HANG", "DM_VI_TRI", "LB_KHU_VUC",
+    
+    // Nhân sự
     "NHAN_SU", "NS_NHAN_VIEN", "NS_HOP_DONG", "NS_DIEU_DONG", "NS_APPROVE", "NS_BAO_CAO",
-    "LUONG_BHXH", "LB_CHAM_CONG", "LB_KHU_VUC", "NS_BANG_LUONG", "NS_TANG_GIAM_LUONG", "NS_BAC_LUONG",
+    
+    // Lương và BHXH
+    "LUONG_BHXH", "LB_CHAM_CONG", "NS_BANG_LUONG", "NS_TANG_GIAM_LUONG", "NS_BAC_LUONG",
+    
+    // Kinh doanh
     "KINH_DOANH", "KD_HOP_DONG", "KD_DON_HANG",
-    "THU_MUA", "TM_LENH_MUA", "TM_APPROVE", "TM_DON_MUA", "TM_DIEU_DONG", "TM_BAO_CAO",
+    
+    // Mua hàng
+    "THU_MUA", "TM_DE_NGHI", "TM_LENH_MUA", "TM_BAO_CAO",
+    
+    // Sản xuất
     "SAN_XUAT", "SX_DON_SAN_XUAT", "SX_KE_HOACH_GIAO", "SX_VAT_TU",
-    "BAO_TRI", "BT_DE_NGHI_MUA", "BT_PHE_DUYET",
+    
+    // Thủ kho
     "THU_KHO", "TK_KHO_VAT_TU", "TK_KHO_THANH_PHAM",
-    "QUAN_TRI", "QT_TAI_KHOAN", "QT_MUC_QUYEN", "QT_PHAN_QUYEN",
+    
+    // Quản trị
+    "QUAN_TRI", "QT_TAI_KHOAN", "QT_MUC_QUYEN", "QT_PHAN_QUYEN", "QT_SAO_LUU",
+    
+    // An ninh
     "AN_NINH", "AN_DANG_KY", "AN_DANH_SACH", "AN_KIEM_TRA",
-    "PHE_DUYET", "PD_NHAN_SU", "PD_HOP_DONG_LD", "PD_HOP_DONG_BH", "PD_LUONG_THUONG", "PD_THANH_TOAN", "PD_MUA_HANG", "PD_BAO_TRI",
-    "KE_TOAN", "KT_THANH_TOAN"
+    
+    // Phê duyệt
+    "PHE_DUYET", "PD_NHAN_SU", "PD_HOP_DONG_LD", "PD_HOP_DONG_BH", "PD_LUONG_THUONG", "PD_THANH_TOAN", "PD_MUA_HANG", "PD_DE_NGHI_MH",
+    
+    // Kế toán
+    "KE_TOAN", "KT_PHIEU_THU", "KT_PHIEU_CHI", "KT_CAN_XE"
   ];
 
   let adminPermission = await prisma.permission.findUnique({ where: { code: "ADMIN_FULL" } });
@@ -64,7 +86,7 @@ async function main() {
     where: {
       permissionId: adminPermission.id,
       moduleKey: {
-        in: ["PHE_DUYET", "PD_NHAN_SU", "PD_HOP_DONG_LD", "PD_HOP_DONG_BH", "PD_LUONG_THUONG", "PD_THANH_TOAN", "PD_MUA_HANG", "PD_BAO_TRI"]
+        in: ["PHE_DUYET", "PD_NHAN_SU", "PD_HOP_DONG_LD", "PD_HOP_DONG_BH", "PD_LUONG_THUONG", "PD_THANH_TOAN", "PD_MUA_HANG", "PD_DE_NGHI_MH"]
       }
     },
     data: {

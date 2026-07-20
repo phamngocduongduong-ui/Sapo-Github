@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";
-import { getProducts, createProduct, updateProduct, updateProductStatus, deleteProduct, getCategories, getUnits, getWarehouses } from "./actions";
+import { getProducts, createProduct, updateProduct, updateProductStatus, deleteProduct, getCategories, getUnits, getWarehouses, importProducts } from "./actions";
 import HistoryModal from "../../HistoryModal";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Upload } from "lucide-react";
+import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
 
 export default function ProductPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -28,6 +30,11 @@ export default function ProductPage() {
   
   // History state
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
+
+  // Excel Import state
+  const [importProductsData, setImportProductsData] = useState<any[]>([]);
+  const [importMode, setImportMode] = useState<"append" | "replace">("append");
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Row selection state
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -98,6 +105,183 @@ export default function ProductPage() {
         fetchData();
       } catch (err: any) {
         alert(err.message || "Đã xảy ra lỗi khi xóa sản phẩm!");
+      }
+    });
+  };
+
+  // --- EXCEL HANDLERS ---
+  const fieldMapping: any = {
+    "Tên sản phẩm": "name",
+    "Tên tiếng Anh": "englishName",
+    "Quy cách": "packaging",
+    "Nhóm sản phẩm": "categoryName",
+    "Kho mặc định": "warehouseName",
+    "Đơn vị tính": "unitNames",
+    "Ghi chú": "note"
+  };
+
+  const handleDownloadTemplate = async () => {
+    const headers = ["Tên sản phẩm", "Tên tiếng Anh", "Quy cách", "Nhóm sản phẩm", "Kho mặc định", "Đơn vị tính", "Ghi chú"];
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Template");
+
+    // Add headers
+    worksheet.addRow(headers);
+
+    // Style headers
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { name: "Segoe UI", bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF003466" } // Sapo Blue color
+    };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 25;
+
+    // Create hidden sheet for lists
+    const dataListsSheet = workbook.addWorksheet("Data_Lists");
+    dataListsSheet.state = "hidden";
+
+    // Write options
+    const activeCategories = categories.filter(c => c.status === "Hoạt động").map(c => c.name);
+    activeCategories.forEach((val, idx) => {
+      dataListsSheet.getCell(`A${idx + 1}`).value = val;
+    });
+
+    const activeWarehouses = warehouses.filter(w => w.status === "Hoạt động").map(w => w.name);
+    activeWarehouses.forEach((val, idx) => {
+      dataListsSheet.getCell(`B${idx + 1}`).value = val;
+    });
+
+    const activeUnits = units.filter(u => u.status === "Hoạt động").map(u => u.name);
+    activeUnits.forEach((val, idx) => {
+      dataListsSheet.getCell(`C${idx + 1}`).value = val;
+    });
+
+    // Add validation for "Nhóm sản phẩm" (Col D)
+    if (activeCategories.length > 0) {
+      (worksheet as any).dataValidations.add("D2:D500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$A$1:$A$${activeCategories.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Nhóm sản phẩm trong danh sách."
+      });
+    }
+
+    // Add validation for "Kho mặc định" (Col E)
+    if (activeWarehouses.length > 0) {
+      (worksheet as any).dataValidations.add("E2:E500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$B$1:$B$${activeWarehouses.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Kho mặc định trong danh sách."
+      });
+    }
+
+    // Add validation for "Đơn vị tính" (Col F)
+    if (activeUnits.length > 0) {
+      (worksheet as any).dataValidations.add("F2:F500", {
+        type: "list",
+        allowBlank: true,
+        formulae: [`=Data_Lists!$C$1:$C$${activeUnits.length}`],
+        showErrorMessage: true,
+        errorTitle: "Dữ liệu không hợp lệ",
+        error: "Vui lòng chọn Đơn vị tính trong danh sách hoặc tự nhập các đơn vị tính ngăn cách bằng dấu phẩy."
+      });
+    }
+
+    // Auto-fit column widths
+    worksheet.columns.forEach(column => {
+      let maxLen = 0;
+      column.eachCell?.({ includeEmpty: true }, cell => {
+        const value = cell.value ? String(cell.value) : "";
+        if (value.length > maxLen) {
+          maxLen = value.length;
+        }
+      });
+      column.width = Math.max(maxLen + 4, 15);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "mau_san_pham.xlsx";
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        const wb = XLSX.read(data, { type: "array" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rawData: any[] = XLSX.utils.sheet_to_json(ws);
+
+        if (rawData.length === 0) {
+          alert("File Excel không có dữ liệu!");
+          return;
+        }
+
+        const processedData = rawData.map(row => {
+          const item: any = {};
+          const normalizedRow: any = {};
+          Object.keys(row).forEach(k => {
+            normalizedRow[k.trim()] = row[k];
+          });
+
+          Object.keys(fieldMapping).forEach(header => {
+            const mappedField = fieldMapping[header];
+            const value = normalizedRow[header] || normalizedRow[header.trim()];
+            if (value !== undefined && value !== null) {
+              item[mappedField] = value;
+            }
+          });
+          return item;
+        }).filter(item => item.name);
+
+        if (processedData.length === 0) {
+          alert("Không tìm thấy dữ liệu hợp lệ (vui lòng kiểm tra tiêu đề cột trong file Excel)!");
+          return;
+        }
+
+        setImportProductsData(processedData);
+        setImportMode("append");
+        setShowImportModal(true);
+      } catch (err: any) {
+        alert("Lỗi đọc file Excel: " + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = ""; // Reset input
+  };
+
+  const executeImport = () => {
+    if (importProductsData.length === 0) return;
+
+    startTransition(async () => {
+      try {
+        await importProducts(importProductsData, importMode);
+        alert(`Import thành công ${importProductsData.length} sản phẩm!`);
+        setShowImportModal(false);
+        setImportProductsData([]);
+        setSelectedItemId(null);
+        fetchData();
+      } catch (err: any) {
+        alert("Lỗi lưu dữ liệu: " + err.message);
       }
     });
   };
@@ -515,6 +699,31 @@ export default function ProductPage() {
             >
               Thêm mới
             </button>
+
+            <button
+              type="button"
+              className="sapo-btn"
+              style={{ backgroundColor: "#0f766e" }}
+              onClick={handleDownloadTemplate}
+            >
+              Tải file excel mẫu
+            </button>
+
+            <button
+              type="button"
+              className="sapo-btn"
+              style={{ backgroundColor: "#2563eb" }}
+              onClick={() => document.getElementById("excel-import-input")?.click()}
+            >
+              Import excel
+            </button>
+            <input
+              id="excel-import-input"
+              type="file"
+              hidden
+              accept=".xlsx, .xls"
+              onChange={handleImportExcel}
+            />
 
             {selectedItem && (
               <>
@@ -1159,6 +1368,103 @@ export default function ProductPage() {
           recordId={historyRecordId} 
           onClose={() => setHistoryRecordId(null)} 
         />
+      )}
+
+      {showImportModal && (
+        <div className="confirm-overlay" onClick={() => setShowImportModal(false)}>
+          <div className="confirm-modal animate-slide-up" style={{ maxWidth: "450px", padding: "1.5rem" }} onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-icon-box" style={{ backgroundColor: "#eff6ff", color: "#2563eb", width: "48px", height: "48px", borderRadius: "50%", display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center", margin: "0 auto 1rem auto" }}>
+              <Upload size={24} />
+            </div>
+            <h4 className="confirm-title" style={{ marginTop: "0.5rem", fontSize: "16px", fontWeight: 700, textAlign: "center", color: "#003466" }}>
+              Nhập Excel Sản phẩm
+            </h4>
+            <p className="confirm-message" style={{ margin: "0.5rem 0 1rem 0", fontSize: "13px", color: "#475569", textAlign: "center" }}>
+              Phát hiện <strong>{importProductsData.length}</strong> sản phẩm từ file Excel. Vui lòng chọn phương thức nhập dữ liệu:
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem", width: "100%" }}>
+              <label style={{ 
+                display: "flex", 
+                alignItems: "flex-start", 
+                gap: "0.75rem", 
+                padding: "10px 12px", 
+                border: "1px solid #cbd5e1", 
+                borderRadius: "6px", 
+                cursor: "pointer",
+                backgroundColor: importMode === "append" ? "#eff6ff" : "white",
+                borderColor: importMode === "append" ? "#3b82f6" : "#cbd5e1",
+                transition: "all 0.2s",
+                textAlign: "left"
+              }}>
+                <input 
+                  type="radio" 
+                  name="importMode" 
+                  value="append" 
+                  checked={importMode === "append"} 
+                  onChange={() => setImportMode("append")}
+                  style={{ marginTop: "3px" }}
+                />
+                <div>
+                  <strong style={{ display: "block", fontSize: "13px", color: "#0f172a" }}>Thêm mới</strong>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>Thêm dữ liệu trong file excel vào hệ thống (giữ lại dữ liệu hiện tại).</span>
+                </div>
+              </label>
+
+              <label style={{ 
+                display: "flex", 
+                alignItems: "flex-start", 
+                gap: "0.75rem", 
+                padding: "10px 12px", 
+                border: "1px solid #cbd5e1", 
+                borderRadius: "6px", 
+                cursor: "pointer",
+                backgroundColor: importMode === "replace" ? "#fef2f2" : "white",
+                borderColor: importMode === "replace" ? "#ef4444" : "#cbd5e1",
+                transition: "all 0.2s",
+                textAlign: "left"
+              }}>
+                <input 
+                  type="radio" 
+                  name="importMode" 
+                  value="replace" 
+                  checked={importMode === "replace"} 
+                  onChange={() => setImportMode("replace")}
+                  style={{ marginTop: "3px" }}
+                />
+                <div>
+                  <strong style={{ display: "block", fontSize: "13px", color: "#b91c1c" }}>Ghi đè</strong>
+                  <span style={{ fontSize: "11px", color: "#991b1b" }}>Xóa toàn bộ dữ liệu cũ hiện tại và thêm dữ liệu mới từ file excel vào.</span>
+                </div>
+              </label>
+            </div>
+
+            <div className="confirm-actions" style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", width: "100%" }}>
+              <button type="button" className="confirm-btn btn-cancel" onClick={() => setShowImportModal(false)} style={{ flex: 1, padding: "8px 16px", borderRadius: "4px", fontSize: "13px", border: "1px solid #cbd5e1", backgroundColor: "white", cursor: "pointer" }}>
+                Hủy
+              </button>
+              <button 
+                type="button" 
+                className="confirm-btn" 
+                onClick={executeImport} 
+                disabled={isPending}
+                style={{ 
+                  flex: 1, 
+                  padding: "8px 16px", 
+                  borderRadius: "4px", 
+                  fontSize: "13px", 
+                  border: "none", 
+                  backgroundColor: importMode === "replace" ? "#ef4444" : "#2563eb", 
+                  color: "white", 
+                  cursor: "pointer",
+                  fontWeight: 600
+                }}
+              >
+                {isPending ? "Đang xử lý..." : "Đồng ý"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

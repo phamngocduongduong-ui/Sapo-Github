@@ -4,7 +4,8 @@ import React, { useState, useTransition, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, MapPin, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, User, CheckCircle2, AlertCircle, Timer, Camera, RefreshCw } from "lucide-react";
 import { toggleCheckIn, getUserDeviceStatus, requestDeviceChange } from "./actions";
-import { generateDeviceSecret, encryptSecret, decryptSecret } from "@/lib/deviceSecurity";
+import { generateDeviceSecret, encryptSecret, decryptSecret, loadOrRegisterDeviceSecret } from "@/lib/deviceSecurity";
+
 
 interface CheckIn {
   id: string;
@@ -160,24 +161,8 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
           return;
         }
 
-        let localEncrypted = localStorage.getItem("ems_device_secret");
-        let secret = "";
-
-        if (!localEncrypted) {
-          // Generate new secret
-          secret = generateDeviceSecret();
-          const encrypted = encryptSecret(secret, status.username);
-          localStorage.setItem("ems_device_secret", encrypted);
-        } else {
-          // Decrypt existing secret
-          secret = decryptSecret(localEncrypted, status.username);
-          if (!secret) {
-            // If decryption failed (corrupted or salt changed), generate a new one
-            secret = generateDeviceSecret();
-            const encrypted = encryptSecret(secret, status.username);
-            localStorage.setItem("ems_device_secret", encrypted);
-          }
-        }
+        // Use the persistent multi-channel store helper to load or register the secret
+        const secret = await loadOrRegisterDeviceSecret(status.username);
         setDeviceSecret(secret);
       } catch (e) {
         console.error("Lỗi khởi tạo thiết bị:", e);
@@ -464,9 +449,16 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
       try {
         const res = await requestDeviceChange(deviceSecret);
         if (res.success) {
-          alert("Gửi yêu cầu đổi thiết bị thành công! Vui lòng liên hệ Admin để duyệt.");
-          setDeviceStatus("PENDING");
-          setServerPendingSecret(deviceSecret);
+          if ((res as any).autoApproved) {
+            // Cùng thiết bị — server tự phê duyệt, không cần chờ Admin
+            alert("Thiết bị đã được xác nhận thành công! Bạn có thể tiếp tục chấm công.");
+            setDeviceStatus("APPROVED");
+            setServerDeviceSecret(deviceSecret);
+          } else {
+            alert("Gửi yêu cầu đổi thiết bị thành công! Vui lòng liên hệ Admin để duyệt.");
+            setDeviceStatus("PENDING");
+            setServerPendingSecret(deviceSecret);
+          }
           router.refresh();
         }
       } catch (e: any) {
@@ -474,6 +466,7 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
       }
     });
   };
+
 
   const handleCheckIn = () => {
     if (isPending) return;

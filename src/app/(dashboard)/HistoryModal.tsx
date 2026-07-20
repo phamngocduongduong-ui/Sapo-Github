@@ -13,6 +13,72 @@ interface AuditLog {
   newData: any;
 }
 
+const fieldLabels: Record<string, string> = {
+  // Hợp đồng (Contract)
+  contractNumber: "Số hợp đồng",
+  contractDate: "Ngày hợp đồng",
+  seller: "Người bán",
+  buyer: "Người mua",
+  deliveryDate: "Thời gian giao hàng",
+  portOfLoading: "Cảng xếp hàng",
+  portOfDischarge: "Cảng dỡ hàng",
+  transshipment: "Chuyển tải",
+  partialShipment: "Giao hàng từng phần",
+  deliveryTerms: "Điều kiện giao hàng",
+  paymentMethod: "Phương thức thanh toán",
+  paymentTerms: "Điều khoản thanh toán",
+  bankAccount: "Tài khoản ngân hàng",
+  accompanyingDocuments: "Chứng từ kèm theo",
+  expiryDate: "Ngày hết hạn",
+  thermometer: "Nhiệt kế",
+  thermometerQty: "Số lượng nhiệt kế",
+  pallet: "Sử dụng Pallet",
+  salesEmployee: "Nhân viên Kinh doanh",
+  status: "Trạng thái",
+  note: "Ghi chú",
+
+  // Đơn hàng (Order)
+  orderCode: "Mã đơn hàng",
+  customerCode: "Mã khách hàng",
+  employeeName: "Nhân viên thực hiện",
+  branch: "Chi nhánh",
+  requestDeliveryDate: "Thời gian đề nghị",
+  shipDate: "Ngày xuất hàng",
+  isCombined: "Đơn đóng ghép",
+  combinedOrderCode: "Mã đơn ghép",
+  contractitem: "Chi tiết hàng hóa",
+  orderitem: "Chi tiết hàng hóa"
+};
+
+const ignoredFields = new Set([
+  "id", "createdAt", "updatedAt", "attachments", "contractId", "orderId"
+]);
+
+const formatValue = (key: string, value: any) => {
+  if (value === undefined || value === null) return "—";
+  if (typeof value === "boolean") {
+    return value ? "Có" : "Không";
+  }
+  if (["contractDate", "expiryDate", "requestDeliveryDate", "shipDate", "orderDate"].includes(key)) {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("vi-VN");
+    }
+  }
+  if (["contractitem", "orderitem"].includes(key) && Array.isArray(value)) {
+    if (value.length === 0) return "Không có hàng hóa";
+    return value.map(item => `${item.productName || item.productCode || "Sản phẩm"} (${item.quantity || 0})`).join(", ");
+  }
+  return String(value);
+};
+
+const isDifferent = (key: string, val1: any, val2: any) => {
+  if (val1 === val2) return false;
+  if (!val1 && !val2) return false;
+  if (formatValue(key, val1) === formatValue(key, val2)) return false;
+  return true;
+};
+
 export default function HistoryModal({ 
   tableName, 
   recordId, 
@@ -78,7 +144,7 @@ export default function HistoryModal({
                     <User size={14} /> Thực hiện bởi: <span style={{ fontWeight: 600, color: "#000000" }}>{log.changedBy}</span>
                   </div>
 
-                  {log.action === "UPDATE" && log.oldData && log.newData && (() => {
+                  {((log.action === "UPDATE" || log.action === "STATUS_CHANGE") && log.oldData && log.newData) && (() => {
                     let oldObj = log.oldData;
                     let newObj = log.newData;
                     if (typeof oldObj === "string") {
@@ -89,16 +155,24 @@ export default function HistoryModal({
                     }
                     
                     if (oldObj && newObj && typeof oldObj === "object" && typeof newObj === "object" && !Array.isArray(oldObj) && !Array.isArray(newObj)) {
-                      const changedKeys = Object.keys(newObj).filter(key => oldObj[key] !== newObj[key]);
-                      if (changedKeys.length === 0) return null;
+                      const allKeys = Array.from(new Set([...Object.keys(oldObj), ...Object.keys(newObj)]))
+                        .filter(key => !ignoredFields.has(key) && isDifferent(key, oldObj[key], newObj[key]));
+
+                      if (allKeys.length === 0) return null;
                       
                       return (
                         <div style={{ marginTop: "0.75rem", background: "#f8fafc", padding: "0.75rem", borderRadius: "8px", fontSize: "0.85rem", color: "#000000", fontWeight: 600 }}>
-                           {changedKeys.map(key => (
-                             <div key={key} style={{ marginBottom: "0.25rem" }}>
-                               <strong style={{ color: "#000000" }}>{key}:</strong> {String(oldObj[key] || "—")} <ArrowRight size={12} style={{ margin: "0 4px" }} /> <span style={{ color: "#3b82f6", fontWeight: 600 }}>{String(newObj[key])}</span>
-                             </div>
-                           ))}
+                           {allKeys.map(key => {
+                             const label = fieldLabels[key] || key;
+                             return (
+                               <div key={key} style={{ marginBottom: "0.25rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px" }}>
+                                 <strong style={{ color: "#475569" }}>{label}:</strong>
+                                 <span>{formatValue(key, oldObj[key])}</span>
+                                 <ArrowRight size={12} style={{ color: "#64748b" }} />
+                                 <span style={{ color: "#2563eb", fontWeight: 700 }}>{formatValue(key, newObj[key])}</span>
+                               </div>
+                             );
+                           })}
                         </div>
                       );
                     }

@@ -197,8 +197,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
         const today = new Date().toISOString().split("T")[0];
         setContractDate(today);
         setExpiryDate(calculateExpiryDate(today));
-        const generated = generateContractNumber(editingContract.buyer, today);
-        setContractNumber(generated);
+        setContractNumber("");
         
         // Default to currentUser in duplicate mode
         const defaultSalesEmp = (currentUser && currentUser !== "Unknown") ? currentUser : (editingContract.salesEmployee || "");
@@ -234,13 +233,6 @@ export default function ContractTable({ initialContracts, customers: initialCust
     }
   }, [editingContract, showModal, isDuplicateMode]);
 
-  // Auto-generate contract number when creating new contract or duplicating
-  useEffect(() => {
-    if ((!editingContract || isDuplicateMode) && showModal) {
-      const generated = generateContractNumber(selectedBuyer, contractDate);
-      setContractNumber(generated);
-    }
-  }, [selectedBuyer, contractDate, editingContract, showModal, isDuplicateMode]);
 
   // For Seller suggestions:
   const filteredSellers = useMemo(() => {
@@ -1543,7 +1535,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
                         onChange={(e) => setContractNumber(e.target.value)}
                         disabled={(!!editingContract && !isDuplicateMode) || isViewMode}
                         required
-                        placeholder="Số hợp đồng sẽ tự động tạo"
+                        placeholder="Nhập số hợp đồng..."
                         style={{ width: "150px" }}
                       />
                     </div>
@@ -1757,37 +1749,8 @@ export default function ContractTable({ initialContracts, customers: initialCust
                   </div>
                   {editingContract && !isDuplicateMode ? (
                     <>
-                      <div>
-                        <label className="filter-label">Ngày hết hạn hợp đồng</label>
-                        <input
-                          type="date"
-                          name="expiryDate"
-                          className="input"
-                          disabled={isViewMode}
-                          value={expiryDate}
-                          onChange={(e) => setExpiryDate(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="filter-label">Trạng thái hồ sơ</label>
-                        {isViewMode ? (
-                          <input type="text" className="input" defaultValue={editingContract?.status ?? "Tạo mới"} disabled style={{ width: "100%" }} />
-                        ) : (
-                          <select
-                            name="status"
-                            className="input"
-                            disabled={isViewMode}
-                            defaultValue={editingContract?.status ?? "Tạo mới"}
-                            style={{ width: "100%" }}
-                          >
-                            <option value="Tạo mới">Tạo mới</option>
-                            <option value="Chờ phê duyệt">Chờ phê duyệt</option>
-                            <option value="Đã phê duyệt">Đã phê duyệt</option>
-                            <option value="Từ chối">Từ chối</option>
-                            <option value="Đã hủy">Đã hủy</option>
-                          </select>
-                        )}
-                      </div>
+                      <input type="hidden" name="expiryDate" value={expiryDate || ""} />
+                      <input type="hidden" name="status" value={editingContract?.status ?? "Tạo mới"} />
                     </>
                   ) : null}
                   {/* Banking Info Section */}

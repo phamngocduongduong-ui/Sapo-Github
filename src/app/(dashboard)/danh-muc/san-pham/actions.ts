@@ -253,3 +253,118 @@ export async function deleteProduct(id: string) {
   await createAuditLog("Product", id, "DELETE", oldProduct, null, `Xóa sản phẩm: ${oldProduct?.name}`);
   revalidatePath("/danh-muc/san-pham");
 }
+
+export async function importProducts(data: any[], mode: "append" | "replace") {
+  if (mode === "replace") {
+    await prisma.product.deleteMany({});
+  }
+
+  const [categories, warehouses, units] = await Promise.all([
+    prisma.productcategory.findMany({ where: { status: "Hoạt động" } }),
+    prisma.warehouse.findMany({ where: { status: "Hoạt động" } }),
+    prisma.unit.findMany({ where: { status: "Hoạt động" } })
+  ]);
+
+  const categoryCounts: { [categoryId: string]: number } = {};
+  for (const cat of categories) {
+    const count = await prisma.product.count({ where: { categoryId: cat.id } });
+    categoryCounts[cat.id] = count;
+  }
+
+  for (const item of data) {
+    const name = (item.name || "").toString().trim();
+    if (!name) continue;
+
+    const categoryName = (item.categoryName || "").toString().trim();
+    const category = categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+    if (!category) {
+      throw new Error(`Không tìm thấy Nhóm sản phẩm "${categoryName}" hoạt động trong hệ thống!`);
+    }
+
+    const warehouseName = (item.warehouseName || "").toString().trim();
+    const warehouse = warehouses.find(w => w.name.toLowerCase() === warehouseName.toLowerCase());
+    if (!warehouse) {
+      throw new Error(`Không tìm thấy Kho mặc định "${warehouseName}" hoạt động trong hệ thống!`);
+    }
+
+    const unitNamesStr = (item.unitNames || "").toString().trim();
+    if (!unitNamesStr) {
+      throw new Error(`Vui lòng cung cấp Đơn vị tính cho sản phẩm "${name}"!`);
+    }
+
+    const splitNames = unitNamesStr.split(/[,;]/).map((n: string) => n.trim().toLowerCase());
+    const matchedUnits = units.filter(u => splitNames.includes(u.name.toLowerCase()));
+    if (matchedUnits.length === 0) {
+      throw new Error(`Không tìm thấy Đơn vị tính nào hoạt động khớp với "${unitNamesStr}" trong hệ thống!`);
+    }
+
+    const englishName = item.englishName ? item.englishName.toString().trim() : null;
+    const packaging = item.packaging ? item.packaging.toString().trim() : null;
+    const note = item.note ? item.note.toString().trim() : null;
+
+    let existingProduct = null;
+    if (mode === "append") {
+      existingProduct = await prisma.product.findFirst({
+        where: { name }
+      });
+    }
+
+    if (existingProduct) {
+      const updatedProduct = await prisma.product.update({
+        where: { id: existingProduct.id },
+        data: {
+          englishName,
+          packaging,
+          categoryId: category.id,
+          warehouseId: warehouse.id,
+          note,
+          status: "Hoạt động",
+          unit: {
+            set: [],
+            connect: matchedUnits.map(u => ({ id: u.id }))
+          }
+        },
+        include: { unit: true, warehouse: true }
+      });
+      await createAuditLog("Product", updatedProduct.id, "UPDATE", existingProduct, updatedProduct, `Import Excel - Cập nhật sản phẩm: ${name}`);
+    } else {
+      let prefix = "KC";
+      const normalizedCat = category.name.trim().toLowerCase();
+      if (normalizedCat === "thành phẩm sản xuất") {
+        prefix = "SP";
+      } else if (normalizedCat === "vật tư, bao bì đóng gói" || normalizedCat === "vật tư bao bì đóng gói") {
+        prefix = "VT";
+      } else if (normalizedCat === "hóa chất") {
+        prefix = "HC";
+      } else if (normalizedCat === "công cụ dụng cụ sản xuất" || normalizedCat === "công cụ, dụng cụ sản xuất") {
+        prefix = "CC";
+      }
+
+      const currentCount = categoryCounts[category.id] || 0;
+      const nextCount = currentCount + 1;
+      categoryCounts[category.id] = nextCount;
+      const code = `${prefix}${String(nextCount).padStart(4, '0')}`;
+
+      const newProduct = await prisma.product.create({
+        data: {
+          code,
+          name,
+          englishName,
+          packaging,
+          categoryId: category.id,
+          warehouseId: warehouse.id,
+          note,
+          status: "Hoạt động",
+          unit: {
+            connect: matchedUnits.map(u => ({ id: u.id }))
+          }
+        },
+        include: { unit: true, warehouse: true }
+      });
+      await createAuditLog("Product", newProduct.id, "CREATE", null, newProduct, `Import Excel - Thêm mới sản phẩm: ${name}`);
+    }
+  }
+
+  revalidatePath("/danh-muc/san-pham");
+}
+

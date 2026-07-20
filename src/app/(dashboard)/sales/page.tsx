@@ -1,14 +1,60 @@
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
 
+async function getUserPosition(employeeName: string | null) {
+  if (!employeeName) return "";
+
+  // Check in transferpromotion table for the latest approved request
+  const latestTransfer = await (prisma as any).transferpromotion.findFirst({
+    where: {
+      employeeName: employeeName,
+      status: "Đã phê duyệt"
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
+  if (latestTransfer) {
+    return latestTransfer.newPosition || "";
+  }
+
+  // Fallback to employee table
+  const employee = await prisma.employee.findFirst({
+    where: { fullName: employeeName }
+  });
+
+  return employee?.position || "";
+}
+
 export default async function SalesPage() {
   const session = await getSession();
   const user = session?.userId
     ? await prisma.user.findUnique({ where: { id: session.userId } })
     : null;
-  const isStaff = user?.role?.includes("Nhân viên") && user?.username !== "admin" && user?.role !== "Admin";
+  const position = await getUserPosition(user?.employeeName || null);
+  const isAdmin = user?.username === "admin" || user?.role === "Admin";
+  const isManager = isAdmin || user?.role?.includes("Trưởng phòng") || position.includes("Trưởng phòng") || position.includes("Giám đốc");
+  const isStaff = !isManager;
   const userName = user?.employeeName || user?.username || "";
-  const whereClause = isStaff ? { employeeName: userName } : {};
+
+  let whereClause: any = {};
+  if (isStaff && user) {
+    const userContracts = await prisma.contract.findMany({
+      where: { salesEmployee: userName },
+      select: { contractNumber: true }
+    });
+    const contractNumbers = userContracts.map(c => c.contractNumber);
+    const contractConditions = contractNumbers.map(num => ({
+      note: { contains: `Hợp đồng: ${num}` }
+    }));
+    whereClause = {
+      OR: [
+        { employeeName: userName },
+        ...contractConditions
+      ]
+    };
+  }
 
   const orders = await prisma.order.findMany({
     where: whereClause,

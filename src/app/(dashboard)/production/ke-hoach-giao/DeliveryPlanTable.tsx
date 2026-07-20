@@ -35,6 +35,46 @@ export default function DeliveryPlanTable({
   activeBranch?: string;
 }) {
   const router = useRouter();
+
+  const getCardStyle = (branch: string | null) => {
+    if (activeBranch !== "Hồ Chí Minh") return {};
+    if (branch === "Đồng Tháp") return { borderLeft: "4px solid #16a34a" };
+    if (branch === "Đắk Lắk") return { borderLeft: "4px solid #ea580c" };
+    return {};
+  };
+
+  const getBadgeStyle = (branch: string | null) => {
+    if (activeBranch !== "Hồ Chí Minh") return {};
+    if (branch === "Đồng Tháp") {
+      return {
+        background: "#dcfce7",
+        color: "#15803d",
+        borderColor: "#bbf7d0"
+      };
+    }
+    if (branch === "Đắk Lắk") {
+      return {
+        background: "#ffedd5",
+        color: "#c2410c",
+        borderColor: "#fed7aa"
+      };
+    }
+    return {};
+  };
+
+  const getThermometerInfo = (order: any) => {
+    if (!order.thermometer) return "Không sử dụng";
+    const match = order.note?.match(/Hợp đồng:\s*([^\s,;]+)/);
+    const contractNumber = match ? match[1].trim() : null;
+    if (contractNumber) {
+      const contract = (contracts || []).find(c => c.contractNumber === contractNumber);
+      if (contract && contract.thermometerQty) {
+        return `Có sử dụng (${contract.thermometerQty} cái)`;
+      }
+    }
+    return "Có sử dụng";
+  };
+
   const [isPending, startTransition] = useTransition();
   const [isSaving, setIsSaving] = useState(false);
   const [orders, setOrders] = useState<any[]>(initialOrders);
@@ -52,7 +92,7 @@ export default function DeliveryPlanTable({
   
   // Real-time sync (disabled during transition or saving)
   useRealTimeSync(
-    activeBranch ? `orders&branch=${encodeURIComponent(activeBranch)}` : "orders", 
+    "orders&page=delivery-plan", 
     orders, 
     setOrders, 
     3000, 
@@ -105,6 +145,7 @@ export default function DeliveryPlanTable({
   // Bộ lọc logic
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
+      const matchBranch = !activeBranch || activeBranch === "Hồ Chí Minh" || order.branch === activeBranch;
       const matchOrderCode = !filterOrderCode || (order.orderCode && order.orderCode.toLowerCase().includes(filterOrderCode.trim().toLowerCase()));
       const matchEmployee = !filterEmployee || order.employeeName === filterEmployee;
       const matchMonth = !filterMonth || (() => {
@@ -113,9 +154,9 @@ export default function DeliveryPlanTable({
         const yyyyMm = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
         return yyyyMm === filterMonth;
       })();
-      return matchOrderCode && matchEmployee && matchMonth;
+      return matchBranch && matchOrderCode && matchEmployee && matchMonth;
     });
-  }, [orders, filterOrderCode, filterEmployee, filterMonth]);
+  }, [orders, activeBranch, filterOrderCode, filterEmployee, filterMonth]);
 
   // Đơn chờ kế hoạch (Cột bên trái)
   const pendingPlanOrders = useMemo(() => {
@@ -124,8 +165,12 @@ export default function DeliveryPlanTable({
 
   // Lịch (Cột bên phải)
   const plannedOrders = useMemo(() => {
-    return orders.filter(o => o.status === "Chờ giao hàng" && o.shipDate);
-  }, [orders]);
+    return orders.filter(o => 
+      o.status === "Chờ giao hàng" && 
+      o.shipDate &&
+      (!activeBranch || activeBranch === "Hồ Chí Minh" || o.branch === activeBranch)
+    );
+  }, [orders, activeBranch]);
 
   // Trạng thái ngày Lịch
 
@@ -312,8 +357,8 @@ export default function DeliveryPlanTable({
       });
     }
 
-    // Next month padding to fill a complete grid of weeks (multiple of 7)
-    const remaining = 42 - cells.length; // standard 6 weeks calendar grid
+    // Next month padding to fill the last week until Sunday
+    const remaining = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
     for (let day = 1; day <= remaining; day++) {
       const date = new Date(year, month + 1, day);
       cells.push({
@@ -762,72 +807,7 @@ export default function DeliveryPlanTable({
 
       <div className="contract-layout">
         <div className="panel-full">
-          {/* Filters Bar */}
-          <div className="base-filters" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginTop: "10px", marginBottom: "15px" }}>
-            <div>
-              <label className="filter-label">Mã đơn hàng</label>
-              <div className="search-box-base">
-                <Search size={16} className="search-icon" />
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  style={{ width: "100%" }} 
-                  value={filterOrderCode} 
-                  onChange={(e) => setFilterOrderCode(e.target.value)} 
-                  list="orders-datalist" 
-                  placeholder="-- Nhập tìm kiếm mã đơn hàng --"
-                />
-              </div>
-              <datalist id="orders-datalist">
-                {filterableOrderCodes.map(code => (
-                  <option key={code} value={code} />
-                ))}
-              </datalist>
-            </div>
-            <div>
-              <label className="filter-label">Nhân viên Kinh doanh</label>
-              <select className="form-control" style={{ width: "100%" }} value={filterEmployee} onChange={(e) => setFilterEmployee(e.target.value)}>
-                <option value="">-- Tất cả nhân viên --</option>
-                {salesEmployees.map(e => <option key={e} value={e}>{e}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="filter-label">Thời gian đề nghị</label>
-              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                <input 
-                  type="month" 
-                  className="form-control" 
-                  style={{ flex: 1, minWidth: 0 }} 
-                  value={filterMonth} 
-                  onChange={(e) => setFilterMonth(e.target.value)} 
-                  onBlur={(e) => {
-                    if (e.target.value !== filterMonth) {
-                      setFilterMonth(e.target.value || "");
-                    }
-                  }}
-                />
-                {filterMonth && (
-                  <button 
-                    type="button" 
-                    className="sapo-btn sapo-btn-danger" 
-                    onClick={() => setFilterMonth("")} 
-                    style={{ 
-                      padding: "4px 8px", 
-                      fontSize: "12px", 
-                      fontWeight: 600, 
-                      whiteSpace: "nowrap", 
-                      height: "32px", 
-                      borderRadius: "4px", 
-                      display: "flex", 
-                      alignItems: "center" 
-                    }}
-                  >
-                    Đặt lại
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+
 
           {/* DND CALENDAR VIEW */}
           <div className="split-layout" style={{ position: "relative" }}>
@@ -901,6 +881,7 @@ export default function DeliveryPlanTable({
                     <div
                       key={order.id}
                       className="order-drag-card"
+                      style={getCardStyle(order.branch)}
                       draggable
                       onDragStart={(e) => handleDragStart(e, order.id)}
                       onClick={() => handleView(order)}
@@ -920,6 +901,10 @@ export default function DeliveryPlanTable({
                       </div>
                       <div className="order-drag-card-items" title={itemsPreview}>
                         {itemsPreview.length > 50 ? `${itemsPreview.slice(0, 50)}...` : itemsPreview}
+                      </div>
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span>🕒 Thời gian đề nghị:</span>
+                        <strong style={{ color: "#334155" }}>{formatYearMonth(order.requestDeliveryDate)}</strong>
                       </div>
                     </div>
                   );
@@ -979,7 +964,7 @@ export default function DeliveryPlanTable({
               </div>
 
               {/* Day Cells Grid */}
-              <div className="calendar-grid" style={{ gridAutoRows: "minmax(85px, auto)" }}>
+              <div className="calendar-grid" style={{ gridTemplateRows: `repeat(${calendarCells.length / 7}, 1fr)` }}>
                 {calendarCells.map((cell, idx) => {
                   const dateStr = `${cell.date.getFullYear()}-${String(cell.date.getMonth() + 1).padStart(2, '0')}-${String(cell.date.getDate()).padStart(2, '0')}`;
                   const isToday = new Date().toDateString() === cell.date.toDateString();
@@ -1025,6 +1010,7 @@ export default function DeliveryPlanTable({
                           <div
                             key={order.id}
                             className="calendar-order-badge"
+                            style={getBadgeStyle(order.branch)}
                             draggable
                             onDragStart={(e) => handleDragStart(e, order.id)}
                             onClick={(e) => {
@@ -1058,71 +1044,29 @@ export default function DeliveryPlanTable({
       {/* DETAILED VIEW MODAL */}
       {showViewModal && viewingOrder && (
         <div className="custom-modal-overlay" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
-          <div style={{ background: "#ffffff", width: "900px", height: "80%", display: "flex", flexDirection: "column", padding: 0, borderRadius: "16px", border: "1px solid #cbd5e1", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", overflow: "hidden" }}>
+          <div style={{ background: "#ffffff", width: "900px", height: "490px", display: "flex", flexDirection: "column", padding: 0, borderRadius: "16px", border: "1px solid #cbd5e1", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", overflow: "hidden" }}>
             
             {/* Modal Header */}
             <h3 style={{ borderBottom: "1px solid #eee", padding: "12px 24px", margin: 0, background: "#fff", fontWeight: 700, color: "#003466", display: "flex", alignItems: "center", gap: "8px" }}>
               🔍 Chi tiết đơn sản xuất: <span style={{ color: "#ff5c00" }}>{viewingOrder.orderCode}</span>
+              {viewingOrder.employeeName && (
+                <>
+                  <span style={{ fontSize: "16px", color: "#64748b", fontWeight: "normal", marginLeft: "4px" }}>—</span>
+                  <span style={{ fontSize: "16px", color: "#64748b", fontWeight: 600, marginLeft: "6px" }}>Nhân viên:</span>
+                  <span style={{ color: "#ff5c00", textTransform: "uppercase", fontSize: "16px", fontWeight: 700, marginLeft: "4px" }}>
+                    {viewingOrder.employeeName}
+                  </span>
+                </>
+              )}
             </h3>
 
             {/* Modal Scrollable Body */}
             <div style={{ flex: 1, overflow: "auto", padding: "16px 24px" }}>
               
-              {/* General Info Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: "10px", columnGap: "1.5rem", marginBottom: "20px" }}>
-                <div style={{ width: "120px" }}>
-                  <label className="filter-label">Mã đơn hàng</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.orderCode} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div style={{ width: "120px" }}>
-                  <label className="filter-label">Mã khách hàng</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.customerCode} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div style={{ width: "170px" }}>
-                  <label className="filter-label">Nhân viên thực hiện</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.employeeName} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
 
-                <div style={{ width: "150px" }}>
-                  <label className="filter-label">Ngày thực hiện</label>
-                  <input type="text" className="input" defaultValue={new Date(viewingOrder.orderDate).toLocaleDateString("vi-VN")} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div style={{ width: "120px" }}>
-                  <label className="filter-label">Chi nhánh</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.branch || "—"} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div style={{ width: "150px" }}>
-                  <label className="filter-label">Thời gian đề nghị</label>
-                  <input type="text" className="input" defaultValue={formatYearMonth(viewingOrder.requestDeliveryDate)} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-
-                <div style={{ width: "200px" }}>
-                  <label className="filter-label">Ngày dự kiến xuất hàng</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.shipDate ? new Date(viewingOrder.shipDate).toLocaleDateString("vi-VN") : "—"} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div style={{ display: "none" }}>
-                  <label className="filter-label">Trạng thái</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.status} readOnly style={{ width: "100%", background: "#f1f5f9", fontWeight: 700, color: viewingOrder.status === "Chờ tiếp nhận" ? "#7c3aed" : viewingOrder.status === "Chờ kế hoạch" ? "#2563eb" : undefined }} />
-                </div>
-                <div style={{ display: "none" }}>
-                  {/* Empty grid cell */}
-                </div>
-
-                {/* Checkbox row */}
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", gridColumn: "span 3", marginTop: "5px" }}>
-                  <input type="checkbox" id="modal-thermometer" checked={viewingOrder.thermometer} readOnly style={{ width: "16px", height: "16px" }} />
-                  <label htmlFor="modal-thermometer" style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#003466" }}>CÓ SỬ DỤNG NHIỆT KẾ</label>
-                </div>
-
-                {/* Ghi chú row */}
-                <div style={{ gridColumn: "span 3" }}>
-                  <label className="filter-label">Ghi chú</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.note ?? "—"} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-              </div>
 
               {/* Goods list Section */}
-              <div style={{ marginTop: "20px", marginBottom: "20px" }}>
+              <div style={{ marginTop: "0px", marginBottom: "20px" }}>
                 <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", color: "#003466", fontWeight: "700" }}>
                   📦 Chi tiết hàng hóa
                 </h4>
@@ -1167,6 +1111,18 @@ export default function DeliveryPlanTable({
                       )}
                     </tbody>
                   </table>
+                </div>
+                
+                {/* Dòng Nhiệt kế và Ghi chú dưới bảng chi tiết hàng hóa */}
+                <div style={{ display: "flex", gap: "2.5rem", marginTop: "15px", flexWrap: "wrap", alignItems: "baseline" }}>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "baseline" }}>
+                    <span className="filter-label" style={{ display: "inline-block", margin: 0, whiteSpace: "nowrap" }}>Nhiệt kế:</span>
+                    <span style={{ fontSize: "14px", fontWeight: "500", color: "#1e293b" }}>{getThermometerInfo(viewingOrder)}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "baseline" }}>
+                    <span className="filter-label" style={{ display: "inline-block", margin: 0, whiteSpace: "nowrap" }}>Ghi chú:</span>
+                    <span style={{ fontSize: "14px", fontWeight: "500", color: "#1e293b", whiteSpace: "pre-wrap" }}>{viewingOrder.note ?? "—"}</span>
+                  </div>
                 </div>
               </div>
 

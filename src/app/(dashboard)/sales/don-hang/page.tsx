@@ -42,10 +42,31 @@ export default async function DonHangPage() {
 
   const activeBranch = session?.activeBranch;
 
-  const filter = user ? await getUserModuleBranchFilter(user.id, "KD_DON_HANG", session?.activeBranch, {
-    branchField: "branch",
-    employeeField: "employeeName"
-  }) : { id: "NO_ACCESS" };
+  let filter: any = { id: "NO_ACCESS" };
+  if (user) {
+    if (isManager) {
+      // Trưởng phòng trở lên thấy toàn bộ đơn hàng
+      filter = {};
+    } else {
+      // Nhân viên kinh doanh: thấy đơn hàng thuộc hợp đồng của mình (dù ai tạo)
+      // hoặc đơn hàng mà họ là người phụ trách (employeeName)
+      const userContracts = await prisma.contract.findMany({
+        where: { salesEmployee: userName },
+        select: { contractNumber: true }
+      });
+      const contractNumbers = userContracts.map(c => c.contractNumber);
+      const contractConditions = contractNumbers.map(num => ({
+        note: { contains: `Hợp đồng: ${num}` }
+      }));
+
+      filter = {
+        OR: [
+          { employeeName: userName },
+          ...contractConditions
+        ]
+      };
+    }
+  }
 
   const orders = await prisma.order.findMany({
     where: filter,
@@ -71,10 +92,13 @@ export default async function DonHangPage() {
     select: { fullName: true }
   });
 
-  const contractFilter = user ? await getUserModuleBranchFilter(user.id, "KD_DON_HANG", session?.activeBranch, {
-    employeeInBranchField: "salesEmployee",
-    employeeField: "salesEmployee"
-  }) : { id: "NO_ACCESS" };
+  // Danh sách hợp đồng để chọn trong form:
+  // - Trưởng phòng trở lên: thấy tất cả hợp đồng
+  // - Nhân viên: chỉ thấy hợp đồng của mình
+  let contractFilter: any = {};
+  if (!isManager && user) {
+    contractFilter = { salesEmployee: userName };
+  }
 
   // Lấy danh sách hợp đồng để chọn trong biểu mẫu
   const contracts = await prisma.contract.findMany({

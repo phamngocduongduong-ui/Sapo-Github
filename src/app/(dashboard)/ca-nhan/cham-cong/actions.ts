@@ -263,6 +263,20 @@ export async function requestDeviceChange(pendingSecret: string) {
 
   if (!user) throw new Error("Người dùng không tồn tại");
 
+  // Nếu secret của thiết bị này trùng với secret đang được duyệt (cùng 1 điện thoại),
+  // tự động khôi phục trạng thái APPROVED mà không cần Admin phê duyệt lại.
+  if (user.deviceSecret && user.deviceSecret === pendingSecret) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        pendingDeviceSecret: null,
+        deviceStatus: "APPROVED"
+      }
+    });
+    revalidatePath("/ca-nhan/cham-cong");
+    return { success: true, autoApproved: true };
+  }
+
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -272,6 +286,6 @@ export async function requestDeviceChange(pendingSecret: string) {
   });
 
   revalidatePath("/ca-nhan/cham-cong");
-  return { success: true };
+  return { success: true, autoApproved: false };
 }
 

@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { sendEmail } from "@/lib/mail";
+import { getSession } from "@/lib/session";
+import { logAudit } from "@/lib/audit";
 
 export async function updateApprovalStatus(id: string, type: string, newStatus: string) {
   const data = { status: newStatus };
@@ -170,10 +172,26 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       await (prisma as any).purchaseorder.update({ where: { id }, data });
       revalidatePath("/purchasing/lenh-mua");
       break;
-    case "Contract":
+    case "Contract": {
+      const session = await getSession();
+      const oldContract = await (prisma as any).contract.findUnique({ where: { id } });
       await (prisma as any).contract.update({ where: { id }, data });
+
+      const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
+      const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+      await logAudit({
+        tableName: "Contract",
+        recordId: id,
+        action: "STATUS_CHANGE",
+        oldData: { status: oldContract?.status },
+        newData: { status: newStatus },
+        changedBy,
+        changeDetail: newStatus === "Đã phê duyệt" ? "Phê duyệt hợp đồng" : `Chuyển trạng thái hợp đồng sang: ${newStatus}`,
+      });
       revalidatePath("/sales/hop-dong");
       break;
+    }
   }
 
   revalidatePath("/nhan-su/phe-duyet");

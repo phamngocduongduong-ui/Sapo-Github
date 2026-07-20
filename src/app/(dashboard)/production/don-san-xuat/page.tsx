@@ -7,8 +7,22 @@ export default async function ProductionOrdersPage() {
   
   const activeBranch = session?.activeBranch;
   
+  let orderFilter: any = {};
+  if (activeBranch) {
+    if (activeBranch === "Hồ Chí Minh") {
+      orderFilter = {
+        OR: [
+          { status: "Chờ tiếp nhận" },
+          { branch: "Hồ Chí Minh" }
+        ]
+      };
+    } else {
+      orderFilter = { branch: activeBranch };
+    }
+  }
+
   const orders = await prisma.order.findMany({
-    where: activeBranch ? { branch: activeBranch } : {},
+    where: orderFilter,
     include: { orderitem: true },
     orderBy: { createdAt: "desc" },
   });

@@ -6,11 +6,12 @@ export default async function DeliveryPlanPage() {
   const session = await getSession();
   
   const activeBranch = session?.activeBranch;
+  const isHQ = activeBranch === "Hồ Chí Minh";
   
   // Fetch data in parallel using Promise.all to optimize page load speed
   const [orders, customers, branches, salesEmployees, contracts] = await Promise.all([
     prisma.order.findMany({
-      where: activeBranch ? { branch: activeBranch } : {},
+      where: (activeBranch && !isHQ) ? { branch: activeBranch } : {},
       include: { orderitem: true },
       orderBy: { createdAt: "desc" },
     }),
@@ -20,7 +21,7 @@ export default async function DeliveryPlanPage() {
     prisma.branch.findMany({ 
       where: { 
         status: "ACTIVE",
-        ...(activeBranch ? { name: activeBranch } : {})
+        ...((activeBranch && !isHQ) ? { name: activeBranch } : {})
       }, 
       select: { name: true } 
     }),
@@ -32,7 +33,8 @@ export default async function DeliveryPlanPage() {
       select: {
         id: true,
         contractNumber: true,
-        attachments: true
+        attachments: true,
+        thermometerQty: true
       },
       orderBy: { createdAt: "desc" }
     })

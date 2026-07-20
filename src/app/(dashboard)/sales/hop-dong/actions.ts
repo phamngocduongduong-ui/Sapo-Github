@@ -51,10 +51,6 @@ export async function createContract(formData: FormData, items: any[]) {
   if (!contractDateStr) throw new Error("Ngày hợp đồng là bắt buộc.");
   if (!seller || !buyer) throw new Error("Người bán và người mua là bắt buộc.");
 
-  const existing = await (prisma as any).contract.findUnique({
-    where: { contractNumber },
-  });
-  if (existing) throw new Error("Số hợp đồng đã tồn tại.");
 
   const contract = await (prisma as any).contract.create({
     data: {

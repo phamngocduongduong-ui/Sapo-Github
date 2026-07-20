@@ -792,7 +792,7 @@ model securityregistration {
 
 model contract {
   id                    String         @id
-  contractNumber        String         @unique(map: "Contract_contractNumber_key")
+  contractNumber        String
   contractDate          DateTime
   seller                String
   buyer                 String

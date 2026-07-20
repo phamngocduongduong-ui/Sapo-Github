@@ -1136,11 +1136,11 @@ export default function LaborContractTable({
                       <input 
                         type="text" 
                         name="contractNumber" 
-                        className="input-base readonly" 
+                        className={`input-base ${contractNumberVal ? "readonly" : ""}`} 
                         value={contractNumberVal}
-                        readOnly
-                        placeholder="Tự động tạo..."
-                        required 
+                        onChange={(e) => setContractNumberVal(e.target.value)}
+                        readOnly={!!contractNumberVal}
+                        placeholder="Tự động tạo hoặc nhập thủ công..."
                       />
                     </div>
                     <div className="form-group-base">

@@ -80,10 +80,60 @@ export async function GET(request: Request) {
         }));
       }
       case "orders": {
-        const filter = await getUserModuleBranchFilter(user.id, "KD_DON_HANG", session.activeBranch, {
-          branchField: "branch",
-          employeeField: "employeeName"
-        });
+        const page = searchParams.get("page");
+        let filter: any = { id: "NO_ACCESS" };
+        if (user) {
+          const { canAccess: canAccessProd } = await getUserPermission(user.id, "SX_DON_SAN_XUAT");
+
+          if (page === "production" || (!page && canAccessProd)) {
+            const activeBranch = session.activeBranch;
+            if (activeBranch) {
+              if (activeBranch === "Hồ Chí Minh") {
+                filter = {
+                  OR: [
+                    { status: "Chờ tiếp nhận" },
+                    { branch: "Hồ Chí Minh" }
+                  ]
+                };
+              } else {
+                filter = { branch: activeBranch };
+              }
+            } else {
+              filter = {};
+            }
+          } else if (page === "delivery-plan") {
+            const activeBranch = session.activeBranch;
+            if (activeBranch && activeBranch !== "Hồ Chí Minh") {
+              filter = { branch: activeBranch };
+            } else {
+              filter = {};
+            }
+          } else {
+            // Logic cho trang đơn hàng (sales)
+            if (isManager) {
+              // Trưởng phòng trở lên thấy toàn bộ đơn hàng
+              filter = {};
+            } else {
+              // Nhân viên kinh doanh: thấy đơn hàng thuộc hợp đồng của mình (dù ai tạo)
+              // hoặc đơn hàng mà họ là người phụ trách (employeeName)
+              const userContracts = await prisma.contract.findMany({
+                where: { salesEmployee: userName },
+                select: { contractNumber: true }
+              });
+              const contractNumbers = userContracts.map(c => c.contractNumber);
+              const contractConditions = contractNumbers.map(num => ({
+                note: { contains: `Hợp đồng: ${num}` }
+              }));
+
+              filter = {
+                OR: [
+                  { employeeName: userName },
+                  ...contractConditions
+                ]
+              };
+            }
+          }
+        }
         return NextResponse.json(await (prisma as any).order.findMany({ 
           where: filter,
           include: { orderitem: true }, 

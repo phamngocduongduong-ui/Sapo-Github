@@ -55,3 +55,149 @@ export function decryptSecret(encrypted: string, username: string): string {
     return "";
   }
 }
+
+// Helper to interact with IndexedDB for storing device secrets
+function getIndexedDBSecret(username: string): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined" || !window.indexedDB) {
+      resolve("");
+      return;
+    }
+    try {
+      const request = window.indexedDB.open("ems_device_db", 1);
+      request.onupgradeneeded = (event: any) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains("secrets")) {
+          db.createObjectStore("secrets");
+        }
+      };
+      request.onsuccess = (event: any) => {
+        const db = event.target.result;
+        try {
+          const transaction = db.transaction("secrets", "readonly");
+          const store = transaction.objectStore("secrets");
+          const getReq = store.get(username);
+          getReq.onsuccess = () => {
+            resolve(getReq.result || "");
+          };
+          getReq.onerror = () => resolve("");
+        } catch (e) {
+          resolve("");
+        }
+      };
+      request.onerror = () => resolve("");
+    } catch (e) {
+      resolve("");
+    }
+  });
+}
+
+function setIndexedDBSecret(username: string, encryptedValue: string): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined" || !window.indexedDB) {
+      resolve();
+      return;
+    }
+    try {
+      const request = window.indexedDB.open("ems_device_db", 1);
+      request.onupgradeneeded = (event: any) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains("secrets")) {
+          db.createObjectStore("secrets");
+        }
+      };
+      request.onsuccess = (event: any) => {
+        const db = event.target.result;
+        try {
+          const transaction = db.transaction("secrets", "readwrite");
+          const store = transaction.objectStore("secrets");
+          const putReq = store.put(encryptedValue, username);
+          putReq.onsuccess = () => resolve();
+          putReq.onerror = () => resolve();
+        } catch (e) {
+          resolve();
+        }
+      };
+      request.onerror = () => resolve();
+    } catch (e) {
+      resolve();
+    }
+  });
+}
+
+// Helper to interact with Cookies
+function getCookieSecret(username: string): string {
+  if (typeof document === "undefined") return "";
+  const name = `ems_dev_sec_${username}=`;
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const ca = decodedCookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) === 0) {
+      return c.substring(name.length, c.length);
+    }
+  }
+  return "";
+}
+
+function setCookieSecret(username: string, encryptedValue: string) {
+  if (typeof document === "undefined") return;
+  // Cookie lasts for 10 years (315360000 seconds)
+  document.cookie = `ems_dev_sec_${username}=${encryptedValue}; path=/; max-age=315360000; SameSite=Lax; Secure`;
+}
+
+// Helper to interact with LocalStorage
+function getLocalStorageSecret(username: string): string {
+  if (typeof window === "undefined") return "";
+  let val = localStorage.getItem(`ems_device_secret_${username}`);
+  if (!val) {
+    // Legacy fallback key to support old logins that used the single key
+    val = localStorage.getItem("ems_device_secret");
+  }
+  return val || "";
+}
+
+function setLocalStorageSecret(username: string, encryptedValue: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`ems_device_secret_${username}`, encryptedValue);
+  // Maintain the legacy fallback key to ease migrations
+  localStorage.setItem("ems_device_secret", encryptedValue);
+}
+
+/**
+ * Loads device secret by checking LocalStorage, Cookies, and IndexedDB.
+ * Synthesizes a new one only if none exist, then synchronizes it across all three channels.
+ */
+export async function loadOrRegisterDeviceSecret(username: string): Promise<string> {
+  if (typeof window === "undefined") return "";
+
+  // 1. Read from all 3 storage sources
+  let localVal = getLocalStorageSecret(username);
+  let cookieVal = getCookieSecret(username);
+  let idbVal = await getIndexedDBSecret(username);
+
+  // 2. Select the first available encrypted value
+  let encrypted = localVal || cookieVal || idbVal;
+  let secret = "";
+
+  if (encrypted) {
+    secret = decryptSecret(encrypted, username);
+  }
+
+  // 3. Generate a new secret if decryption fails or if no secret is found
+  if (!secret) {
+    secret = generateDeviceSecret();
+    encrypted = encryptSecret(secret, username);
+  }
+
+  // 4. Synergize and persist back to all 3 channels for redundancy
+  setLocalStorageSecret(username, encrypted);
+  setCookieSecret(username, encrypted);
+  await setIndexedDBSecret(username, encrypted);
+
+  return secret;
+}
+

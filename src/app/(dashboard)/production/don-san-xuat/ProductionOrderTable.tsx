@@ -15,6 +15,19 @@ const formatYearMonth = (dateInput: any) => {
   return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 };
 
+const getThermometerInfo = (order: any, contracts: any[]) => {
+  if (!order.thermometer) return "Không sử dụng";
+  const match = order.note?.match(/Hợp đồng:\s*([^\s,;]+)/);
+  const contractNumber = match ? match[1].trim() : null;
+  if (contractNumber) {
+    const contract = (contracts || []).find(c => c.contractNumber === contractNumber);
+    if (contract && contract.thermometerQty) {
+      return `Có sử dụng (${contract.thermometerQty} cái)`;
+    }
+  }
+  return "Có sử dụng";
+};
+
 export default function ProductionOrderTable({
   initialOrders,
   customers,
@@ -44,7 +57,7 @@ export default function ProductionOrderTable({
   }, [initialOrders]);
   
   // Real-time sync (disabled during transition)
-  useRealTimeSync("orders", orders, setOrders, 3000, isPending);
+  useRealTimeSync("orders&page=production", orders, setOrders, 3000, isPending);
 
   // Sync calendar date when filterMonth changes
   useEffect(() => {
@@ -1044,81 +1057,7 @@ export default function ProductionOrderTable({
             </button>
           </div>
 
-          {/* Mobile filter toggle box */}
-          <div 
-            className="mobile-filter-header"
-            onClick={() => setFilterOpen(!filterOpen)}
-          >
-            <span className="mobile-filter-title">Tìm kiếm & Bộ lọc</span>
-            <ChevronDown size={18} className={`mobile-filter-arrow ${filterOpen ? "open" : ""}`} />
-          </div>
 
-          {/* Filters Bar */}
-          <div className={`base-filters ${filterOpen ? "mobile-show" : "mobile-hide"}`} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginTop: "10px", marginBottom: "10px" }}>
-            <div>
-              <label className="filter-label">Mã đơn hàng</label>
-              <div className="search-box-base">
-                <Search size={16} className="search-icon" />
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  style={{ width: "100%" }} 
-                  value={filterOrderCode} 
-                  onChange={(e) => setFilterOrderCode(e.target.value)} 
-                  list="orders-datalist" 
-                  placeholder="-- Nhập tìm kiếm mã đơn hàng --"
-                />
-              </div>
-              <datalist id="orders-datalist">
-                {filterableOrderCodes.map(code => (
-                  <option key={code} value={code} />
-                ))}
-              </datalist>
-            </div>
-            <div>
-              <label className="filter-label">Nhân viên Kinh doanh</label>
-              <select className="form-control" style={{ width: "100%" }} value={filterEmployee} onChange={(e) => setFilterEmployee(e.target.value)}>
-                <option value="">-- Tất cả nhân viên --</option>
-                {salesEmployees.map(e => <option key={e} value={e}>{e}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="filter-label">Thời gian đề nghị</label>
-              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                <input 
-                  type="month" 
-                  className="form-control" 
-                  style={{ flex: 1, minWidth: 0 }} 
-                  value={filterMonth} 
-                  onChange={(e) => setFilterMonth(e.target.value)} 
-                  onBlur={(e) => {
-                    if (e.target.value !== filterMonth) {
-                      setFilterMonth(e.target.value || "");
-                    }
-                  }}
-                />
-                {filterMonth && (
-                  <button 
-                    type="button" 
-                    className="sapo-btn sapo-btn-danger" 
-                    onClick={() => setFilterMonth("")} 
-                    style={{ 
-                      padding: "4px 8px", 
-                      fontSize: "12px", 
-                      fontWeight: 600, 
-                      whiteSpace: "nowrap", 
-                      height: "32px", 
-                      borderRadius: "4px", 
-                      display: "flex", 
-                      alignItems: "center" 
-                    }}
-                  >
-                    Đặt lại
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
 
           {/* TAB 1: ĐƠN CHỜ TIẾP NHẬN */}
           {activeMainTab === 1 && (
@@ -1183,15 +1122,13 @@ export default function ProductionOrderTable({
                         </tr>
                       ) : (
                         pendingAcceptOrders.map((order, idx) => (
-                          <Fragment key={order.id}>
                             <tr
+                              key={order.id}
                               onClick={() => {
                                 const isSelected = selectedOrderId === order.id;
                                 setSelectedOrderId(isSelected ? null : order.id);
-                                setExpandedOrderId(isSelected ? null : order.id);
                               }}
-                              onDoubleClick={() => handleView(order)}
-                              title="Nhấn 1 lần để chọn và mở rộng, nhấp đúp để xem chi tiết"
+                              title="Nhấp để chọn"
                               className={`row-hoverable ${selectedOrderId === order.id ? "row-selected" : ""}`}
                               style={{ cursor: "pointer" }}
                             >
@@ -1222,58 +1159,6 @@ export default function ProductionOrderTable({
                                 <span className={`status-pill ${order.status === "Chờ tiếp nhận" ? "status-waiting" : order.status === "Chờ kế hoạch" ? "status-planning" : "status-pending"}`}>{order.status}</span>
                               </td>
                             </tr>
-                            {expandedOrderId === order.id && (
-                              <tr>
-                                <td colSpan={10} style={{ padding: "0.75rem 1.5rem", background: "#f8fafc" }}>
-                                  <div style={{ padding: "1rem", background: "#fff", border: "1px solid #cbd5e1", borderRadius: "8px", overflowX: "auto" }}>
-                                    <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "13px", color: "#003466", fontWeight: "700" }}>
-                                      📦 Chi tiết hàng hóa (Đơn: {order.orderCode})
-                                    </h4>
-                                    <table style={{ fontSize: "12px", width: "100%", minWidth: "1285px", tableLayout: "fixed", borderCollapse: "collapse" }}>
-                                      <thead>
-                                        <tr style={{ background: "#f1f5f9" }}>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "300px", whiteSpace: "normal", verticalAlign: "middle" }}>Tên hàng hóa</th>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "150px", whiteSpace: "normal", verticalAlign: "middle" }}>Quy cách</th>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "80px", whiteSpace: "normal", verticalAlign: "middle" }}>Số lượng</th>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Pallet</th>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Nẹp góc</th>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Túi in</th>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Thùng in</th>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "65px", whiteSpace: "normal", verticalAlign: "middle" }}>Brix (%)</th>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "150px", whiteSpace: "normal", verticalAlign: "middle" }}>Tiêu chuẩn</th>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "180px", whiteSpace: "normal", verticalAlign: "middle" }}>Yêu cầu khác</th>
-                                          <th style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1", width: "180px", whiteSpace: "normal", verticalAlign: "middle" }}>Ghi chú</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {order.orderitem && order.orderitem.length > 0 ? (
-                                          order.orderitem.map((item: any) => (
-                                            <tr key={item.id}>
-                                              <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{item.productName}</td>
-                                              <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{item.packaging || "—"}</td>
-                                              <td style={{ padding: "6px", textAlign: "right", border: "1px solid #cbd5e1", fontWeight: 600 }}>{formatNumber(item.quantity)}</td>
-                                              <td style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1" }}>{item.hasPallet ? "✅" : "—"}</td>
-                                              <td style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1" }}>{item.hasCornerGuard ? "✅" : "—"}</td>
-                                              <td style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1" }}>{item.printedBag ? "✅" : "—"}</td>
-                                              <td style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1" }}>{item.printedBox ? "✅" : "—"}</td>
-                                              <td style={{ padding: "6px", textAlign: "center", border: "1px solid #cbd5e1" }}>{item.brix || "—"}</td>
-                                              <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{item.standard || "—"}</td>
-                                              <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{item.otherRequirements || "—"}</td>
-                                              <td style={{ padding: "6px", border: "1px solid #cbd5e1", color: "#64748b" }}>{item.note || "—"}</td>
-                                            </tr>
-                                          ))
-                                        ) : (
-                                          <tr>
-                                            <td colSpan={11} style={{ padding: "8px", textAlign: "center", color: "#888" }}>Không có chi tiết hàng hóa.</td>
-                                          </tr>
-                                        )}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </Fragment>
                         ))
                       )}
                     </tbody>
@@ -1303,9 +1188,7 @@ export default function ProductionOrderTable({
                             e.stopPropagation();
                             const isSel = selectedOrderId === order.id;
                             setSelectedOrderId(isSel ? null : order.id);
-                            setExpandedOrderId(isSel ? null : order.id);
                           }}
-                          onDoubleClick={() => handleView(order)}
                           className={`proposal-card ${isSelected ? "selected" : ""}`}
                         >
                           <div className="card-row card-header">
@@ -1426,8 +1309,7 @@ export default function ProductionOrderTable({
                                 const isSelected = selectedOrderId === order.id;
                                 setSelectedOrderId(isSelected ? null : order.id);
                               }}
-                              onDoubleClick={() => handleView(order)}
-                              title="Nhấn 1 lần để chọn, nhấp đúp để xem chi tiết"
+                              title="Nhấp để chọn"
                               className={`row-hoverable ${selectedOrderId === order.id ? "row-selected" : ""}`}
                               style={{ cursor: "pointer" }}
                             >
@@ -1488,9 +1370,7 @@ export default function ProductionOrderTable({
                             e.stopPropagation();
                             const isSel = selectedOrderId === order.id;
                             setSelectedOrderId(isSel ? null : order.id);
-                            setExpandedOrderId(isSel ? null : order.id);
                           }}
-                          onDoubleClick={() => handleView(order)}
                           className={`proposal-card ${isSelected ? "selected" : ""}`}
                         >
                           <div className="card-row card-header">
@@ -1597,73 +1477,30 @@ export default function ProductionOrderTable({
       {/* DETAILED VIEW MODAL */}
       {showViewModal && viewingOrder && (
         <div className="custom-modal-overlay" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
-          <div style={{ background: "#ffffff", width: "900px", height: "80%", display: "flex", flexDirection: "column", padding: 0, borderRadius: "16px", border: "1px solid #cbd5e1", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", overflow: "hidden" }}>
+          <div style={{ background: "#ffffff", width: "900px", height: "490px", display: "flex", flexDirection: "column", padding: 0, borderRadius: "16px", border: "1px solid #cbd5e1", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", overflow: "hidden" }}>
             
             {/* Modal Header */}
             <h3 style={{ borderBottom: "1px solid #eee", padding: "12px 24px", margin: 0, background: "#fff", fontWeight: 700, color: "#003466", display: "flex", alignItems: "center", gap: "8px" }}>
               🔍 Chi tiết đơn sản xuất: <span style={{ color: "#ff5c00" }}>{viewingOrder.orderCode}</span>
+              {viewingOrder.employeeName && (
+                <>
+                  <span style={{ fontSize: "16px", color: "#64748b", fontWeight: "normal", marginLeft: "4px" }}>—</span>
+                  <span style={{ fontSize: "16px", color: "#64748b", fontWeight: 600, marginLeft: "6px" }}>Nhân viên:</span>
+                  <span style={{ color: "#ff5c00", textTransform: "uppercase", fontSize: "16px", fontWeight: 700, marginLeft: "4px" }}>
+                    {viewingOrder.employeeName}
+                  </span>
+                </>
+              )}
             </h3>
 
-            {/* Modal Tabs Navigation */}
-            <div style={{ display: "flex", gap: "0.15rem", borderBottom: "2px solid #eee", padding: "0 0.5rem", background: "#f8fafc" }}>
-              <button type="button" onClick={() => setModalActiveTab(1)} style={getTabButtonStyle(1)}>
-                1. Thông tin chung
-              </button>
-              <button type="button" onClick={() => setModalActiveTab(2)} style={getTabButtonStyle(2)}>
-                2. Chi tiết hàng hóa
-              </button>
-            </div>
-
             {/* Modal Scrollable Body */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
+            <div style={{ flex: 1, overflow: "auto", padding: "16px 24px" }}>
               
-              {/* Tab 1: General Info */}
-              <div style={{ display: modalActiveTab === 1 ? "grid" : "none", gridTemplateColumns: "repeat(3, 1fr)", rowGap: "12px", columnGap: "1.5rem" }}>
-                <div>
-                  <label className="filter-label">Mã đơn hàng</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.orderCode} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div>
-                  <label className="filter-label">Mã khách hàng</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.customerCode} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div>
-                  <label className="filter-label">Nhân viên thực hiện</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.employeeName} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div>
-                  <label className="filter-label">Ngày thực hiện</label>
-                  <input type="text" className="input" defaultValue={new Date(viewingOrder.orderDate).toLocaleDateString("vi-VN")} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div>
-                  <label className="filter-label">Chi nhánh</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.branch || "—"} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div>
-                  <label className="filter-label">Thời gian đề nghị</label>
-                  <input type="text" className="input" defaultValue={formatYearMonth(viewingOrder.requestDeliveryDate)} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-
-                <div>
-                  <label className="filter-label">Ngày dự kiến xuất hàng</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.shipDate ? new Date(viewingOrder.shipDate).toLocaleDateString("vi-VN") : "—"} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-                <div>
-                  <label className="filter-label">Trạng thái</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.status} readOnly style={{ width: "100%", background: "#f1f5f9", fontWeight: 700, color: viewingOrder.status === "Chờ tiếp nhận" ? "#7c3aed" : viewingOrder.status === "Chờ kế hoạch" ? "#2563eb" : undefined }} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", gridColumn: "span 3", marginTop: "5px" }}>
-                  <input type="checkbox" id="modal-thermometer" checked={viewingOrder.thermometer} readOnly style={{ width: "16px", height: "16px" }} />
-                  <label htmlFor="modal-thermometer" style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#003466" }}>CÓ SỬ DỤNG NHIỆT KẾ</label>
-                </div>
-                <div style={{ gridColumn: "span 3" }}>
-                  <label className="filter-label">Ghi chú</label>
-                  <input type="text" className="input" defaultValue={viewingOrder.note ?? "—"} readOnly style={{ width: "100%", background: "#f1f5f9" }} />
-                </div>
-              </div>
-
-              {/* Tab 2: Goods list */}
-              <div style={{ display: modalActiveTab === 2 ? "block" : "none" }}>
+              {/* Goods list Section */}
+              <div style={{ marginTop: "0px", marginBottom: "20px" }}>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", color: "#003466", fontWeight: "700" }}>
+                  📦 Chi tiết hàng hóa
+                </h4>
                 <div style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "8px" }}>
                   <table style={{ fontSize: "12px", width: "100%", minWidth: "1285px", tableLayout: "fixed", borderCollapse: "collapse" }}>
                     <thead style={{ background: "#f8fafc" }}>
@@ -1700,12 +1537,53 @@ export default function ProductionOrderTable({
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={10} style={{ padding: "12px", textAlign: "center", color: "#888" }}>Không có chi tiết hàng hóa.</td>
+                          <td colSpan={11} style={{ padding: "12px", textAlign: "center", color: "#888" }}>Không có chi tiết hàng hóa.</td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
+                
+                {/* Dòng Nhiệt kế và Ghi chú dưới bảng chi tiết hàng hóa */}
+                <div style={{ display: "flex", gap: "2.5rem", marginTop: "15px", flexWrap: "wrap", alignItems: "baseline" }}>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "baseline" }}>
+                    <span className="filter-label" style={{ display: "inline-block", margin: 0, whiteSpace: "nowrap" }}>Nhiệt kế:</span>
+                    <span style={{ fontSize: "14px", fontWeight: "500", color: "#1e293b" }}>{getThermometerInfo(viewingOrder, contracts)}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "baseline" }}>
+                    <span className="filter-label" style={{ display: "inline-block", margin: 0, whiteSpace: "nowrap" }}>Ghi chú:</span>
+                    <span style={{ fontSize: "14px", fontWeight: "500", color: "#1e293b", whiteSpace: "pre-wrap" }}>{viewingOrder.note ?? "—"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Attachments Section */}
+              <div style={{ marginTop: "20px", borderTop: "1px solid #cbd5e1", paddingTop: "15px" }}>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", color: "#003466", fontWeight: "700" }}>
+                  📎 Tệp đính kèm từ hợp đồng
+                </h4>
+                {(() => {
+                  const match = viewingOrder.note?.match(/Hợp đồng:\s*(.*?)(?:\s+-\s+|$)/);
+                  const contractNo = match ? match[1]?.trim() : null;
+                  const contractObj = contractNo ? (contracts || []).find((c: any) => c.contractNumber?.trim() === contractNo) : null;
+                  const attachments = contractObj?.attachments ? JSON.parse(contractObj.attachments) : [];
+                  
+                  if (attachments && attachments.length > 0) {
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {attachments.map((file: any, index: number) => (
+                          <div key={index} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "6px 12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px" }}>
+                            <span style={{ fontSize: "13px", color: "#334155", flex: 1 }}>{file.fileName}</span>
+                            <a href={file.fileContent} download={file.fileName} style={{ fontSize: "12px", color: "#2563eb", textDecoration: "underline", fontWeight: 500 }}>
+                              Tải xuống
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return <span style={{ fontSize: "13px", color: "#64748b" }}>Không có tệp đính kèm nào.</span>;
+                })()}
               </div>
 
             </div>

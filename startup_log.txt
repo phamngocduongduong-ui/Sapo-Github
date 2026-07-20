@@ -8,4 +8,4 @@
   - Environments: .env
 
  ✓ Starting...
- ✓ Ready in 5.4s
+ ✓ Ready in 3.5s

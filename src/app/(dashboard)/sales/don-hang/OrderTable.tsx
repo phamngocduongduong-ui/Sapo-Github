@@ -125,7 +125,8 @@ export default function OrderTable({
 
   const eligibleOrders = useMemo(() => {
     return orders.filter(o => 
-      (o.status === "Chờ kế hoạch" || o.status === "Chờ giao hàng") &&
+      o.status !== "Đã giao hàng" &&
+      o.status !== "Đã hủy" &&
       o.orderCode !== formOrderCode
     );
   }, [orders, formOrderCode]);
@@ -306,7 +307,7 @@ export default function OrderTable({
 
 
   // Auto-Sync
-  useRealTimeSync("orders", orders, setOrders);
+  useRealTimeSync("orders&page=sales", orders, setOrders);
 
   // Logic lọc dữ liệu
   const filteredOrders = useMemo(() => {
@@ -806,7 +807,7 @@ export default function OrderTable({
         .base-table {
           height: auto !important;
           width: 100% !important;
-          min-width: 1100px !important;
+          min-width: 1250px !important;
           table-layout: fixed !important;
         }
         .base-table th {
@@ -1210,14 +1211,14 @@ export default function OrderTable({
                   <th style={{ width: "130px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Mã ĐH</th>
                   <th style={{ width: "120px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Hàng ghép chung</th>
                   <th style={{ width: "65px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Mã KH</th>
-                  <th style={{ width: "150px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Nhân viên</th>
+                  <th style={{ width: "200px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Nhân viên</th>
                   <th style={{ width: "100px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Ngày tạo</th>
                   <th style={{ width: "95px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Chi nhánh</th>
                   <th style={{ width: "115px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Trạng thái</th>
-                  <th style={{ width: "110px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Thời gian giao đề nghị</th>
+                  <th style={{ width: "130px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Thời gian giao đề nghị</th>
                   <th style={{ width: "95px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Ngày xuất dự kiến</th>
-                  <th style={{ width: "90px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tổng số lượng</th>
-                  <th className="th-last" style={{ width: "90px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tổng giá trị</th>
+                  <th style={{ width: "120px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tổng số lượng</th>
+                  <th className="th-last" style={{ width: "140px", textAlign: "center", color: "#003466", textTransform: "uppercase", fontWeight: 700 }}>Tổng giá trị</th>
                 </tr>
               </thead>
               <tbody>
@@ -1617,7 +1618,7 @@ export default function OrderTable({
                                   ))
                               ) : (
                                 <div style={{ padding: "8px 12px", color: "#64748b", fontSize: "12px", textAlign: "center" }}>
-                                  Không tìm thấy đơn hàng chờ kế hoạch/chờ giao hàng phù hợp
+                                  Không tìm thấy đơn hàng chưa hoàn tất giao hàng phù hợp
                                 </div>
                               )}
                             </div>

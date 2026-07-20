@@ -87,29 +87,32 @@ export async function getWarehouses() {
 
 async function generatePOCode(branchName: string) {
   if (!branchName) return "";
-  // branchName can be multiple branches like "HCM, HN", take the first one or exact match
   const firstBranchName = branchName.split(",")[0].trim();
   const branch = await (prisma as any).branch.findFirst({ where: { name: firstBranchName } });
   if (!branch) return "";
 
+  const now = new Date();
+  const yearSuffix = now.getFullYear().toString().slice(-2); // e.g. "26"
+
   const orders = await (prisma as any).purchaseorder.findMany({
-    where: { poCode: { contains: `/${branch.code}` } },
     select: { poCode: true }
   });
 
+  const prefix = `PO${yearSuffix}`;
   const nums = orders
     .map((o: any) => {
+      if (!o.poCode || !o.poCode.startsWith(prefix)) return 0;
       const parts = o.poCode.split("/");
-      const prefixPart = parts[0]; // e.g. "PO-0001"
-      const numPart = prefixPart.includes("-") ? prefixPart.split("-")[1] : prefixPart.substring(2);
-      return parseInt(numPart);
+      const codePart = parts[0]; // e.g. "PO2600001"
+      const numStr = codePart.substring(4); // remove "PO26" (4 chars)
+      return parseInt(numStr);
     })
     .filter((n: any) => !isNaN(n));
 
   const max = nums.length > 0 ? Math.max(...nums) : 0;
   const nextNum = (max + 1).toString().padStart(4, "0");
 
-  return `PO-${nextNum}/${branch.code}`;
+  return `${prefix}${nextNum}/${branch.code}`;
 }
 
 
@@ -185,9 +188,9 @@ export async function syncProposalStatus(proposalCode: string) {
   }
 
   // 4. Update the proposal status accordingly
-  const isApproved = isMaintenance ? (proposal.status === "Đã phê duyệt") : (proposal.status === "Chờ mua" || proposal.status === "Đã phê duyệt");
+  const isApproved = isMaintenance ? (proposal.status === "Đã phê duyệt") : (proposal.status === "Chờ thực hiện" || proposal.status === "Đã phê duyệt");
   if (isApproved || proposal.status === "Hoàn thành") {
-    const newStatus = isFullyPurchased ? "Hoàn thành" : (isMaintenance ? "Đã phê duyệt" : "Chờ mua");
+    const newStatus = isFullyPurchased ? "Hoàn thành" : (isMaintenance ? "Đã phê duyệt" : "Chờ thực hiện");
     if (proposal.status !== newStatus) {
       await (prisma as any)[isMaintenance ? "maintenanceproposal" : "purchasingproposal"].update({
         where: { id: proposal.id },
@@ -230,9 +233,12 @@ export async function createPurchaseOrder(formData: FormData, details: any[], in
   const deliveryLocation = formData.get("deliveryLocation") as string;
   const supplier = formData.get("supplier") as string;
   const paymentType = formData.get("paymentType") as string;
+  const deliveryDateStr = formData.get("deliveryDate") as string;
+  const deliveryDate = deliveryDateStr ? new Date(deliveryDateStr) : null;
 
   const branch = selectedBranch || user?.branch?.split(",")[0].trim() || "";
-  const poCode = await generatePOCode(branch);
+  const creatorBranchName = user?.branch?.split(",")[0].trim() || "";
+  const poCode = await generatePOCode(creatorBranchName);
 
   const id = require('crypto').randomUUID();
   const now = new Date();
@@ -249,6 +255,7 @@ export async function createPurchaseOrder(formData: FormData, details: any[], in
       deliveryLocation: deliveryLocation || "",
       supplier: supplier || null,
       paymentType: paymentType || "Phê duyệt trước, thanh toán sau",
+      deliveryDate,
       status: initialStatus,
       paymentStatus: initialStatus === "Chờ phê duyệt" ? "Chưa xác định" : "Chờ thanh toán",
       updatedAt: now,
@@ -303,6 +310,8 @@ export async function updatePurchaseOrder(id: string, formData: FormData, detail
   const deliveryLocation = formData.get("deliveryLocation") as string;
   const supplier = formData.get("supplier") as string;
   const paymentType = formData.get("paymentType") as string;
+  const deliveryDateStr = formData.get("deliveryDate") as string;
+  const deliveryDate = deliveryDateStr ? new Date(deliveryDateStr) : null;
 
   const now = new Date();
   const updatedPO = await (prisma as any).purchaseorder.update({
@@ -314,6 +323,7 @@ export async function updatePurchaseOrder(id: string, formData: FormData, detail
       deliveryLocation: deliveryLocation || "",
       supplier: supplier || null,
       paymentType: paymentType || "Phê duyệt trước, thanh toán sau",
+      deliveryDate,
       updatedAt: now,
       purchaseorderdetail: {
         deleteMany: {},
@@ -724,7 +734,7 @@ export async function getMaintenanceProposals() {
 
 export async function createPOFromProposal(proposalId: string, formData: FormData, details: any[]) {
   // First, create the purchase order
-  const po = await createPurchaseOrder(formData, details, "Chờ phê duyệt");
+  const po = await createPurchaseOrder(formData, details, "Tạo mới");
 
   // Log audit trail for appropriate proposal model
   const session = await getSession();
@@ -827,4 +837,38 @@ export async function rejectProposal(id: string) {
   revalidatePath("/purchasing/phe-duyet-de-nghi");
 
   return updatedProposal;
+}
+
+export async function updatePODeliveryDate(id: string, deliveryDateStr: string | null) {
+  const session = await getSession();
+  if (!session) throw new Error("Bạn chưa đăng nhập hoặc phiên làm việc đã hết hạn");
+
+  const user = await (prisma as any).user.findUnique({ where: { id: session.userId } });
+  const changedBy = user?.employeeName || user?.username || "Hệ thống";
+
+  const oldPO = await (prisma as any).purchaseorder.findUnique({ where: { id } });
+  if (!oldPO) throw new Error("Không tìm thấy đơn mua hàng");
+
+  const deliveryDate = deliveryDateStr ? new Date(deliveryDateStr) : null;
+  const status = deliveryDate ? "Chờ giao hàng" : "Tạo mới";
+
+  const updatedPO = await (prisma as any).purchaseorder.update({
+    where: { id },
+    data: { deliveryDate, status, updatedAt: new Date() }
+  });
+
+  await logAudit({
+    tableName: "PurchaseOrder",
+    recordId: id,
+    action: "UPDATE",
+    oldData: { deliveryDate: oldPO.deliveryDate, status: oldPO.status },
+    newData: { deliveryDate, status },
+    changedBy,
+    changeDetail: deliveryDate
+      ? `Cập nhật ngày dự kiến giao: ${deliveryDate.toLocaleDateString("vi-VN")} (Trạng thái: Chờ giao hàng)`
+      : "Xóa ngày dự kiến giao (Trạng thái: Tạo mới)"
+  });
+
+  revalidatePath("/purchasing/lenh-mua");
+  return updatedPO;
 }

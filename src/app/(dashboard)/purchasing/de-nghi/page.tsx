@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { 
   getProposals, createProposal, updateProposal, 
-  deleteProposal, updateProposalStatus, getBranches, getUnits
+  deleteProposal, updateProposalStatus, getBranches, getUnits, getWarehouses
 } from "./actions";
 import HistoryModal from "../../HistoryModal";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
@@ -15,6 +15,7 @@ export default function PurchasingProposalPage() {
   const [proposals, setProposals] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [editingProposal, setEditingProposal] = useState<any | null>(null);
@@ -64,6 +65,7 @@ export default function PurchasingProposalPage() {
   useEffect(() => {
     if (showModal) {
       fetchUnits();
+      fetchWarehouses();
     }
   }, [showModal]);
 
@@ -83,6 +85,15 @@ export default function PurchasingProposalPage() {
       setUnits(data);
     } catch (e) {
       console.error("Failed to fetch units", e);
+    }
+  }
+
+  async function fetchWarehouses() {
+    try {
+      const data = await getWarehouses();
+      setWarehouses(data);
+    } catch (e) {
+      console.error("Failed to fetch warehouses", e);
     }
   }
 
@@ -420,15 +431,17 @@ export default function PurchasingProposalPage() {
         .base-table {
           height: auto !important;
           width: 100% !important;
-          min-width: 1320px !important;
+          min-width: 1020px !important;
           table-layout: auto !important;
           border-collapse: collapse !important;
+          border: 1px solid #cbd5e1 !important;
         }
         .base-table th {
           text-transform: uppercase !important;
           font-weight: 700 !important;
           color: #003466 !important;
           background: #f1f5f9 !important;
+          border: 1px solid #cbd5e1 !important;
           border-bottom: 2px solid #ff5c00 !important;
           text-align: center !important;
           height: 35px !important;
@@ -440,7 +453,7 @@ export default function PurchasingProposalPage() {
           vertical-align: middle !important;
           white-space: normal !important;
           word-break: break-word !important;
-          border-bottom: none !important;
+          border: 1px solid #cbd5e1 !important;
         }
         .base-table tbody tr {
           height: 45px !important;
@@ -798,7 +811,7 @@ export default function PurchasingProposalPage() {
             <option value="">-- Tất cả trạng thái --</option>
             <option value="Tạo mới">Tạo mới</option>
             <option value="Chờ duyệt">Chờ duyệt</option>
-            <option value="Chờ mua">Chờ mua</option>
+            <option value="Chờ thực hiện">Chờ thực hiện</option>
             <option value="Đã phê duyệt">Đã phê duyệt</option>
             <option value="Từ chối">Từ chối</option>
             <option value="Hoàn thành">Hoàn thành</option>
@@ -869,7 +882,7 @@ export default function PurchasingProposalPage() {
                   </button>
                 )}
 
-                {(selectedProposal.status === "Chờ mua" || selectedProposal.status === "Đã phê duyệt") && (
+                {(selectedProposal.status === "Chờ thực hiện" || selectedProposal.status === "Đã phê duyệt") && (
                   <button
                     type="button"
                     className="sapo-btn"
@@ -879,7 +892,7 @@ export default function PurchasingProposalPage() {
                   </button>
                 )}
 
-                {selectedProposal.status !== "Hoàn thành" && selectedProposal.status !== "Đã hủy" && selectedProposal.status !== "Từ chối" && selectedProposal.status !== "Đã phê duyệt" && selectedProposal.status !== "Chờ mua" && (
+                {selectedProposal.status !== "Hoàn thành" && selectedProposal.status !== "Đã hủy" && selectedProposal.status !== "Từ chối" && selectedProposal.status !== "Đã phê duyệt" && selectedProposal.status !== "Chờ thực hiện" && (
                   <button
                     type="button"
                     className="sapo-btn sapo-btn-danger"
@@ -915,21 +928,19 @@ export default function PurchasingProposalPage() {
             <table className="base-table">
               <thead>
                 <tr>
-                  <th className="nowrap" style={{ width: "50px" }}>STT</th>
-                  <th className="nowrap" style={{ width: "120px" }}>Số đề nghị</th>
-                  <th className="nowrap" style={{ width: "100px" }}>Ngày đề nghị</th>
-                  <th style={{ width: "170px" }}>Người đề nghị</th>
-                  <th style={{ width: "120px" }}>Chi nhánh</th>
-                  <th style={{ width: "210px" }}>Mục đích</th>
-                  <th style={{ width: "120px" }}>Tình trạng</th>
-                  <th className="nowrap" style={{ width: "120px" }}>Trạng thái</th>
+                  <th className="nowrap" style={{ width: "40px", minWidth: "40px" }}>STT</th>
+                  <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Số đề nghị</th>
+                  <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Ngày</th>
+                  <th style={{ width: "170px", minWidth: "170px" }}>Người đề nghị</th>
+                  <th style={{ width: "120px", minWidth: "120px" }}>Chi nhánh</th>
+                  <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Trạng thái</th>
                   <th style={{ minWidth: "250px" }}>Thông tin hàng hóa</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProposals.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>
+                    <td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>
                       Không tìm thấy đề nghị mua nào
                     </td>
                   </tr>
@@ -954,12 +965,10 @@ export default function PurchasingProposalPage() {
                         </td>
                         <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.proposer}</td>
                         <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.branch}</td>
-                        <td style={{ textAlign: "center" }}>{item.purpose}</td>
-                        <td style={{ textAlign: "center" }}>{item.urgency}</td>
                         <td className="nowrap" style={{ textAlign: "center" }}>
                           <span
                             className={`status-pill ${
-                              item.status === "Đã phê duyệt" || item.status === "Chờ mua" || item.status === "Hoàn thành"
+                              item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện" || item.status === "Hoàn thành"
                                 ? "status-active"
                                 : item.status === "Tạo mới"
                                 ? "status-new"
@@ -974,12 +983,19 @@ export default function PurchasingProposalPage() {
                         <td style={{ textAlign: "left", verticalAlign: "middle" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                             {(item.items || []).map((goods: any, gIdx: number) => (
-                              <div key={goods.id} style={{ fontSize: "12px", borderBottom: gIdx < (item.items.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "2px", color: "#334155" }}>
-                                {gIdx + 1}. {goods.productName} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
-                                {goods.orderedQuantity > 0 && (
-                                  <span style={{ color: "#16a34a", fontWeight: "600" }}>
-                                    {` (Đã đặt: ${Number(goods.orderedQuantity).toLocaleString("en-US")} - ${goods.poStatus || "Chờ giao hàng"})`}
-                                  </span>
+                              <div key={goods.id} style={{ fontSize: "12px", borderBottom: gIdx < (item.items.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "4px", paddingTop: "2px", color: "#334155" }}>
+                                <div>
+                                  {gIdx + 1}. {goods.productName} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
+                                </div>
+                                {goods.orderHistory && goods.orderHistory.length > 0 && (
+                                  <div style={{ paddingLeft: "15px", marginTop: "3px", color: "#16a34a", fontSize: "11px", display: "flex", flexDirection: "column", gap: "2px", fontWeight: "500" }}>
+                                    {goods.orderHistory.map((hist: any, hIdx: number) => (
+                                      <div key={hIdx} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                        <span style={{ display: "inline-block", width: "4px", height: "4px", borderRadius: "50%", backgroundColor: "#16a34a" }}></span>
+                                        <span>Lần đặt {hIdx + 1}: {hist.poCode} - SL: <strong style={{ color: "#15803d", fontWeight: "700" }}>{Number(hist.quantity).toLocaleString("en-US")} {hist.unit || ""}</strong> (Dự kiến giao: {hist.deliveryDate})</span>
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             ))}
@@ -1020,7 +1036,7 @@ export default function PurchasingProposalPage() {
                       </div>
                       <span
                         className={`status-pill ${
-                          item.status === "Đã phê duyệt" || item.status === "Chờ mua" || item.status === "Hoàn thành"
+                          item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện" || item.status === "Hoàn thành"
                             ? "status-active"
                             : item.status === "Tạo mới"
                             ? "status-new"
@@ -1065,12 +1081,17 @@ export default function PurchasingProposalPage() {
                               <span className="goods-num">{gIdx + 1}.</span> {goods.productName} 
                               <div style={{ marginLeft: "14px", color: "#64748b", fontSize: "11px" }}>
                                 ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
-                                {goods.orderedQuantity > 0 && (
-                                  <span style={{ color: "#16a34a", fontWeight: "600" }}>
-                                    {` (Đã đặt: ${Number(goods.orderedQuantity).toLocaleString("en-US")} - ${goods.poStatus || "Chờ giao hàng"})`}
-                                  </span>
-                                )}
                               </div>
+                              {goods.orderHistory && goods.orderHistory.length > 0 && (
+                                <div style={{ marginLeft: "14px", marginTop: "3px", color: "#16a34a", fontSize: "11px", display: "flex", flexDirection: "column", gap: "2px", fontWeight: "500" }}>
+                                  {goods.orderHistory.map((hist: any, hIdx: number) => (
+                                    <div key={hIdx} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                      <span style={{ display: "inline-block", width: "4px", height: "4px", borderRadius: "50%", backgroundColor: "#16a34a" }}></span>
+                                      <span>Lần đặt {hIdx + 1}: {hist.poCode} - SL: <strong style={{ color: "#15803d", fontWeight: "700" }}>{Number(hist.quantity).toLocaleString("en-US")} {hist.unit || ""}</strong> (Dự kiến giao: {hist.deliveryDate})</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1242,6 +1263,21 @@ export default function PurchasingProposalPage() {
                             defaultValue={editingProposal?.deliveryDate ? new Date(editingProposal.deliveryDate).toISOString().substring(0, 10) : ""} 
                           />
                         </div>
+                        <div style={{ width: "200px" }}>
+                          <label className="filter-label">Nơi giao *</label>
+                          <select 
+                            name="deliveryPlace" 
+                            className="input" 
+                            style={{ width: "100%" }}
+                            required 
+                            defaultValue={editingProposal?.deliveryPlace || ""}
+                          >
+                            <option value="" disabled>-- Chọn nơi giao --</option>
+                            {warehouses.map(w => (
+                              <option key={w.id} value={w.name}>{w.name}</option>
+                            ))}
+                          </select>
+                        </div>
                       </>
                     )}
                   </div>
@@ -1288,6 +1324,16 @@ export default function PurchasingProposalPage() {
                           className="input" 
                           style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
                           value={editingProposal?.deliveryDate ? new Date(editingProposal.deliveryDate).toLocaleDateString("vi-VN") : "Chưa xác định"} 
+                          readOnly 
+                        />
+                      </div>
+                      <div style={{ width: "200px" }}>
+                        <label className="filter-label">Nơi giao</label>
+                        <input 
+                          type="text" 
+                          className="input" 
+                          style={{ width: "100%", background: "#f1f5f9", cursor: "not-allowed" }}
+                          value={editingProposal?.deliveryPlace || "Chưa xác định"} 
                           readOnly 
                         />
                       </div>
@@ -1351,13 +1397,15 @@ export default function PurchasingProposalPage() {
                         details.map((d, index) => (
                           <tr key={index}>
                             <td data-label="Tên hàng" style={{ padding: "5px 6px" }}>
-                              <input 
-                                type="text"
+                              <textarea 
+                                rows={1}
                                 className="input-sm"
                                 style={{ 
-                                  textOverflow: "ellipsis", 
-                                  whiteSpace: "nowrap", 
-                                  overflow: "hidden" 
+                                  width: "100%",
+                                  height: "auto",
+                                  resize: "none",
+                                  overflowY: "hidden",
+                                  fontFamily: "inherit"
                                 }}
                                 value={d.productName}
                                 onChange={(e) => handleDetailChange(index, "productName", e.target.value)}
@@ -1365,44 +1413,75 @@ export default function PurchasingProposalPage() {
                                 placeholder="Tên hàng..."
                                 required
                                 disabled={isViewMode}
-                                title={d.productName}
+                                onInput={(e) => {
+                                  const target = e.target as HTMLTextAreaElement;
+                                  target.style.setProperty("height", "auto", "important");
+                                  const row = target.closest("tr");
+                                  const inputEl = row?.querySelector("input.input-sm") as HTMLElement;
+                                  const minH = inputEl ? inputEl.offsetHeight : 31;
+                                  const newHeight = target.scrollHeight > minH + 5 ? target.scrollHeight : minH;
+                                  target.style.setProperty("height", `${newHeight}px`, "important");
+                                }}
+                                ref={(el) => {
+                                  if (el) {
+                                    el.style.setProperty("height", "auto", "important");
+                                    const row = el.closest("tr");
+                                    const inputEl = row?.querySelector("input.input-sm") as HTMLElement;
+                                    const minH = inputEl ? inputEl.offsetHeight : 31;
+                                    const newHeight = el.scrollHeight > minH + 5 ? el.scrollHeight : minH;
+                                    el.style.setProperty("height", `${newHeight}px`, "important");
+                                  }
+                                }}
                               />
                             </td>
                             <td data-label="TC kỹ thuật" style={{ padding: "5px 6px" }}>
-                              <input 
-                                type="text"
+                              <textarea 
+                                rows={1}
                                 className="input-sm"
                                 style={{ 
-                                  textOverflow: "ellipsis", 
-                                  whiteSpace: "nowrap", 
-                                  overflow: "hidden" 
+                                  width: "100%",
+                                  height: "auto",
+                                  resize: "none",
+                                  overflowY: "hidden",
+                                  fontFamily: "inherit"
                                 }}
                                 value={d.techStandard}
                                 onChange={(e) => handleDetailChange(index, "techStandard", e.target.value)}
                                 onBlur={(e) => handleInputBlur(index, "techStandard", e.target.value)}
                                 placeholder="TCKT..."
                                 disabled={isViewMode}
-                                title={d.techStandard}
+                                onInput={(e) => {
+                                  const target = e.target as HTMLTextAreaElement;
+                                  target.style.setProperty("height", "auto", "important");
+                                  const row = target.closest("tr");
+                                  const inputEl = row?.querySelector("input.input-sm") as HTMLElement;
+                                  const minH = inputEl ? inputEl.offsetHeight : 31;
+                                  const newHeight = target.scrollHeight > minH + 5 ? target.scrollHeight : minH;
+                                  target.style.setProperty("height", `${newHeight}px`, "important");
+                                }}
+                                ref={(el) => {
+                                  if (el) {
+                                    el.style.setProperty("height", "auto", "important");
+                                    const row = el.closest("tr");
+                                    const inputEl = row?.querySelector("input.input-sm") as HTMLElement;
+                                    const minH = inputEl ? inputEl.offsetHeight : 31;
+                                    const newHeight = el.scrollHeight > minH + 5 ? el.scrollHeight : minH;
+                                    el.style.setProperty("height", `${newHeight}px`, "important");
+                                  }
+                                }}
                               />
                             </td>
                             <td data-label="ĐVT" style={{ padding: "5px 6px" }}>
-                              <select 
+                              <input 
+                                type="text"
                                 className="input-sm"
                                 value={d.unit || ""}
                                 onChange={(e) => handleDetailChange(index, "unit", e.target.value)}
+                                onBlur={(e) => handleInputBlur(index, "unit", e.target.value)}
+                                placeholder="ĐVT..."
                                 required
                                 disabled={isViewMode}
-                              >
-                                <option value="" disabled>ĐVT...</option>
-                                {units.map((u: any) => (
-                                  <option key={u.id} value={u.name}>
-                                    {u.name}
-                                  </option>
-                                ))}
-                                {d.unit && !units.some((u: any) => u.name === d.unit) && (
-                                  <option value={d.unit}>{d.unit}</option>
-                                )}
-                              </select>
+                              />
                             </td>
                             <td data-label="Số lượng" style={{ padding: "5px 6px" }}>
                               {isViewMode ? (

@@ -8,20 +8,14 @@ import {
   getPurchaseOrders, createPurchaseOrder, updatePurchaseOrder, 
   deletePurchaseOrder, updatePOStatus, getProducts, getWarehouses, getBranches,
   getMaintenanceProposals, createPOFromProposal, getSuppliers, completeProposal,
-  confirmPOPayment, rejectProposal, recallPurchaseOrder
+  confirmPOPayment, rejectProposal, recallPurchaseOrder, updatePODeliveryDate
 } from "./actions";
 import HistoryModal from "../../HistoryModal";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
 
 function getPODisplayCode(po: any) {
   if (!po) return "";
-  if (po.status === "Tạo mới" && po.purpose) {
-    const match = po.purpose.match(/đề xuất\s+([A-Z0-9]+)/i);
-    if (match && match[1]) {
-      return match[1];
-    }
-  }
-  return po.poCode || "";
+  return po.poCode;
 }
 
 export default function PurchaseOrderPage() {
@@ -35,6 +29,9 @@ export default function PurchaseOrderPage() {
   const [selectedSupplierName, setSelectedSupplierName] = useState<string>("");
   
   const [showModal, setShowModal] = useState(false);
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [showDeliveryDateModal, setShowDeliveryDateModal] = useState(false);
+  const [selectedPODeliveryDate, setSelectedPODeliveryDate] = useState<string>("");
   const [isViewOnly, setIsViewOnly] = useState(false);
   const [editingPO, setEditingPO] = useState<any | null>(null);
   const [proposalToConvert, setProposalToConvert] = useState<any | null>(null);
@@ -54,9 +51,8 @@ export default function PurchaseOrderPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Filters
-  const [activeTab, setActiveTab] = useState<"all" | "waiting_approval" | "waiting_payment" | "waiting_delivery" | "waiting_debt" | "completed">("all");
   const [filterSearch, setFilterSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatus, setFilterStatus] = useState("Tất cả");
   const [filterBranch, setFilterBranch] = useState("");
   const [filterMonth, setFilterMonth] = useState("");
 
@@ -75,7 +71,19 @@ export default function PurchaseOrderPage() {
   }, [items, proposals, selectedId, selectedType]);
 
   useEffect(() => {
-    const handleClick = () => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (document.querySelector(".custom-modal-overlay")) {
+        return;
+      }
+      if (
+        target.closest(".base-table") || 
+        target.closest(".search-container") || 
+        target.closest(".custom-modal-overlay") ||
+        target.closest(".tabs-container-custom")
+      ) {
+        return;
+      }
       setSelectedId(null);
       setSelectedType(null);
     };
@@ -151,9 +159,20 @@ export default function PurchaseOrderPage() {
     return proposals.filter(prop => {
       const isPending = prop.proposalCode.startsWith("BT")
         ? (prop.status === "Đã phê duyệt")
-        : (prop.status === "Chờ mua" || prop.status === "Đã phê duyệt");
+        : (prop.status === "Chờ thực hiện" || prop.status === "Đã phê duyệt");
 
       if (!isPending) return false;
+
+      // Phân quyền xem đề nghị theo chi nhánh hoạt động của user hiện tại
+      const userBranch = currentUser?.branch || "";
+      const hasHCM = currentUser?.isAdmin || userBranch.toLowerCase().includes("hcm") || userBranch.toLowerCase().includes("hồ chí minh");
+      
+      if (!hasHCM) {
+        const allowedBranches = userBranch.split(",").map(b => b.trim().toLowerCase());
+        if (!prop.branch || !allowedBranches.includes(prop.branch.trim().toLowerCase())) {
+          return false;
+        }
+      }
 
       const matchSearch = !filterSearch || 
         prop.proposalCode.toLowerCase().includes(filterSearch.toLowerCase()) ||
@@ -170,37 +189,37 @@ export default function PurchaseOrderPage() {
 
       return matchSearch && matchBranch && matchMonth;
     });
-  }, [proposals, filterSearch, filterBranch, filterMonth]);
+  }, [proposals, filterSearch, filterBranch, filterMonth, currentUser]);
 
   // Right side: created POs
   const filteredPOs = useMemo(() => {
     return items.filter(po => {
       if (po.status === "Từ chối") return false;
 
-      let matchTab = false;
-      if (activeTab === "all") {
-        matchTab = true;
-      } else if (activeTab === "waiting_approval" && po.status === "Chờ phê duyệt") {
-        matchTab = true;
-      } else if (activeTab === "waiting_payment" && po.status === "Chờ thanh toán") {
-        matchTab = true;
-      } else if (activeTab === "waiting_delivery" && po.status === "Chờ giao hàng") {
-        matchTab = true;
-      } else if (activeTab === "waiting_debt" && po.status === "Đã nhập kho" && po.paymentStatus !== "Đã thanh toán") {
-        matchTab = true;
-      } else if (activeTab === "completed" && po.status === "Đã nhập kho" && po.paymentStatus === "Đã thanh toán") {
-        matchTab = true;
+      let matchStatus = false;
+      if (filterStatus === "Tất cả") {
+        matchStatus = true;
+      } else if (filterStatus === "Tạo mới") {
+        if (po.status !== "Đã nhập kho" && !po.deliveryDate) {
+          matchStatus = true;
+        }
+      } else if (filterStatus === "Chờ giao hàng") {
+        if (po.status !== "Đã nhập kho" && po.deliveryDate) {
+          matchStatus = true;
+        }
+      } else if (filterStatus === "Đã giao hàng") {
+        if (po.status === "Đã nhập kho") {
+          matchStatus = true;
+        }
       }
 
-      if (!matchTab) return false;
+      if (!matchStatus) return false;
 
       const matchSearch = !filterSearch || 
         po.poCode.toLowerCase().includes(filterSearch.toLowerCase()) ||
         po.creator.toLowerCase().includes(filterSearch.toLowerCase());
 
       const matchBranch = !filterBranch || po.branch === filterBranch;
-
-      const matchStatus = !filterStatus || po.status === filterStatus;
 
       const matchMonth = !filterMonth || (() => {
         const d = new Date(po.requestedDate);
@@ -209,9 +228,9 @@ export default function PurchaseOrderPage() {
         return `${year}-${month}` === filterMonth;
       })();
 
-      return matchSearch && matchBranch && matchStatus && matchMonth;
+      return matchSearch && matchBranch && matchMonth;
     });
-  }, [items, activeTab, filterSearch, filterBranch, filterStatus, filterMonth]);
+  }, [items, filterSearch, filterBranch, filterStatus, filterMonth]);
 
   const uniqueBranches = useMemo(() => {
     const branchesFromItems = items.map(po => po.branch);
@@ -223,12 +242,7 @@ export default function PurchaseOrderPage() {
     return list.sort();
   }, [items, proposals, filterBranch]);
 
-  const handleTabChange = (tab: "all" | "waiting_approval" | "waiting_payment" | "waiting_delivery" | "waiting_debt" | "completed") => {
-    setActiveTab(tab);
-    setFilterStatus("");
-    setSelectedId(null);
-    setSelectedType(null);
-  };
+
 
   const handleAddDetail = () => {
     setDetails([
@@ -365,13 +379,73 @@ export default function PurchaseOrderPage() {
     setShowProposalGoodsModal(false);
   };
 
+  const handleSaveDeliveryDate = () => {
+    if (!selectedId) return;
+    if (!selectedPODeliveryDate) {
+      alert("Vui lòng chọn ngày dự kiến giao");
+      return;
+    }
+    const selectedDate = new Date(selectedPODeliveryDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      alert("Không được chọn ngày trong quá khứ");
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const val = selectedPODeliveryDate || null;
+        await updatePODeliveryDate(selectedId, val);
+        setShowDeliveryDateModal(false);
+        setItems(prev => prev.map(po => {
+          if (po.id === selectedId) {
+            return { 
+              ...po, 
+              deliveryDate: val ? new Date(val) : null,
+              status: val ? "Chờ giao hàng" : "Tạo mới"
+            };
+          }
+          return po;
+        }));
+      } catch (err: any) {
+        alert(err.message || "Lỗi khi cập nhật ngày giao");
+      }
+    });
+  };
+
+  const handleEditPO = (item: any) => {
+    setEditingPO(item);
+    setProposalToConvert(null);
+    const mappedDetails = (item.purchaseorderdetail || []).map((d: any) => ({
+      productCode: d.productCode,
+      productName: d.productName,
+      proposalProductName: d.proposalProductName,
+      originalProposalProductName: d.proposalProductName,
+      requestedQuantity: d.requestedQuantity,
+      proposalQuantity: d.proposalQuantity,
+      unit: d.unit || "",
+      price: d.price || 0,
+      amount: d.amount || 0,
+      note: d.note || ""
+    }));
+    setDetails(mappedDetails);
+    setIsViewOnly(false);
+    setShowModal(true);
+    setSelectedSupplierName(item.supplier || "");
+  };
+
   const handleClose = () => {
+    const wasProposal = !!proposalToConvert;
     setShowModal(false);
     setEditingPO(null);
     setProposalToConvert(null);
     setIsViewOnly(false);
     setDetails([]);
     setSelectedSupplierName("");
+    if (wasProposal) {
+      setShowProposalModal(true);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -393,7 +467,6 @@ export default function PurchaseOrderPage() {
             ? `Mua vật tư bảo trì theo đề xuất ${proposalToConvert.proposalCode}`
             : `Mua hàng theo đề xuất ${proposalToConvert.proposalCode}`);
           await createPOFromProposal(proposalToConvert.id, formData, details);
-          setProposalToConvert(null);
         } else if (editingPO) {
           await updatePurchaseOrder(editingPO.id, formData, details);
         } else {
@@ -492,6 +565,45 @@ export default function PurchaseOrderPage() {
           margin-top: 0;
           margin-left: -10px;
           margin-right: -10px;
+        }
+        .tabs-container-custom {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 10px;
+          margin-top: 5px;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          padding: 2px 0px;
+          align-items: center;
+        }
+        .tab-btn-custom {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          background-color: #003466 !important;
+          color: white !important;
+          border: none !important;
+          padding: 6px 12px !important;
+          font-size: 13px !important;
+          font-weight: 500 !important;
+          border-radius: 6px !important;
+          cursor: pointer !important;
+          height: 32px !important;
+          font-family: "Segoe UI", sans-serif !important;
+          transition: background-color 0.2s !important;
+        }
+        .tab-btn-custom:hover {
+          background-color: #002447 !important;
+          color: white !important;
+        }
+        .tab-btn-custom.btn-outline {
+          background-color: white !important;
+          color: #003466 !important;
+          border: 1px solid #003466 !important;
+        }
+        .tab-btn-custom.btn-outline:hover {
+          background-color: #f0f7ff !important;
+          color: #003466 !important;
         }
         .panel-full {
           flex: 1 1 100%;
@@ -616,8 +728,8 @@ export default function PurchaseOrderPage() {
         .base-table {
           height: auto !important;
           width: 100% !important;
-          min-width: 1320px !important;
-          table-layout: auto !important;
+          min-width: 1020px !important;
+          table-layout: fixed !important;
           border-collapse: collapse !important;
         }
         .base-table th {
@@ -630,6 +742,7 @@ export default function PurchaseOrderPage() {
           height: 35px !important;
           padding-top: 6px !important;
           padding-bottom: 6px !important;
+          border-right: 1px solid #cbd5e1 !important;
         }
         .base-table td {
           padding: 6px 0.75rem !important;
@@ -637,6 +750,10 @@ export default function PurchaseOrderPage() {
           white-space: normal !important;
           word-break: break-word !important;
           border-bottom: none !important;
+          border-right: 1px solid #cbd5e1 !important;
+        }
+        .base-table th:last-child, .base-table td:last-child {
+          border-right: none !important;
         }
         .base-table tbody tr {
           height: 45px !important;
@@ -896,20 +1013,10 @@ export default function PurchaseOrderPage() {
             value={filterStatus} 
             onChange={(e) => setFilterStatus(e.target.value)}
           >
-            <option value="">-- Tất cả trạng thái --</option>
-            {activeTab === "all" && (
-              <>
-                <option value="Chờ phê duyệt">Chờ phê duyệt</option>
-                <option value="Chờ thanh toán">Chờ thanh toán</option>
-                <option value="Chờ giao hàng">Chờ giao hàng</option>
-                <option value="Đã nhập kho">Đã nhập kho</option>
-              </>
-            )}
-            {activeTab === "waiting_approval" && <option value="Chờ phê duyệt">Chờ phê duyệt</option>}
-            {activeTab === "waiting_payment" && <option value="Chờ thanh toán">Chờ thanh toán</option>}
-            {activeTab === "waiting_delivery" && <option value="Chờ giao hàng">Chờ giao hàng</option>}
-            {activeTab === "waiting_debt" && <option value="Đã nhập kho">Đã nhập kho</option>}
-            {activeTab === "completed" && <option value="Đã nhập kho">Đã nhập kho</option>}
+            <option value="Tất cả">Tất cả</option>
+            <option value="Tạo mới">Tạo mới</option>
+            <option value="Chờ giao hàng">Chờ giao hàng</option>
+            <option value="Đã giao hàng">Đã giao hàng</option>
           </select>
         </div>
         <div>
@@ -925,195 +1032,14 @@ export default function PurchaseOrderPage() {
       </div>
 
       <div style={{ display: "flex", gap: "1rem", width: "100%", minWidth: 0, alignItems: "flex-start" }}>
-        {/* LEFT COLUMN: Proposals (Đề nghị chờ mua) */}
-        <div className="left-deck" style={{ flex: "0 0 32%", minWidth: "300px" }}>
-          <div style={{ paddingBottom: "8px", borderBottom: "1px solid #cbd5e1", marginBottom: "4px" }}>
-            <h4 style={{ margin: 0, color: "#003466", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
-              📋 Đề nghị chờ mua ({filteredProposals.length})
-            </h4>
-            <p style={{ margin: "2px 0 0 0", fontSize: "11px", color: "#64748b" }}>
-              Danh sách đề nghị đã duyệt, chờ tạo đơn mua.
-            </p>
-          </div>
-            
-          {/* Actions for Left Column */}
-          {selectedType === "PROPOSAL" && selectedId && (
-            <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", minHeight: "32px", margin: "5px 0" }}>
-              {(() => {
-                const selectedProposal = filteredProposals.find(p => p.id === selectedId);
-                if (!selectedProposal) return null;
-                return (
-                  <>
-                    <button
-                      type="button"
-                      className="sapo-btn"
-                      onClick={() => handleView(selectedProposal, "PROPOSAL")}
-                    >
-                      Xem
-                    </button>
-                    <button
-                      type="button"
-                      className="sapo-btn sapo-btn-success"
-                      onClick={() => handleConvertProposal(selectedProposal)}
-                    >
-                      Tạo đơn mua
-                    </button>
-                    <button
-                      type="button"
-                      className="sapo-btn"
-                      style={{ backgroundColor: "#16a34a", color: "#fff" }}
-                      onClick={() => handleCompleteProposal(selectedProposal.id, selectedProposal.proposalCode)}
-                    >
-                      Hoàn thành
-                    </button>
-                    <button
-                      type="button"
-                      className="sapo-btn sapo-btn-danger"
-                      onClick={() => handleRejectProposal(selectedProposal.id, selectedProposal.proposalCode)}
-                    >
-                      Từ chối
-                    </button>
-                    <button
-                      type="button"
-                      className="sapo-btn"
-                      onClick={() => {
-                        setHistoryTableName("MaintenanceProposal");
-                        setHistoryRecordId(selectedProposal.id);
-                      }}
-                    >
-                      Lịch sử
-                    </button>
-                  </>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* Left Card Deck */}
-          <div className="proposal-deck">
-            {filteredProposals.length === 0 ? (
-              <div className="empty-placeholder">
-                🎉 Không có đề nghị mua hàng nào chờ tạo đơn.
-              </div>
-            ) : (
-              filteredProposals.map((item, idx) => {
-                const isSelected = selectedId === item.id && selectedType === "PROPOSAL";
-                return (
-                  <div
-                    key={`PROPOSAL-${item.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedId(item.id);
-                      setSelectedType("PROPOSAL");
-                      handleView(item, "PROPOSAL");
-                    }}
-                    className={`proposal-card ${isSelected ? "selected" : ""}`}
-                  >
-                    <div className="proposal-card-title">
-                      <span style={{ color: "var(--primary-color)", fontWeight: 700 }}>{item.proposalCode}</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }} onClick={(e) => e.stopPropagation()}>
-                        <span style={{ color: "#64748b", fontSize: "11px", fontWeight: 400 }}>
-                          📅 {new Date(item.proposalDate).toLocaleDateString("vi-VN")}
-                        </span>
-                        <button
-                          type="button"
-                          className="sapo-btn sapo-btn-success"
-                          style={{ height: "22px", padding: "0 8px", fontSize: "11px", borderRadius: "4px", lineHeight: "22px", display: "inline-flex", alignItems: "center" }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleConvertProposal(item);
-                          }}
-                        >
-                          Tạo đơn mua
-                        </button>
-                      </div>
-                    </div>
-                    <div className="proposal-card-meta">
-                      <div><strong>Người đề xuất:</strong> {item.proposer}</div>
-                      <div><strong>Chi nhánh:</strong> {item.branch}</div>
-                      <div style={{ gridColumn: "span 2" }}><strong>Mục đích:</strong> {item.purpose}</div>
-                    </div>
-                    <div className="proposal-card-items">
-                      {(item.items || []).map((goods: any, gIdx: number) => (
-                        <div key={goods.id} style={{ fontSize: "11px", borderBottom: gIdx < (item.items.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "2px", color: "#334155" }}>
-                          {gIdx + 1}. {goods.productName} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
-                          {goods.orderedQuantity > 0 && (
-                            <span style={{ color: "#16a34a", fontWeight: "600" }}>
-                              {` (Đã đặt: ${Number(goods.orderedQuantity).toLocaleString("en-US")})`}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-        </div>
-
         {/* RIGHT COLUMN: Purchase Orders (Đơn mua đã tạo) */}
-        <div className="left-deck" style={{ flex: "1 1 68%", minWidth: 0 }}>
-          <div style={{ paddingBottom: "8px", borderBottom: "1px solid #cbd5e1", marginBottom: "4px" }}>
-            <h4 style={{ margin: 0, color: "#003466", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
-              📝 Đơn mua đã tạo ({filteredPOs.length})
-            </h4>
-            <p style={{ margin: "2px 0 0 0", fontSize: "11px", color: "#64748b" }}>
-              Danh sách đơn mua hàng đã tạo để theo dõi và thực hiện.
-            </p>
-          </div>
+        <div style={{ flex: "1 1 100%", minWidth: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
             
-            {/* Tabs for Right Column */}
-            <div style={{ display: "flex", gap: "0.25rem", overflowX: "auto", paddingBottom: "4px", borderBottom: "1px solid #cbd5e1" }}>
-              <button 
-                onClick={() => handleTabChange("all")}
-                className={`sapo-btn ${activeTab === "all" ? "" : "btn-outline"}`}
-                style={{ height: "26px", fontSize: "11px", padding: "0 8px", borderRadius: "4px" }}
-              >
-                Tất cả ({items.filter(i => i.status !== "Từ chối").length})
-              </button>
-              <button 
-                onClick={() => handleTabChange("waiting_approval")}
-                className={`sapo-btn ${activeTab === "waiting_approval" ? "" : "btn-outline"}`}
-                style={{ height: "26px", fontSize: "11px", padding: "0 8px", borderRadius: "4px" }}
-              >
-                Chờ duyệt ({items.filter(i => i.status === "Chờ phê duyệt").length})
-              </button>
-              <button 
-                onClick={() => handleTabChange("waiting_payment")}
-                className={`sapo-btn ${activeTab === "waiting_payment" ? "" : "btn-outline"}`}
-                style={{ height: "26px", fontSize: "11px", padding: "0 8px", borderRadius: "4px" }}
-              >
-                Chờ thanh toán ({items.filter(i => i.status === "Chờ thanh toán").length})
-              </button>
-              <button 
-                onClick={() => handleTabChange("waiting_delivery")}
-                className={`sapo-btn ${activeTab === "waiting_delivery" ? "" : "btn-outline"}`}
-                style={{ height: "26px", fontSize: "11px", padding: "0 8px", borderRadius: "4px" }}
-              >
-                Chờ giao ({items.filter(i => i.status === "Chờ giao hàng").length})
-              </button>
-              <button 
-                onClick={() => handleTabChange("waiting_debt")}
-                className={`sapo-btn ${activeTab === "waiting_debt" ? "" : "btn-outline"}`}
-                style={{ height: "26px", fontSize: "11px", padding: "0 8px", borderRadius: "4px" }}
-              >
-                Chờ nợ ({items.filter(i => i.status === "Đã nhập kho" && i.paymentStatus !== "Đã thanh toán").length})
-              </button>
-              <button 
-                onClick={() => handleTabChange("completed")}
-                className={`sapo-btn ${activeTab === "completed" ? "" : "btn-outline"}`}
-                style={{ height: "26px", fontSize: "11px", padding: "0 8px", borderRadius: "4px" }}
-              >
-                Hoàn tất ({items.filter(i => i.status === "Đã nhập kho" && i.paymentStatus === "Đã thanh toán").length})
-              </button>
-            </div>
-
-            {/* Actions for Right Column */}
-            {selectedType === "PO" && selectedId && (
-              <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", minHeight: "32px", margin: "5px 0" }}>
-                {(() => {
+            {/* Actions Panel (Merged to a single line - outside table deck) */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", minHeight: "32px", marginBottom: "5px" }}>
+              {/* Left side: PO Action buttons */}
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "nowrap" }}>
+                {selectedType === "PO" && selectedId && (() => {
                   const selectedPO = filteredPOs.find(p => p.id === selectedId);
                   if (!selectedPO) return null;
                   return (
@@ -1124,6 +1050,27 @@ export default function PurchaseOrderPage() {
                         onClick={() => handleView(selectedPO, "PO")}
                       >
                         Xem
+                      </button>
+                      {selectedPO.status === "Tạo mới" && (
+                        <button
+                          type="button"
+                          className="sapo-btn"
+                          style={{ backgroundColor: "#0284c7", color: "#fff" }}
+                          onClick={() => handleEditPO(selectedPO)}
+                        >
+                          Sửa
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="sapo-btn"
+                        style={{ backgroundColor: "#8b5cf6", color: "#fff" }}
+                        onClick={() => {
+                          setSelectedPODeliveryDate(selectedPO.deliveryDate ? new Date(selectedPO.deliveryDate).toISOString().substring(0, 10) : "");
+                          setShowDeliveryDateModal(true);
+                        }}
+                      >
+                        Xếp lịch giao
                       </button>
                       {(selectedPO.status === "Chờ phê duyệt" || selectedPO.status === "Chờ thanh toán") && (
                         <button
@@ -1175,100 +1122,111 @@ export default function PurchaseOrderPage() {
                   );
                 })()}
               </div>
-            )}
 
-            {/* Right Table */}
-            <div className="base-table-wrapper" style={{ overflowX: "auto" }}>
-              <table className="base-table">
-                <thead>
-                  <tr>
-                    <th className="nowrap" style={{ width: "40px" }}>STT</th>
-                    <th className="nowrap" style={{ width: "120px" }}>Số đơn mua</th>
-                    <th className="nowrap" style={{ width: "90px" }}>Ngày mua</th>
-                    <th style={{ width: "110px" }}>Chi nhánh</th>
-                    <th style={{ width: "180px" }}>Thông tin hàng hóa</th>
-                    <th className="nowrap" style={{ width: "110px" }}>Trạng thái</th>
-                    <th className="nowrap" style={{ width: "110px" }}>Thanh toán</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPOs.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: "center", padding: "2rem", color: "#94a3b8" }}>
-                        Không có đơn mua hàng nào
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredPOs.map((item, idx) => {
-                      const isSelected = selectedId === item.id && selectedType === "PO";
-                      return (
-                        <tr
-                          key={`PO-${item.id}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isSelected) {
-                              setSelectedId(null);
-                              setSelectedType(null);
-                            } else {
-                              setSelectedId(item.id);
-                              setSelectedType("PO");
-                            }
-                          }}
-                          onDoubleClick={() => handleView(item, "PO")}
-                          className={`row-hoverable ${isSelected ? "row-selected" : ""}`}
-                          style={{ cursor: "pointer" }}
-                        >
-                          <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{idx + 1}</td>
-                          <td className="nowrap" style={{ textAlign: "center", fontWeight: 600, color: "var(--primary-color)" }}>{getPODisplayCode(item)}</td>
-                          <td className="nowrap" style={{ textAlign: "center" }}>
-                            {new Date(item.requestedDate).toLocaleDateString("vi-VN")}
-                          </td>
-                          <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.branch}</td>
-                          <td style={{ textAlign: "left", verticalAlign: "middle" }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                              {(item.purchaseorderdetail || []).map((goods: any, gIdx: number) => (
-                                <div key={goods.id} style={{ fontSize: "12px", borderBottom: gIdx < (item.purchaseorderdetail.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "2px", color: "#334155" }}>
-                                  {gIdx + 1}. {goods.productName} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.requestedQuantity).toLocaleString("en-US")}
-                                </div>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="nowrap" style={{ textAlign: "center" }}>
-                            <span
-                              className={`status-pill ${
-                                item.status === "Đã nhập kho" || item.status === "Chờ giao hàng" || item.status === "Chờ thực hiện" || item.status === "Chờ mua hàng" || item.status === "Hoàn thành" || item.status === "Chờ thanh toán"
-                                  ? "status-active"
-                                  : item.status === "Tạo mới"
-                                  ? "status-new"
-                                  : item.status === "Chờ phê duyệt"
-                                  ? "status-pending"
-                                  : "status-inactive"
-                              }`}
-                            >
-                              {item.status === "Chờ thực hiện" ? "Chờ mua hàng" : item.status}
-                            </span>
-                          </td>
-                          <td className="nowrap" style={{ textAlign: "center" }}>
-                            <span
-                              className={`status-pill ${
-                                item.paymentStatus === "Đã thanh toán" 
-                                  ? "status-active" 
-                                  : "status-pending"
-                              }`}
-                              style={item.paymentStatus === "Đã thanh toán" ? { color: "#16a34a" } : undefined}
-                            >
-                              {item.paymentStatus || "Chờ thanh toán"}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+              {/* Right side: Chọn đơn mua */}
+              <button 
+                type="button" 
+                className="sapo-btn sapo-btn-success" 
+                style={{ height: "32px", fontSize: "13px", padding: "0 15px", borderRadius: "6px" }}
+                onClick={() => setShowProposalModal(true)}
+              >
+                Chọn đơn mua
+              </button>
             </div>
 
-          </div>
+            {/* Table Deck Wrapper */}
+            <div className="left-deck" style={{ flex: "1 1 auto", width: "100%" }}>
+              {/* Right Table */}
+              <div className="base-table-wrapper" style={{ overflowX: "auto" }}>
+                <table className="base-table">
+                  <thead>
+                    <tr>
+                      <th className="nowrap" style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }}>STT</th>
+                      <th className="nowrap" style={{ width: "140px", minWidth: "140px", maxWidth: "140px" }}>Số đơn mua</th>
+                      <th className="nowrap" style={{ width: "110px", minWidth: "110px", maxWidth: "110px" }}>Ngày</th>
+                      <th style={{ width: "130px", minWidth: "130px", maxWidth: "130px" }}>Chi nhánh</th>
+                      <th style={{ width: "200px", minWidth: "200px", maxWidth: "200px" }}>NCC</th>
+                      <th style={{ width: "250px", minWidth: "250px", maxWidth: "250px" }}>Thông tin hàng hóa</th>
+                      <th className="nowrap" style={{ width: "140px", minWidth: "140px", maxWidth: "140px" }}>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPOs.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: "center", padding: "2rem", color: "#94a3b8" }}>
+                          Không có đơn mua hàng nào
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPOs.map((item, idx) => {
+                        const isSelected = selectedId === item.id && selectedType === "PO";
+                        return (
+                          <tr
+                            key={`PO-${item.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isSelected) {
+                                setSelectedId(null);
+                                setSelectedType(null);
+                              } else {
+                                setSelectedId(item.id);
+                                setSelectedType("PO");
+                              }
+                            }}
+                            onDoubleClick={() => handleView(item, "PO")}
+                            className={`row-hoverable ${isSelected ? "row-selected" : ""}`}
+                            style={{ cursor: "pointer" }}
+                          >
+                            <td className="nowrap" style={{ width: "50px", minWidth: "50px", maxWidth: "50px", textAlign: "center", color: "#000", fontWeight: 600 }}>{idx + 1}</td>
+                            <td className="nowrap" style={{ width: "140px", minWidth: "140px", maxWidth: "140px", textAlign: "center", fontWeight: 600, color: "var(--primary-color)" }}>{getPODisplayCode(item)}</td>
+                            <td className="nowrap" style={{ width: "110px", minWidth: "110px", maxWidth: "110px", textAlign: "center" }}>
+                              {new Date(item.requestedDate).toLocaleDateString("vi-VN")}
+                            </td>
+                            <td style={{ width: "130px", minWidth: "130px", maxWidth: "130px", textAlign: "center", color: "#000", fontWeight: 600 }}>{item.branch}</td>
+                            <td style={{ width: "200px", minWidth: "200px", maxWidth: "200px", textAlign: "left", color: "#334155", verticalAlign: "middle" }}>
+                              {item.supplier || "—"}
+                            </td>
+                            <td style={{ width: "250px", minWidth: "250px", maxWidth: "250px", textAlign: "left", verticalAlign: "middle" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                {(item.purchaseorderdetail || []).map((goods: any, gIdx: number) => (
+                                  <div key={goods.id} style={{ fontSize: "12px", borderBottom: gIdx < (item.purchaseorderdetail.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "2px", color: "#334155" }}>
+                                    {gIdx + 1}. {goods.productName} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.requestedQuantity).toLocaleString("en-US")}
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="nowrap" style={{ width: "140px", minWidth: "140px", maxWidth: "140px", textAlign: "center" }}>
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px" }}>
+                                <span
+                                  className={`status-pill ${
+                                    item.status === "Đã nhập kho" || item.status === "Chờ giao hàng" || item.status === "Chờ thực hiện" || item.status === "Chờ mua hàng" || item.status === "Hoàn thành" || item.status === "Chờ thanh toán"
+                                      ? "status-active"
+                                      : item.status === "Tạo mới"
+                                      ? "status-new"
+                                      : item.status === "Chờ phê duyệt"
+                                      ? "status-pending"
+                                      : "status-inactive"
+                                  }`}
+                                >
+                                  {item.status === "Chờ thực hiện" ? "Chờ mua hàng" : item.status}
+                                </span>
+                                {item.status === "Chờ giao hàng" && item.deliveryDate && (
+                                  <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>
+                                    ({new Date(item.deliveryDate).toLocaleDateString("vi-VN")})
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+        </div>
 
         {/* Floating/Side Notification Panel for Rejected POs */}
         {rejectedPOs.length > 0 && (
@@ -1469,7 +1427,7 @@ export default function PurchaseOrderPage() {
             </div>
 
             <div style={{ padding: "12px 24px", borderTop: "1px solid #e2e8f0", background: "#f8fafc", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-              {(viewingProposal.status === "Chờ mua" || viewingProposal.status === "Đã phê duyệt") && (
+              {(viewingProposal.status === "Chờ thực hiện" || viewingProposal.status === "Đã phê duyệt") && (
                 <>
                   <button
                     type="button"
@@ -1505,6 +1463,153 @@ export default function PurchaseOrderPage() {
                 </>
               )}
               <button type="button" className="sapo-btn sapo-btn-secondary" onClick={() => setViewingProposal(null)}>
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Chọn đơn mua (Danh sách đề nghị đã phê duyệt chờ tạo đơn mua hàng) */}
+      {showProposalModal && (
+        <div className="custom-modal-overlay">
+          <div
+            className="custom-modal-content-responsive"
+            style={{
+              width: "90%",
+              maxWidth: "1000px",
+              maxHeight: "85%",
+              margin: "auto",
+              display: "flex",
+              flexDirection: "column",
+              padding: 0,
+              background: "#ffffff",
+              borderRadius: "16px",
+              border: "1px solid #cbd5e1",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              overflow: "hidden"
+            }}
+          >
+            {/* Header */}
+            <div style={{ borderBottom: "1px solid #e2e8f0", padding: "14px 24px", background: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
+                📋 Danh sách đề nghị chờ tạo đơn mua ({filteredProposals.length})
+              </h3>
+              <button 
+                type="button" 
+                style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#64748b" }}
+                onClick={() => setShowProposalModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
+              {filteredProposals.length === 0 ? (
+                <div className="empty-placeholder">
+                  🎉 Không có đề nghị mua hàng nào chờ tạo đơn.
+                </div>
+              ) : (
+                <div className="responsive-table-wrapper" style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflowX: "auto" }}>
+                  <table className="table" style={{ fontSize: "13px", width: "100%", minWidth: "1100px", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "#f8fafc", borderBottom: "2px solid #cbd5e1" }}>
+                        <th style={{ padding: "10px", textAlign: "left", color: "#003466", fontWeight: 700 }}>Mã đề nghị</th>
+                        <th style={{ padding: "10px", textAlign: "left", color: "#003466", fontWeight: 700 }}>Ngày đề nghị</th>
+                        <th style={{ padding: "10px", textAlign: "left", color: "#003466", fontWeight: 700 }}>Người đề xuất</th>
+                        <th style={{ padding: "10px", textAlign: "left", color: "#003466", fontWeight: 700 }}>Chi nhánh</th>
+                        <th style={{ padding: "10px", textAlign: "left", color: "#003466", fontWeight: 700 }}>Mục đích</th>
+                        <th style={{ padding: "10px", textAlign: "left", color: "#003466", fontWeight: 700, width: "320px" }}>Chi tiết hàng hóa</th>
+                        <th style={{ padding: "10px", textAlign: "center", color: "#003466", fontWeight: 700, width: "300px" }}>Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProposals.map((item, idx) => (
+                        <tr key={item.id} style={{ borderBottom: "1px solid #e2e8f0", background: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
+                          <td style={{ padding: "10px", fontWeight: 700, color: "var(--primary-color)" }}>{item.proposalCode}</td>
+                          <td style={{ padding: "10px" }}>{new Date(item.proposalDate).toLocaleDateString("vi-VN")}</td>
+                          <td style={{ padding: "10px" }}>{item.proposer}</td>
+                          <td style={{ padding: "10px" }}>{item.branch}</td>
+                          <td style={{ padding: "10px" }}>{item.purpose}</td>
+                          <td style={{ padding: "10px" }}>
+                            <div style={{ background: "#f1f5f9", padding: "6px 8px", borderRadius: "4px", fontSize: "11px", color: "#334155" }}>
+                              {(item.items || []).map((goods: any, gIdx: number) => (
+                                <div key={goods.id} style={{ borderBottom: gIdx < (item.items.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "2px", marginTop: gIdx > 0 ? "2px" : "0" }}>
+                                  {gIdx + 1}. {goods.productName} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
+                                  {goods.orderedQuantity > 0 && (
+                                    <span style={{ color: "#16a34a", fontWeight: "600" }}>
+                                      {` (Đã đặt: ${Number(goods.orderedQuantity).toLocaleString("en-US")})`}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td style={{ padding: "10px", textAlign: "center" }}>
+                            <div style={{ display: "flex", gap: "4px", justifyContent: "center", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
+                              <button
+                                type="button"
+                                className="sapo-btn sapo-btn-success"
+                                style={{ height: "24px", fontSize: "11px", padding: "0 8px", borderRadius: "4px" }}
+                                onClick={() => {
+                                  setShowProposalModal(false);
+                                  handleConvertProposal(item);
+                                }}
+                              >
+                                Tạo đơn
+                              </button>
+                              <button
+                                type="button"
+                                className="sapo-btn"
+                                style={{ height: "24px", fontSize: "11px", padding: "0 8px", borderRadius: "4px" }}
+                                onClick={() => {
+                                  setShowProposalModal(false);
+                                  handleView(item, "PROPOSAL");
+                                }}
+                              >
+                                Xem
+                              </button>
+                              <button
+                                type="button"
+                                className="sapo-btn"
+                                style={{ height: "24px", fontSize: "11px", padding: "0 8px", borderRadius: "4px", backgroundColor: "#16a34a", color: "#fff" }}
+                                onClick={() => {
+                                  setShowProposalModal(false);
+                                  handleCompleteProposal(item.id, item.proposalCode);
+                                }}
+                              >
+                                Hoàn thành
+                              </button>
+                              <button
+                                type="button"
+                                className="sapo-btn sapo-btn-danger"
+                                style={{ height: "24px", fontSize: "11px", padding: "0 8px", borderRadius: "4px" }}
+                                onClick={() => {
+                                  setShowProposalModal(false);
+                                  handleRejectProposal(item.id, item.proposalCode);
+                                }}
+                              >
+                                Từ chối
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ borderTop: "1px solid #e2e8f0", padding: "12px 24px", background: "#f8fafc", display: "flex", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="sapo-btn btn-outline"
+                style={{ height: "32px", fontSize: "13px", padding: "0 15px", borderRadius: "6px" }}
+                onClick={() => setShowProposalModal(false)}
+              >
                 Đóng
               </button>
             </div>
@@ -1764,18 +1869,21 @@ export default function PurchaseOrderPage() {
                     )}
                   </div>
                   <div>
-                    <label className="filter-label">Kiểu thanh toán *</label>
-                    <select 
-                      name="paymentType" 
+                    <label className="filter-label">Ngày dự kiến giao</label>
+                    <input 
+                      type="date" 
+                      name="deliveryDate" 
                       className="input" 
                       style={{ width: "100%" }}
-                      required 
                       disabled={isViewOnly} 
-                      defaultValue={editingPO?.paymentType || "Phê duyệt trước, thanh toán sau"}
-                    >
-                      <option value="Phê duyệt trước, thanh toán sau">Phê duyệt trước, thanh toán sau</option>
-                      <option value="Thanh toán trước, phê duyệt sau">Thanh toán trước, phê duyệt sau</option>
-                    </select>
+                      defaultValue={
+                        editingPO?.deliveryDate 
+                          ? new Date(editingPO.deliveryDate).toISOString().substring(0, 10) 
+                          : proposalToConvert?.requestedDate 
+                          ? new Date(proposalToConvert.requestedDate).toISOString().substring(0, 10)
+                          : ""
+                      }
+                    />
                   </div>
                   <div>
                     <label className="filter-label">Ghi chú</label>
@@ -1825,7 +1933,7 @@ export default function PurchaseOrderPage() {
                           return (
                             <tr key={index}>
                               <td style={{ padding: "5px 6px" }}>
-                                {isViewOnly || proposalToConvert !== null ? (
+                                {isViewOnly || proposalToConvert !== null || d.originalProposalProductName ? (
                                   <div style={{ fontSize: "13px", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }} title={`${d.productCode} - ${d.productName}`}>
                                     {d.productCode ? `${d.productCode} - ${d.productName}` : d.productName}
                                     {d.originalProposalProductName && (
@@ -1882,7 +1990,7 @@ export default function PurchaseOrderPage() {
                                 )}
                               </td>
                               <td style={{ padding: "5px 6px" }}>
-                                {isViewOnly || proposalToConvert !== null ? (
+                                {isViewOnly || proposalToConvert !== null || d.originalProposalProductName ? (
                                   <div style={{ textAlign: "center", fontSize: "13px" }}>
                                     {d.unit || "—"}
                                   </div>
@@ -1933,14 +2041,18 @@ export default function PurchaseOrderPage() {
                               </td>
                               {!isViewOnly && !proposalToConvert && (
                                 <td style={{ padding: "5px 6px", textAlign: "center" }}>
-                                  <button 
-                                    type="button" 
-                                    className="action-btn text-red-500 hover:text-red-700" 
-                                    onClick={() => handleRemoveDetail(index)}
-                                    style={{ background: "none", border: "none", cursor: "pointer" }}
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
+                                  {!d.originalProposalProductName ? (
+                                    <button 
+                                      type="button" 
+                                      className="action-btn text-red-500 hover:text-red-700" 
+                                      onClick={() => handleRemoveDetail(index)}
+                                      style={{ background: "none", border: "none", cursor: "pointer" }}
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  ) : (
+                                    <span style={{ fontSize: "11px", color: "#94a3b8" }}>Lấy từ Đề nghị</span>
+                                  )}
                                 </td>
                               )}
                             </tr>
@@ -2214,6 +2326,105 @@ export default function PurchaseOrderPage() {
                 onClick={executeStatusChange}
               >
                 Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Xếp lịch giao */}
+      {showDeliveryDateModal && (
+        <div className="custom-modal-overlay">
+          <div
+            className="custom-modal-content-responsive"
+            style={{
+              width: "90%",
+              maxWidth: "400px",
+              margin: "auto",
+              display: "flex",
+              flexDirection: "column",
+              padding: 0,
+              background: "#ffffff",
+              borderRadius: "16px",
+              border: "1px solid #cbd5e1",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              overflow: "hidden"
+            }}
+          >
+            {/* Header */}
+            <div style={{ borderBottom: "1px solid #e2e8f0", padding: "14px 24px", background: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#003466", display: "flex", alignItems: "center", gap: "8px" }}>
+                📅 Xếp lịch giao hàng
+              </h3>
+              <button 
+                type="button" 
+                style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#64748b" }}
+                onClick={() => setShowDeliveryDateModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: "20px" }}>
+              <div style={{ marginBottom: "12px" }}>
+                <label className="filter-label" style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Ngày dự kiến giao hàng</label>
+                <input 
+                  type="date" 
+                  className="form-control" 
+                  style={{ width: "100%", height: "34px", padding: "6px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+                  value={selectedPODeliveryDate} 
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setSelectedPODeliveryDate(e.target.value)} 
+                />
+              </div>
+              <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>
+                * Chọn một ngày và nhấn Xác nhận. Nhấn Bỏ ngày giao để xóa ngày dự kiến giao.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div style={{ borderTop: "1px solid #e2e8f0", padding: "12px 24px", background: "#f8fafc", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="sapo-btn sapo-btn-danger"
+                style={{ height: "32px", fontSize: "13px", padding: "0 15px", borderRadius: "6px" }}
+                onClick={() => {
+                  setSelectedPODeliveryDate("");
+                  startTransition(async () => {
+                    try {
+                      await updatePODeliveryDate(selectedId!, null);
+                      setShowDeliveryDateModal(false);
+                      setItems(prev => prev.map(po => {
+                        if (po.id === selectedId) {
+                          return { ...po, deliveryDate: null, status: "Tạo mới" };
+                        }
+                        return po;
+                      }));
+                    } catch (err: any) {
+                      alert(err.message || "Lỗi khi xóa ngày giao");
+                    }
+                  });
+                }}
+              >
+                Bỏ ngày giao
+              </button>
+              <button
+                type="button"
+                className="sapo-btn sapo-btn-success"
+                style={{ height: "32px", fontSize: "13px", padding: "0 15px", borderRadius: "6px" }}
+                onClick={handleSaveDeliveryDate}
+                disabled={isPending}
+              >
+                {isPending ? "Đang lưu..." : "Xác nhận"}
+              </button>
+              <button
+                type="button"
+                className="sapo-btn btn-outline"
+                style={{ height: "32px", fontSize: "13px", padding: "0 15px", borderRadius: "6px" }}
+                onClick={() => setShowDeliveryDateModal(false)}
+              >
+                Đóng
               </button>
             </div>
           </div>

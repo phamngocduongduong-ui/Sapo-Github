@@ -50,9 +50,13 @@ export async function getProposals() {
       select: {
         proposalProductName: true,
         requestedQuantity: true,
+        unit: true,
         purchaseorder: {
           select: {
-            status: true
+            status: true,
+            poCode: true,
+            deliveryDate: true,
+            createdAt: true
           }
         }
       }
@@ -66,8 +70,25 @@ export async function getProposals() {
       if (orderedQty > 0) {
         const statuses = Array.from(new Set(matchedDetails.map((d: any) => d.purchaseorder?.status).filter(Boolean)));
         (item as any).poStatus = statuses.join(", ");
+        
+        // Sort by PO creation time ascending (oldest first)
+        matchedDetails.sort((a: any, b: any) => {
+          const timeA = a.purchaseorder?.createdAt ? new Date(a.purchaseorder.createdAt).getTime() : 0;
+          const timeB = b.purchaseorder?.createdAt ? new Date(b.purchaseorder.createdAt).getTime() : 0;
+          return timeA - timeB;
+        });
+
+        (item as any).orderHistory = matchedDetails.map((d: any) => ({
+          poCode: d.purchaseorder?.poCode || "",
+          quantity: d.requestedQuantity || 0,
+          unit: d.unit || "",
+          deliveryDate: d.purchaseorder?.deliveryDate 
+            ? new Date(d.purchaseorder.deliveryDate).toLocaleDateString("vi-VN") 
+            : "Chưa xếp lịch"
+        }));
       } else {
         (item as any).poStatus = "";
+        (item as any).orderHistory = [];
       }
     }
   }
@@ -127,6 +148,7 @@ export async function createProposal(formData: FormData, details: any[]) {
   const note = formData.get("note") as string;
   const deliveryDateRaw = formData.get("deliveryDate") as string;
   const deliveryDate = deliveryDateRaw ? new Date(deliveryDateRaw) : null;
+  const deliveryPlace = formData.get("deliveryPlace") as string;
 
   const attachments = formData.get("attachments") as string;
 
@@ -147,6 +169,7 @@ export async function createProposal(formData: FormData, details: any[]) {
       note: note || "",
       attachments: attachments || null,
       deliveryDate,
+      deliveryPlace: deliveryPlace || null,
       status: "Tạo mới",
       createdAt: now,
       updatedAt: now,
@@ -209,6 +232,7 @@ export async function updateProposal(id: string, formData: FormData, details: an
   const note = formData.get("note") as string;
   const deliveryDateRaw = formData.get("deliveryDate") as string;
   const deliveryDate = deliveryDateRaw ? new Date(deliveryDateRaw) : null;
+  const deliveryPlace = formData.get("deliveryPlace") as string;
 
   const attachments = formData.get("attachments") as string;
 
@@ -230,6 +254,7 @@ export async function updateProposal(id: string, formData: FormData, details: an
       note: note || "",
       attachments: attachments || null,
       deliveryDate,
+      deliveryPlace: deliveryPlace || null,
       updatedAt: now,
       items: {
         deleteMany: {},
@@ -347,5 +372,11 @@ export async function getUnits() {
     where: { status: "Hoạt động" },
     select: { id: true, name: true },
     orderBy: { name: "asc" }
+  });
+}
+
+export async function getWarehouses() {
+  return await (prisma as any).warehouse.findMany({
+    where: { status: "Hoạt động" }
   });
 }

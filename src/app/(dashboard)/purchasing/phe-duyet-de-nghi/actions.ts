@@ -22,7 +22,7 @@ export async function getPheDuyetProposals() {
   const proposals = await (prisma as any).purchasingproposal.findMany({
     where: {
       ...filter,
-      status: { in: ["Chờ duyệt", "Chờ mua", "Đã phê duyệt", "Từ chối", "Hoàn thành"] }
+      status: { in: ["Chờ duyệt", "Chờ thực hiện", "Đã phê duyệt", "Từ chối", "Hoàn thành"] }
     },
     include: { items: true },
     orderBy: { updatedAt: "desc" },
@@ -45,9 +45,13 @@ export async function getPheDuyetProposals() {
       select: {
         proposalProductName: true,
         requestedQuantity: true,
+        unit: true,
         purchaseorder: {
           select: {
-            status: true
+            status: true,
+            poCode: true,
+            deliveryDate: true,
+            createdAt: true
           }
         }
       }
@@ -61,8 +65,25 @@ export async function getPheDuyetProposals() {
       if (orderedQty > 0) {
         const statuses = Array.from(new Set(matchedDetails.map((d: any) => d.purchaseorder?.status).filter(Boolean)));
         (item as any).poStatus = statuses.join(", ");
+        
+        // Sort by PO creation time ascending (oldest first)
+        matchedDetails.sort((a: any, b: any) => {
+          const timeA = a.purchaseorder?.createdAt ? new Date(a.purchaseorder.createdAt).getTime() : 0;
+          const timeB = b.purchaseorder?.createdAt ? new Date(b.purchaseorder.createdAt).getTime() : 0;
+          return timeA - timeB;
+        });
+
+        (item as any).orderHistory = matchedDetails.map((d: any) => ({
+          poCode: d.purchaseorder?.poCode || "",
+          quantity: d.requestedQuantity || 0,
+          unit: d.unit || "",
+          deliveryDate: d.purchaseorder?.deliveryDate 
+            ? new Date(d.purchaseorder.deliveryDate).toLocaleDateString("vi-VN") 
+            : "Chưa xếp lịch"
+        }));
       } else {
         (item as any).poStatus = "";
+        (item as any).orderHistory = [];
       }
     }
   }
@@ -86,7 +107,7 @@ export async function approveProposal(id: string) {
   const updatedProposal = await (prisma as any).purchasingproposal.update({
     where: { id },
     data: { 
-      status: "Chờ mua", 
+      status: "Chờ thực hiện", 
       updatedAt: new Date() 
     }
   });
@@ -96,7 +117,7 @@ export async function approveProposal(id: string) {
     recordId: id,
     action: "STATUS_CHANGE",
     oldData: { status: "Chờ duyệt" },
-    newData: { status: "Chờ mua" },
+    newData: { status: "Chờ thực hiện" },
     changedBy: approver,
     changeDetail: `Phê duyệt đề nghị mua hàng: ${oldProposal.proposalCode}`
   });
@@ -154,8 +175,8 @@ export async function cancelApproveProposal(id: string) {
 
   const oldProposal = await (prisma as any).purchasingproposal.findUnique({ where: { id } });
   if (!oldProposal) throw new Error("Không tìm thấy đề nghị");
-  if (oldProposal.status !== "Chờ mua" && oldProposal.status !== "Đã phê duyệt" && oldProposal.status !== "Từ chối") {
-    throw new Error("Chỉ có thể bỏ duyệt đề nghị ở trạng thái Chờ mua, Đã phê duyệt hoặc Từ chối");
+  if (oldProposal.status !== "Chờ thực hiện" && oldProposal.status !== "Đã phê duyệt" && oldProposal.status !== "Từ chối") {
+    throw new Error("Chỉ có thể bỏ duyệt đề nghị ở trạng thái Chờ thực hiện, Đã phê duyệt hoặc Từ chối");
   }
 
   // Check if items are already ordered

@@ -305,15 +305,17 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
         .base-table {
           height: auto !important;
           width: 100% !important;
-          min-width: 1320px !important;
+          min-width: 1020px !important;
           table-layout: auto !important;
           border-collapse: collapse !important;
+          border: 1px solid #cbd5e1 !important;
         }
         .base-table th {
           text-transform: uppercase !important;
           font-weight: 700 !important;
           color: #003466 !important;
           background: #f1f5f9 !important;
+          border: 1px solid #cbd5e1 !important;
           border-bottom: 2px solid #ff5c00 !important;
           text-align: center !important;
           height: 35px !important;
@@ -325,7 +327,7 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
           vertical-align: middle !important;
           white-space: normal !important;
           word-break: break-word !important;
-          border-bottom: none !important;
+          border: 1px solid #cbd5e1 !important;
         }
         .base-table tbody tr {
           height: 45px !important;
@@ -718,7 +720,7 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
                   </>
                 )}
 
-                {(selectedProposalObj.status === "Chờ mua" || selectedProposalObj.status === "Đã phê duyệt" || selectedProposalObj.status === "Từ chối") && (
+                {(selectedProposalObj.status === "Chờ thực hiện" || selectedProposalObj.status === "Đã phê duyệt" || selectedProposalObj.status === "Từ chối") && (
                   <button
                     type="button"
                     className="sapo-btn sapo-btn-warning"
@@ -745,21 +747,19 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
             <table className="base-table">
               <thead>
                 <tr>
-                  <th className="nowrap" style={{ width: "50px" }}>STT</th>
-                  <th className="nowrap" style={{ width: "120px" }}>Số đề nghị</th>
-                  <th className="nowrap" style={{ width: "100px" }}>Ngày đề nghị</th>
-                  <th style={{ width: "170px" }}>Người đề nghị</th>
-                  <th style={{ width: "120px" }}>Chi nhánh</th>
-                  <th style={{ width: "210px" }}>Mục đích</th>
-                  <th style={{ width: "120px" }}>Tình trạng</th>
-                  <th className="nowrap" style={{ width: "120px" }}>Trạng thái</th>
+                  <th className="nowrap" style={{ width: "40px", minWidth: "40px" }}>STT</th>
+                  <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Số đề nghị</th>
+                  <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Ngày</th>
+                  <th style={{ width: "170px", minWidth: "170px" }}>Người đề nghị</th>
+                  <th style={{ width: "120px", minWidth: "120px" }}>Chi nhánh</th>
+                  <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Trạng thái</th>
                   <th style={{ minWidth: "250px" }}>Thông tin hàng hóa</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProposals.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>
+                    <td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>
                       Không có đề nghị nào trong danh sách này
                     </td>
                   </tr>
@@ -784,12 +784,10 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
                         </td>
                         <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.proposer}</td>
                         <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.branch}</td>
-                        <td style={{ textAlign: "center" }}>{item.purpose}</td>
-                        <td style={{ textAlign: "center" }}>{item.urgency}</td>
                         <td className="nowrap" style={{ textAlign: "center" }}>
                           <span
                             className={`status-pill ${
-                              item.status === "Đã phê duyệt" || item.status === "Chờ mua" || item.status === "Hoàn thành"
+                              item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện" || item.status === "Hoàn thành"
                                 ? "status-active"
                                 : item.status === "Tạo mới"
                                 ? "status-new"
@@ -804,12 +802,19 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
                         <td style={{ textAlign: "left", verticalAlign: "middle" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                             {(item.items || []).map((goods: any, gIdx: number) => (
-                              <div key={goods.id} style={{ fontSize: "12px", borderBottom: gIdx < (item.items.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "2px", color: "#334155" }}>
-                                {gIdx + 1}. {goods.productName} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
-                                {goods.orderedQuantity > 0 && (
-                                  <span style={{ color: "#16a34a", fontWeight: "600" }}>
-                                    {` (Đã đặt: ${Number(goods.orderedQuantity).toLocaleString("en-US")} - ${goods.poStatus || "Chờ giao hàng"})`}
-                                  </span>
+                              <div key={goods.id} style={{ fontSize: "12px", borderBottom: gIdx < (item.items.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "4px", paddingTop: "2px", color: "#334155" }}>
+                                <div>
+                                  {gIdx + 1}. {goods.productName} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
+                                </div>
+                                {goods.orderHistory && goods.orderHistory.length > 0 && (
+                                  <div style={{ paddingLeft: "15px", marginTop: "3px", color: "#16a34a", fontSize: "11px", display: "flex", flexDirection: "column", gap: "2px", fontWeight: "500" }}>
+                                    {goods.orderHistory.map((hist: any, hIdx: number) => (
+                                      <div key={hIdx} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                        <span style={{ display: "inline-block", width: "4px", height: "4px", borderRadius: "50%", backgroundColor: "#16a34a" }}></span>
+                                        <span>Lần đặt {hIdx + 1}: {hist.poCode} - SL: <strong style={{ color: "#15803d", fontWeight: "700" }}>{Number(hist.quantity).toLocaleString("en-US")} {hist.unit || ""}</strong> (Dự kiến giao: {hist.deliveryDate})</span>
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             ))}
@@ -849,7 +854,7 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
                       </div>
                       <span
                         className={`status-pill ${
-                          item.status === "Đã phê duyệt" || item.status === "Chờ mua" || item.status === "Hoàn thành"
+                          item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện" || item.status === "Hoàn thành"
                             ? "status-active"
                             : item.status === "Tạo mới"
                             ? "status-new"
@@ -892,12 +897,17 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
                               <span className="goods-num">{gIdx + 1}.</span> {goods.productName} 
                               <div style={{ marginLeft: "14px", color: "#64748b", fontSize: "11px" }}>
                                 ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
-                                {goods.orderedQuantity > 0 && (
-                                  <span style={{ color: "#16a34a", fontWeight: "600" }}>
-                                    {` (Đã đặt: ${Number(goods.orderedQuantity).toLocaleString("en-US")} - ${goods.poStatus || "Chờ giao hàng"})`}
-                                  </span>
-                                )}
                               </div>
+                              {goods.orderHistory && goods.orderHistory.length > 0 && (
+                                <div style={{ marginLeft: "14px", marginTop: "3px", color: "#16a34a", fontSize: "11px", display: "flex", flexDirection: "column", gap: "2px", fontWeight: "500" }}>
+                                  {goods.orderHistory.map((hist: any, hIdx: number) => (
+                                    <div key={hIdx} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                      <span style={{ display: "inline-block", width: "4px", height: "4px", borderRadius: "50%", backgroundColor: "#16a34a" }}></span>
+                                      <span>Lần đặt {hIdx + 1}: {hist.poCode} - SL: <strong style={{ color: "#15803d", fontWeight: "700" }}>{Number(hist.quantity).toLocaleString("en-US")} {hist.unit || ""}</strong> (Dự kiến giao: {hist.deliveryDate})</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>

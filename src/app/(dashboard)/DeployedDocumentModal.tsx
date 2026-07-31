@@ -15,8 +15,20 @@ export default function DeployedDocumentModal() {
 
   const fetchPendingDocs = async () => {
     try {
+      // Lấy ngày hiện tại dạng YYYY-MM-DD
+      const today = new Date().toLocaleDateString("en-CA");
+      const lastShownDate = localStorage.getItem("doc_modal_last_shown_date");
+
+      // Nếu trong ngày hôm nay thông báo đã hiển thị 1 lần rồi thì không hiển thị lại
+      if (lastShownDate === today) {
+        return;
+      }
+
       const docs = await getPendingDeployedDocuments();
       if (docs && docs.length > 0) {
+        // Đánh dấu đã hiển thị 1 lần duy nhất trong ngày hôm nay
+        localStorage.setItem("doc_modal_last_shown_date", today);
+
         // Sắp xếp giảm dần theo Ngày hiệu lực (ngày hiệu lực gần nhất lên đầu)
         const sortedDocs = [...docs].sort((a: any, b: any) => {
           const timeA = a.effectiveDate ? new Date(a.effectiveDate).getTime() : 0;
@@ -74,8 +86,8 @@ export default function DeployedDocumentModal() {
 
   const handleReadLater = () => {
     setIsConfirmedChecked(false);
-    // Bỏ qua văn bản hiện tại để xem văn bản tiếp theo trong danh sách
-    setPendingDocs((prev) => prev.slice(1));
+    // Đóng toàn bộ thông báo ngày hôm nay
+    setPendingDocs([]);
   };
 
   const handleViewOrDownloadFile = (att: any) => {

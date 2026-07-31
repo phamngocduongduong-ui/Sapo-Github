@@ -40,18 +40,29 @@ function EmployeeMultiSelect({ employees, selectedCodes, onChange, branches }: E
 
   const isAllFilteredSelected = filtered.length > 0 && filtered.every(emp => tempSelected.includes(emp.employeeCode));
 
+  const handleBranchChange = (branchName: string) => {
+    setSelectedBranch(branchName);
+    if (branchName !== "") {
+      const branchCodes = employees
+        .filter(emp => emp.branch === branchName)
+        .map(emp => emp.employeeCode);
+      setTempSelected(branchCodes);
+    } else {
+      setTempSelected(employees.map(emp => emp.employeeCode));
+    }
+  };
+
   const handleToggleAllFiltered = () => {
     const filteredCodes = filtered.map(emp => emp.employeeCode);
     if (isAllFilteredSelected) {
       setTempSelected(prev => prev.filter(code => !filteredCodes.includes(code)));
     } else {
-      const newSelection = [...tempSelected];
-      filteredCodes.forEach(code => {
-        if (!newSelection.includes(code)) {
-          newSelection.push(code);
-        }
-      });
-      setTempSelected(newSelection);
+      // Khi chọn tất cả, chỉ chọn những nhân viên khớp theo điều kiện lọc
+      if (selectedBranch !== "" || search.trim() !== "") {
+        setTempSelected(filteredCodes);
+      } else {
+        setTempSelected(employees.map(emp => emp.employeeCode));
+      }
     }
   };
 
@@ -114,7 +125,7 @@ function EmployeeMultiSelect({ employees, selectedCodes, onChange, branches }: E
               <div className="filter-field-branch">
                 <select 
                   value={selectedBranch} 
-                  onChange={e => setSelectedBranch(e.target.value)}
+                  onChange={e => handleBranchChange(e.target.value)}
                   className="input-base font-bold"
                   style={{ height: '32px', padding: '0 8px', fontSize: '12px' }}
                 >
@@ -1284,7 +1295,7 @@ export default function ReportClient() {
                             <th style={{ width: "100px", textAlign: "center" }}>Giờ vào</th>
                             <th style={{ width: "100px", textAlign: "center" }}>Giờ ra</th>
                             <th>Thiết bị liên kết</th>
-                            <th style={{ width: "180px", textAlign: "center" }}>Cảnh báo</th>
+                            <th style={{ width: "220px", textAlign: "center" }}>Cảnh báo</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1292,7 +1303,7 @@ export default function ReportClient() {
                             const warningClass = 
                               row.warning === "Đủ giờ công" ? "success" : 
                               row.warning === "Không đủ giờ công" ? "warning" : 
-                              row.warning === "NGHỈ PHÉP" ? "info" : "danger";
+                              row.warning?.startsWith("NGHỈ PHÉP") ? "info" : "danger";
                             return (
                               <tr key={idx}>
                                 <td style={{ textAlign: "center" }}>{(attendancePage - 1) * itemsPerPage + idx + 1}</td>

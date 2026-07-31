@@ -376,12 +376,12 @@ export default function ReportClient() {
     if (attendanceData.length === 0) return;
     const excelData = attendanceData.map((row, idx) => ({
       "STT": idx + 1,
-      "Mã nhân viên": row.employeeCode,
+      "Mã NV": row.employeeCode,
       "Họ và tên": row.employeeName,
-      "Ngày chấm công": row.dateStr,
+      "Ngày": row.dateStr,
       "Giờ vào": row.checkInTime,
       "Giờ ra": row.checkOutTime,
-      "Thiết bị liên kết": row.boundDevice,
+      "Thiết bị": row.boundDevice,
       "Cảnh báo": row.warning
     }));
 
@@ -700,30 +700,34 @@ export default function ReportClient() {
           padding: 10px 12px;
           font-size: 12px;
           border-bottom: 2px solid #ff5c00;
+          border-right: 1px solid #cbd5e1;
+        }
+        .base-table th:last-child {
+          border-right: none;
         }
         .base-table td {
           padding: 10px 12px;
           border-bottom: 1px solid #e2e8f0;
+          border-right: 1px solid #e2e8f0;
           font-weight: 600;
           color: #1e293b;
+        }
+        .base-table td:last-child {
+          border-right: none;
         }
         .base-table tbody tr:hover {
           background-color: #f8fafc;
         }
         
-        .badge-status {
-          display: inline-flex;
-          align-items: center;
-          padding: 3px 8px;
-          border-radius: 4px;
-          font-size: 11px;
+        .status-text {
+          font-size: 12px;
           font-weight: 700;
           text-transform: uppercase;
         }
-        .badge-status.success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-        .badge-status.warning { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
-        .badge-status.danger { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
-        .badge-status.info { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .status-text.success { color: #166534; }
+        .status-text.warning { color: #b45309; }
+        .status-text.danger { color: #dc2626; }
+        .status-text.info { color: #0284c7; }
 
         .pagination-container {
           display: flex;
@@ -1289,13 +1293,13 @@ export default function ReportClient() {
                         <thead>
                           <tr>
                             <th style={{ width: "50px", textAlign: "center" }}>STT</th>
-                            <th>Mã nhân viên</th>
-                            <th>Họ và tên</th>
-                            <th style={{ width: "130px", textAlign: "center" }}>Ngày chấm công</th>
-                            <th style={{ width: "100px", textAlign: "center" }}>Giờ vào</th>
-                            <th style={{ width: "100px", textAlign: "center" }}>Giờ ra</th>
-                            <th>Thiết bị liên kết</th>
-                            <th style={{ width: "220px", textAlign: "center" }}>Cảnh báo</th>
+                            <th>Mã NV</th>
+                            <th style={{ minWidth: "210px" }}>Họ và tên</th>
+                            <th style={{ width: "100px", textAlign: "center" }}>Ngày</th>
+                            <th style={{ width: "90px", textAlign: "center" }}>Giờ vào</th>
+                            <th style={{ width: "90px", textAlign: "center" }}>Giờ ra</th>
+                            <th>Thiết bị</th>
+                            <th style={{ width: "212px", textAlign: "center" }}>Cảnh báo</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1312,17 +1316,22 @@ export default function ReportClient() {
                                 <td style={{ textAlign: "center" }}>{row.dateStr}</td>
                                 <td style={{ textAlign: "center", color: "#1e3a8a" }}>{row.checkInTime}</td>
                                 <td style={{ textAlign: "center", color: "#b45309" }}>{row.checkOutTime}</td>
-                                <td style={{ fontSize: "11px", fontFamily: "monospace" }}>{row.boundDevice}</td>
+                                <td style={{ 
+                                  fontSize: "11px", 
+                                  fontFamily: (row.boundDevice === "Chờ phê duyệt" || row.boundDevice === "Chưa liên kết") ? "inherit" : "monospace",
+                                  color: row.boundDevice === "Chờ phê duyệt" ? "#d97706" : "inherit",
+                                  fontWeight: row.boundDevice === "Chờ phê duyệt" ? "700" : "600"
+                                }}>
+                                  {row.boundDevice}
+                                </td>
                                 <td style={{ textAlign: "center" }}>
-                                  {isLeave ? (
-                                    <span style={{ color: "#0284c7", fontWeight: "700", fontSize: "12px", textTransform: "uppercase" }}>
-                                      {row.warning}
-                                    </span>
-                                  ) : (
-                                    <span className={`badge-status ${warningClass}`}>
-                                      {row.warning}
-                                    </span>
-                                  )}
+                                  <span className={`status-text ${
+                                    isLeave ? "info" :
+                                    row.warning === "Đủ giờ công" ? "success" :
+                                    row.warning === "Không đủ giờ công" ? "warning" : "danger"
+                                  }`}>
+                                    {row.warning}
+                                  </span>
                                 </td>
                               </tr>
                             );

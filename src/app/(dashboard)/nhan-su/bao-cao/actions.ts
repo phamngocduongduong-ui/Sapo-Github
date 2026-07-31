@@ -143,17 +143,19 @@ export async function getAttendanceReport(employeeCodes?: string[], startDateStr
     select: {
       employeeName: true,
       deviceSecret: true,
-      deviceStatus: true
+      deviceStatus: true,
+      pendingDeviceSecret: true
     }
   });
 
   // Build user device map
-  const deviceMap = new Map<string, { secret: string | null; status: string | null }>();
+  const deviceMap = new Map<string, { secret: string | null; status: string | null; pendingSecret: string | null }>();
   users.forEach(u => {
     if (u.employeeName) {
       deviceMap.set(u.employeeName.trim(), {
         secret: u.deviceSecret,
-        status: u.deviceStatus
+        status: u.deviceStatus,
+        pendingSecret: u.pendingDeviceSecret
       });
     }
   });
@@ -190,9 +192,19 @@ export async function getAttendanceReport(employeeCodes?: string[], startDateStr
 
       // Get device info
       const devInfo = deviceMap.get(emp.fullName.trim());
-      const boundDevice = devInfo?.secret 
-        ? (devInfo.secret.substring(0, 8) + "...") 
-        : "Chưa liên kết";
+      let boundDevice = "Chưa liên kết";
+      if (devInfo) {
+        if (
+          devInfo.status === "PENDING" || 
+          devInfo.status === "CHỜ DUYỆT" || 
+          devInfo.status === "Chờ phê duyệt" ||
+          (devInfo.pendingSecret && devInfo.pendingSecret !== devInfo.secret)
+        ) {
+          boundDevice = "Chờ phê duyệt";
+        } else if (devInfo.secret) {
+          boundDevice = devInfo.secret.substring(0, 8) + "...";
+        }
+      }
 
       let checkInTime = "—";
       let checkOutTime = "—";

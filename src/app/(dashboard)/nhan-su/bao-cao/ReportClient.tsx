@@ -712,6 +712,7 @@ export default function ReportClient() {
         .badge-status.success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
         .badge-status.warning { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
         .badge-status.danger { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+        .badge-status.info { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
 
         .pagination-container {
           display: flex;
@@ -1290,7 +1291,8 @@ export default function ReportClient() {
                           {paginate(attendanceData, attendancePage).map((row, idx) => {
                             const warningClass = 
                               row.warning === "Đủ giờ công" ? "success" : 
-                              row.warning === "Không đủ giờ công" ? "warning" : "danger";
+                              row.warning === "Không đủ giờ công" ? "warning" : 
+                              row.warning === "NGHỈ PHÉP" ? "info" : "danger";
                             return (
                               <tr key={idx}>
                                 <td style={{ textAlign: "center" }}>{(attendancePage - 1) * itemsPerPage + idx + 1}</td>

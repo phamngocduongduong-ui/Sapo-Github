@@ -127,6 +127,17 @@ export async function getAttendanceReport(employeeCodes?: string[], startDateStr
     }
   });
 
+  // Fetch approved leave requests overlapping with date range
+  const approvedLeaves = await prisma.leaverequest.findMany({
+    where: {
+      status: {
+        in: ["Đã phê duyệt", "Đã duyệt", "Approved", "APPROVED", "Đồng ý", "Chấp nhận"]
+      },
+      startDate: { lte: end },
+      endDate: { gte: start }
+    }
+  });
+
   // Fetch user device info
   const users = await prisma.user.findMany({
     select: {
@@ -160,15 +171,21 @@ export async function getAttendanceReport(employeeCodes?: string[], startDateStr
     const day = dateObj.getDate();
     const monthVal = dateObj.getMonth() + 1;
     const yearVal = dateObj.getFullYear();
+    const dateKeyStr = `${yearVal}-${monthVal.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     
     for (const emp of employees) {
-      // Find checkin for this employee and this day
-      const checkinRecord = checkins.find(c => {
-        const cDate = new Date(c.date);
-        return c.employeeCode === emp.employeeCode &&
-               cDate.getDate() === day &&
-               cDate.getMonth() === monthVal - 1 &&
-               cDate.getFullYear() === yearVal;
+      // Check if employee has an approved leave request on this date
+      const leaveRecord = approvedLeaves.find(l => {
+        if (!l.employeeName) return false;
+        const matchName = l.employeeName.trim().toLowerCase() === emp.fullName.trim().toLowerCase();
+        if (!matchName) return false;
+
+        const lStart = new Date(l.startDate);
+        const lEnd = new Date(l.endDate);
+        const lStartStr = `${lStart.getFullYear()}-${(lStart.getMonth() + 1).toString().padStart(2, '0')}-${lStart.getDate().toString().padStart(2, '0')}`;
+        const lEndStr = `${lEnd.getFullYear()}-${(lEnd.getMonth() + 1).toString().padStart(2, '0')}-${lEnd.getDate().toString().padStart(2, '0')}`;
+
+        return dateKeyStr >= lStartStr && dateKeyStr <= lEndStr;
       });
 
       // Get device info
@@ -181,19 +198,34 @@ export async function getAttendanceReport(employeeCodes?: string[], startDateStr
       let checkOutTime = "—";
       let warning = "Không chấm công";
 
-      if (checkinRecord) {
-        if (checkinRecord.timeIn) {
-          checkInTime = new Date(checkinRecord.timeIn).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' });
-        }
-        if (checkinRecord.timeOut) {
-          checkOutTime = new Date(checkinRecord.timeOut).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' });
-        }
+      if (leaveRecord) {
+        checkInTime = "OFF";
+        checkOutTime = "OFF";
+        warning = "NGHỈ PHÉP";
+      } else {
+        // Find checkin for this employee and this day
+        const checkinRecord = checkins.find(c => {
+          const cDate = new Date(c.date);
+          return c.employeeCode === emp.employeeCode &&
+                 cDate.getDate() === day &&
+                 cDate.getMonth() === monthVal - 1 &&
+                 cDate.getFullYear() === yearVal;
+        });
 
-        if (checkinRecord.timeIn && checkinRecord.timeOut) {
-          const hours = (new Date(checkinRecord.timeOut).getTime() - new Date(checkinRecord.timeIn).getTime()) / (1000 * 60 * 60);
-          warning = hours >= 8 ? "Đủ giờ công" : "Không đủ giờ công";
-        } else if (checkinRecord.timeIn) {
-          warning = "Không đủ giờ công";
+        if (checkinRecord) {
+          if (checkinRecord.timeIn) {
+            checkInTime = new Date(checkinRecord.timeIn).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' });
+          }
+          if (checkinRecord.timeOut) {
+            checkOutTime = new Date(checkinRecord.timeOut).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' });
+          }
+
+          if (checkinRecord.timeIn && checkinRecord.timeOut) {
+            const hours = (new Date(checkinRecord.timeOut).getTime() - new Date(checkinRecord.timeIn).getTime()) / (1000 * 60 * 60);
+            warning = hours >= 8 ? "Đủ giờ công" : "Không đủ giờ công";
+          } else if (checkinRecord.timeIn) {
+            warning = "Không đủ giờ công";
+          }
         }
       }
 

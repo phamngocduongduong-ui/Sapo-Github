@@ -44,6 +44,7 @@ export default function EmployeeTable({
   const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [cardError, setCardError] = useState<string | null>(null);
   const [generatedCode, setGeneratedCode] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,13 +69,15 @@ export default function EmployeeTable({
     onConfirm: () => void;
     type: "danger" | "success" | "warning";
     confirmText: string;
+    cancelText?: string;
   }>({
     show: false,
     title: "",
     message: "",
     onConfirm: () => { },
     type: "danger",
-    confirmText: "Xác nhận"
+    confirmText: "Xác nhận",
+    cancelText: "Bỏ qua"
   });
 
   // Pagination state
@@ -123,12 +126,15 @@ export default function EmployeeTable({
     setShowModal(false);
     setEditingEmployee(null);
     setError(null);
+    setCardError(null);
     setSelectedBranch("");
     setGeneratedCode("");
   }
 
   function handleEdit(employee: any) {
     setEditingEmployee(employee);
+    setCardError(null);
+    setError(null);
     setShowModal(true);
   }
 
@@ -141,6 +147,7 @@ export default function EmployeeTable({
         : `Bạn có chắc chắn muốn kích hoạt lại nhân viên "${name}" không?`,
       type: status === "Nghỉ việc" ? "danger" : "success",
       confirmText: status === "Nghỉ việc" ? "Xác nhận" : "Kích hoạt",
+      cancelText: "Bỏ qua",
       onConfirm: async () => {
         startTransition(async () => {
           try {
@@ -164,8 +171,71 @@ export default function EmployeeTable({
     }
   }, [selectedBranch, editingEmployee]);
 
+  const checkCardCodeDuplicate = (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) {
+      setCardError(null);
+      return null;
+    }
+    const duplicate = employees.find(
+      e => e.cardCode && e.cardCode.trim().toUpperCase() === trimmed.toUpperCase() && e.id !== editingEmployee?.id
+    );
+    if (duplicate) {
+      const msg = `Mã thẻ "${trimmed}" đã được gán cho nhân viên ${duplicate.fullName} (${duplicate.employeeCode}). Vui lòng cập nhật mã mới!`;
+      setCardError(msg);
+      return duplicate;
+    } else {
+      setCardError(null);
+      return null;
+    }
+  };
+
   function handleSubmit(formData: FormData) {
     setError(null);
+    setCardError(null);
+
+    const fullName = (formData.get("fullName") as string || "").trim();
+    const cardCode = (formData.get("cardCode") as string || "").trim();
+
+    // 1. Kiểm tra trùng mã thẻ từ
+    if (cardCode) {
+      const duplicateCard = employees.find(
+        e => e.cardCode && e.cardCode.trim().toUpperCase() === cardCode.toUpperCase() && e.id !== editingEmployee?.id
+      );
+      if (duplicateCard) {
+        const msg = `Mã thẻ "${cardCode}" đã được sử dụng cho nhân viên ${duplicateCard.fullName} (${duplicateCard.employeeCode}). Vui lòng cập nhật mã mới!`;
+        setCardError(msg);
+        setError(msg);
+        return;
+      }
+    }
+
+    // 2. Kiểm tra trùng tên nhân viên khi thêm mới
+    if (!editingEmployee && fullName) {
+      const duplicateNameEmp = employees.find(
+        e => e.fullName.trim().toLowerCase() === fullName.toLowerCase()
+      );
+      if (duplicateNameEmp) {
+        setConfirmDialog({
+          show: true,
+          title: "⚠️ Cảnh báo trùng tên nhân viên",
+          message: `Hệ thống ghi nhận đã có nhân viên "${duplicateNameEmp.fullName}" (Mã NV: ${duplicateNameEmp.employeeCode}, Bộ phận: ${duplicateNameEmp.department || 'Chưa xếp'}). Bạn có muốn tiếp tục thêm nhân viên mới này không?`,
+          type: "warning",
+          confirmText: "Có, tiếp tục lưu",
+          cancelText: "Không, thoát",
+          onConfirm: () => {
+            setConfirmDialog(prev => ({ ...prev, show: false }));
+            doSaveEmployee(formData);
+          }
+        });
+        return;
+      }
+    }
+
+    doSaveEmployee(formData);
+  }
+
+  function doSaveEmployee(formData: FormData) {
     startTransition(async () => {
       try {
         if (editingEmployee) {
@@ -175,8 +245,8 @@ export default function EmployeeTable({
         }
         handleClose();
       } catch (err: any) {
-        if (err.message.includes("Mã thẻ đã sử dụng cho nhân viên")) {
-          alert(err.message);
+        if (err.message.includes("Mã thẻ")) {
+          setCardError(err.message);
         }
         setError(err.message);
       }
@@ -1130,12 +1200,19 @@ export default function EmployeeTable({
                         className="input-base"
                         placeholder="Mã thẻ..."
                         defaultValue={editingEmployee?.cardCode}
+                        onChange={(e) => checkCardCodeDuplicate(e.target.value)}
+                        onBlur={(e) => checkCardCodeDuplicate(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
                           }
                         }}
                       />
+                      {cardError && (
+                        <div style={{ color: "#ef4444", fontSize: "0.85rem", marginTop: "6px", fontWeight: 600 }}>
+                          ⚠️ {cardError}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1167,14 +1244,14 @@ export default function EmployeeTable({
               width: "60px",
               height: "60px",
               borderRadius: "50%",
-              background: confirmDialog.type === "danger" ? "#fef2f2" : "#f0fdf4",
+              background: confirmDialog.type === "danger" ? "#fef2f2" : confirmDialog.type === "warning" ? "#fffbeb" : "#f0fdf4",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               margin: "0 auto 1.25rem",
-              color: confirmDialog.type === "danger" ? "#ef4444" : "#22c55e"
+              color: confirmDialog.type === "danger" ? "#ef4444" : confirmDialog.type === "warning" ? "#d97706" : "#22c55e"
             }}>
-              {confirmDialog.type === "danger" ? <AlertTriangle size={32} /> : <CheckCircle size={32} />}
+              {confirmDialog.type === "danger" || confirmDialog.type === "warning" ? <AlertTriangle size={32} /> : <CheckCircle size={32} />}
             </div>
             <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 auto 0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
               {confirmDialog.title}
@@ -1211,7 +1288,7 @@ export default function EmployeeTable({
                 }} 
                 onClick={() => setConfirmDialog(prev => ({ ...prev, show: false }))}
               >
-                Bỏ qua
+                {confirmDialog.cancelText || "Bỏ qua"}
               </button>
               <button
                 type="button"
@@ -1219,7 +1296,7 @@ export default function EmployeeTable({
                 style={{
                   flex: 1,
                   padding: "10px 20px",
-                  backgroundColor: confirmDialog.type === "danger" ? "#ef4444" : "#003466",
+                  backgroundColor: confirmDialog.type === "danger" ? "#ef4444" : confirmDialog.type === "warning" ? "#d97706" : "#003466",
                   color: "#ffffff",
                   border: "none",
                   borderRadius: "8px",

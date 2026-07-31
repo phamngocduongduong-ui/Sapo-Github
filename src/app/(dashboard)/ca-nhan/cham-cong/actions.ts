@@ -246,14 +246,22 @@ export async function getUserDeviceStatus() {
       username: true,
       deviceSecret: true,
       pendingDeviceSecret: true,
-      deviceStatus: true
+      deviceStatus: true,
+      deviceChangeReason: true,
+      deviceInfo: true,
+      accessSource: true
     }
   });
 
   return user;
 }
 
-export async function requestDeviceChange(pendingSecret: string) {
+export async function requestDeviceChange(
+  pendingSecret: string,
+  reason?: string,
+  deviceInfo?: string,
+  accessSource?: string
+) {
   const session = await getSession();
   if (!session?.userId) throw new Error("Unauthorized");
 
@@ -263,9 +271,20 @@ export async function requestDeviceChange(pendingSecret: string) {
 
   if (!user) throw new Error("Người dùng không tồn tại");
 
-  // Nếu secret của thiết bị này trùng với secret đang được duyệt (cùng 1 điện thoại),
-  // tự động khôi phục trạng thái APPROVED mà không cần Admin phê duyệt lại.
-  if (user.deviceSecret && user.deviceSecret === pendingSecret) {
+  // Check hardware fingerprint matching or exact secret matching
+  const extractHwFp = (sec?: string | null) => {
+    if (!sec || !sec.startsWith("hwfp_")) return null;
+    const parts = sec.split("_");
+    return parts.length >= 2 ? `${parts[0]}_${parts[1]}` : null;
+  };
+
+  const currentHwFp = extractHwFp(user.deviceSecret);
+  const pendingHwFp = extractHwFp(pendingSecret);
+
+  const isSameHardware = (currentHwFp && pendingHwFp && currentHwFp === pendingHwFp) ||
+                         (user.deviceSecret && user.deviceSecret === pendingSecret);
+
+  if (isSameHardware) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -281,11 +300,33 @@ export async function requestDeviceChange(pendingSecret: string) {
     where: { id: user.id },
     data: {
       pendingDeviceSecret: pendingSecret,
-      deviceStatus: "PENDING"
+      deviceStatus: "PENDING",
+      deviceChangeReason: reason || "Thay đổi thiết bị/trình duyệt",
+      deviceInfo: deviceInfo || null,
+      accessSource: accessSource || null
     }
   });
 
   revalidatePath("/ca-nhan/cham-cong");
   return { success: true, autoApproved: false };
 }
+
+export async function syncDeviceCookie(username: string, encryptedSecret: string) {
+  try {
+    const { cookies } = require("next/headers");
+    const cookieStore = cookies();
+    cookieStore.set(`ems_dev_sec_${username}`, encryptedSecret, {
+      path: "/",
+      maxAge: 315360000, // 10 years (browser will cap at 400 days)
+      sameSite: "lax",
+      secure: true,
+      httpOnly: false // Allow client-side JS to read and sync it
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error setting server-side cookie:", error);
+    return { success: false };
+  }
+}
+
 

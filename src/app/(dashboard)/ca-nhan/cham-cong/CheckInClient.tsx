@@ -3,8 +3,8 @@
 import React, { useState, useTransition, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, MapPin, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, User, CheckCircle2, AlertCircle, Timer, Camera, RefreshCw } from "lucide-react";
-import { toggleCheckIn, getUserDeviceStatus, requestDeviceChange } from "./actions";
-import { generateDeviceSecret, encryptSecret, decryptSecret, loadOrRegisterDeviceSecret } from "@/lib/deviceSecurity";
+import { toggleCheckIn, getUserDeviceStatus, requestDeviceChange, syncDeviceCookie } from "./actions";
+import { generateDeviceSecret, encryptSecret, decryptSecret, loadOrRegisterDeviceSecret, getBrowserAndSourceInfo } from "@/lib/deviceSecurity";
 
 
 interface CheckIn {
@@ -27,7 +27,7 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
   const [isPending, startTransition] = useTransition();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [deviceInfo, setDeviceInfo] = useState({ isIPhoneChrome: false, isWindows: false });
+  const [deviceInfo, setDeviceInfo] = useState({ isIPhoneChrome: false, isWindows: false, isWebView: false });
 
   // Device validation states
   const [deviceSecret, setDeviceSecret] = useState<string | null>(null);
@@ -68,9 +68,11 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
        const isIPhone = /iPhone|iPad|iPod/i.test(navigator.userAgent);
        const isChromeIOS = /CriOS/i.test(navigator.userAgent);
        const isWin = /Windows/i.test(navigator.userAgent);
+       const isWebView = /Zalo|FBAN|FBAV|Messenger|Line/i.test(navigator.userAgent);
        setDeviceInfo({
          isIPhoneChrome: isIPhone && isChromeIOS,
-         isWindows: isWin
+         isWindows: isWin,
+         isWebView: isWebView
        });
     }
     const timer = setInterval(() => setLiveTime(new Date()), 1000);
@@ -164,6 +166,10 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
         // Use the persistent multi-channel store helper to load or register the secret
         const secret = await loadOrRegisterDeviceSecret(status.username);
         setDeviceSecret(secret);
+
+        // Sync the cookie to the server to make it a server-set cookie (bypassing the 7-day client-side cap on iOS Safari)
+        const encrypted = encryptSecret(secret, status.username);
+        await syncDeviceCookie(status.username, encrypted);
       } catch (e) {
         console.error("Lỗi khởi tạo thiết bị:", e);
       } finally {
@@ -441,21 +447,35 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
     setCurrentDate(new Date(calendarData.year, calendarData.month + 1, 1));
   };
 
-  const handleRequestDeviceChange = () => {
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const [deviceReasonPreset, setDeviceReasonPreset] = useState("Đổi máy điện thoại mới");
+  const [customDeviceReason, setCustomDeviceReason] = useState("");
+
+  const handleOpenDeviceModal = () => {
+    setShowDeviceModal(true);
+  };
+
+  const submitDeviceChangeRequest = () => {
     if (!deviceSecret) return;
-    if (!confirm("Bạn có chắc chắn muốn gửi yêu cầu đăng ký thiết bị này? Thiết bị cũ sẽ tạm thời không sử dụng được cho đến khi được Admin phê duyệt.")) return;
+    const finalReason = deviceReasonPreset === "Lý do khác" ? customDeviceReason.trim() : deviceReasonPreset;
+    if (!finalReason) {
+      alert("Vui lòng nhập lý do thay đổi thiết bị!");
+      return;
+    }
+
+    const info = getBrowserAndSourceInfo();
 
     startTransition(async () => {
       try {
-        const res = await requestDeviceChange(deviceSecret);
+        const res = await requestDeviceChange(deviceSecret, finalReason, info.fullInfo, info.source);
         if (res.success) {
+          setShowDeviceModal(false);
           if ((res as any).autoApproved) {
-            // Cùng thiết bị — server tự phê duyệt, không cần chờ Admin
-            alert("Thiết bị đã được xác nhận thành công! Bạn có thể tiếp tục chấm công.");
+            alert("Hệ thống xác minh đây cùng là chiếc điện thoại đã được phê duyệt! Bạn có thể tiếp tục chấm công bình thường.");
             setDeviceStatus("APPROVED");
             setServerDeviceSecret(deviceSecret);
           } else {
-            alert("Gửi yêu cầu đổi thiết bị thành công! Vui lòng liên hệ Admin để duyệt.");
+            alert("Gửi yêu cầu thành công! Lý do đổi máy và thông tin thiết bị đã được gửi tới Admin để phê duyệt.");
             setDeviceStatus("PENDING");
             setServerPendingSecret(deviceSecret);
           }
@@ -693,6 +713,33 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
             </div>
           </div>
 
+          {deviceInfo.isWebView && (
+            <div className="webview-warning-alert" style={{
+              margin: '12px 16px',
+              padding: '12px 16px',
+              background: '#fff3cd',
+              border: '1px solid #ffeeba',
+              borderRadius: '8px',
+              color: '#856404',
+              fontSize: '13px',
+              lineHeight: '1.5',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+              textAlign: 'left'
+            }}>
+              <AlertCircle size={20} style={{ color: '#856404', flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <strong style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#721c24', fontWeight: '700' }}>
+                  ⚠️ CẢNH BÁO: TRÌNH DUYỆT TRONG ỨNG DỤNG (ZALO/FACEBOOK)
+                </strong>
+                Bạn đang mở ứng dụng từ Zalo hoặc Facebook. Bộ nhớ của trình duyệt này không ổn định, dễ gây ra lỗi <strong>"Thiết bị không khớp"</strong>.<br/>
+                <span style={{ fontWeight: 'bold', color: '#721c24' }}>Cách khắc phục:</span> Hãy bấm vào dấu ba chấm <strong>(•••)</strong> ở góc trên/dưới màn hình và chọn <strong>"Mở bằng trình duyệt hệ thống"</strong> (mở bằng Safari trên iPhone, hoặc mở bằng Chrome trên Android).
+              </div>
+            </div>
+          )}
+
           <div className="clock-section">
             <div className="time-display">
               {isMounted ? liveTime.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "--:--:--"}
@@ -759,7 +806,7 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
                     type="button"
                     className="sapo-btn sapo-btn-danger"
                     style={{ background: '#ff5c00', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-                    onClick={handleRequestDeviceChange}
+                    onClick={handleOpenDeviceModal}
                     disabled={isPending}
                   >
                     {isPending ? "ĐANG GỬI..." : "GỬI YÊU CẦU ĐỔI THIẾT BỊ"}
@@ -1047,6 +1094,121 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
         </div>
       </div>
 
+      {showDeviceModal && (
+        <div className="custom-modal-overlay" style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+          padding: "16px"
+        }}>
+          <div style={{
+            background: "#ffffff",
+            borderRadius: "12px",
+            width: "100%",
+            maxWidth: "460px",
+            padding: "20px",
+            boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)",
+            border: "1px solid #cbd5e1"
+          }}>
+            <h3 style={{ margin: "0 0 12px 0", fontSize: "16px", fontWeight: 700, color: "#003466", display: "flex", alignItems: "center", gap: "8px" }}>
+              📱 Yêu Cầu Duyệt Thiết Bị Mới
+            </h3>
+            <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 16px 0", lineHeight: "1.5" }}>
+              Vui lòng chọn hoặc nhập lý do vì sao bạn thay đổi điện thoại/trình duyệt để gửi tới Admin phê duyệt.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#0f172a", marginBottom: "6px" }}>
+                  Lý do thay đổi *
+                </label>
+                <select
+                  value={deviceReasonPreset}
+                  onChange={(e) => setDeviceReasonPreset(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "13px"
+                  }}
+                >
+                  <option value="Đổi máy điện thoại mới">📱 Đổi máy điện thoại mới</option>
+                  <option value="Máy cũ bị hư / đi bảo hành">🛠️ Máy cũ bị hư / đi bảo hành</option>
+                  <option value="Đổi trình duyệt (Zalo/Safari/Chrome)">🌐 Đổi trình duyệt (Zalo / Safari / Chrome)</option>
+                  <option value="Lý do khác">✏️ Lý do khác (Nhập bên dưới)</option>
+                </select>
+              </div>
+
+              {deviceReasonPreset === "Lý do khác" && (
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#0f172a", marginBottom: "6px" }}>
+                    Ghi rõ lý do chi tiết *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ví dụ: Em dùng máy phụ chấm công..."
+                    value={customDeviceReason}
+                    onChange={(e) => setCustomDeviceReason(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "13px"
+                    }}
+                  />
+                </div>
+              )}
+
+              <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "12px", color: "#475569" }}>
+                <div><strong>Thông tin tự động ghi nhận:</strong></div>
+                <div style={{ marginTop: "4px", color: "#0f172a" }}>• {getBrowserAndSourceInfo().fullInfo}</div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => setShowDeviceModal(false)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
+                  background: "#ffffff",
+                  color: "#475569",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={submitDeviceChangeRequest}
+                disabled={isPending}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  border: "none",
+                  background: "#ff5c00",
+                  color: "#ffffff",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: isPending ? "not-allowed" : "pointer"
+                }}
+              >
+                {isPending ? "Đang gửi..." : "Gửi yêu cầu"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

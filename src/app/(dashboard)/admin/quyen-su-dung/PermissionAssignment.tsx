@@ -113,6 +113,13 @@ const MODULES = [
     ]
   },
   {
+    key: "VAN_THU",
+    label: "📂 Văn thư",
+    children: [
+      { key: "VT_VAN_BAN", label: "Văn bản" },
+    ]
+  },
+  {
     key: "PHE_DUYET",
     label: "✅ PHÊ DUYỆT",
     children: [

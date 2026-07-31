@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import DeployedDocumentModal from "./DeployedDocumentModal";
 import { usePathname } from "next/navigation";
 
 
@@ -21,6 +22,7 @@ export default function DashboardLayout({
 
   return (
     <div className="app-container" style={{ display: "flex", width: "100%", minHeight: "100vh", position: "relative" }}>
+      <DeployedDocumentModal />
       {/* Header Banner */}
       <Header 
         onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}

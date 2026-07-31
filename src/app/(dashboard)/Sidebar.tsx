@@ -165,6 +165,15 @@ const allMenuGroups = [
       { href: "/an-ninh/kiem-tra", label: "Kiểm tra", key: "AN_KIEM_TRA", icon: <ShieldCheck size={14} color="#ef4444" />, target: "_blank" },
     ]
   },
+  {
+    id: "van-thu",
+    key: "VAN_THU",
+    label: "Văn thư",
+    icon: <FileText size={18} color="#0284c7" />,
+    items: [
+      { href: "/van-thu/van-ban", label: "Văn bản", key: "VT_VAN_BAN", icon: <FileText size={14} color="#0284c7" /> },
+    ]
+  },
 ];
 
 export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {

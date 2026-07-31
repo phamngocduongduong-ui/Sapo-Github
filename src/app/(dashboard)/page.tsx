@@ -1,200 +1,257 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Ship, Truck, Activity, LayoutDashboard, BarChart3 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { getDocuments } from "./van-thu/van-ban/actions";
 
 export default function OverviewPage() {
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  async function fetchData() {
+    try {
+      const data = await getDocuments();
+      // Chỉ lấy các văn bản còn hiệu lực cho màn hình Thông báo
+      const activeDocs = data.filter(
+        (doc: any) => doc.status === "Còn hiệu lực" || doc.status === "Hiệu lực"
+      );
+      activeDocs.sort((a: any, b: any) => {
+        const timeA = a.effectiveDate ? new Date(a.effectiveDate).getTime() : 0;
+        const timeB = b.effectiveDate ? new Date(b.effectiveDate).getTime() : 0;
+        return timeB - timeA;
+      });
+      setItems(activeDocs);
+    } catch (e) {
+      console.error("Lỗi tải danh sách văn bản:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const formatDate = (dateInput: any) => {
+    if (!dateInput) return "";
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return "";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   return (
-    <div className="authenticated-dashboard-container">
+    <div className="employee-page-container">
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .employee-page-container {
+          width: 100%;
+          min-width: 0;
+        }
+        .employee-layout {
+          display: flex;
+          gap: 1.5rem;
+          width: 100%;
+          min-width: 0;
+          font-family: "Segoe UI", -apple-system, sans-serif;
+          font-size: 13px;
+          margin-top: 0 !important;
+          padding: 10px 0px 10px 0px !important;
+        }
+        .employee-layout table,
+        .employee-layout td,
+        .employee-layout th,
+        .employee-page-container .breadcrumb-banner {
+          font-size: 13px !important;
+        }
+        .breadcrumb-banner {
+          background-color: #003466;
+          color: white;
+          padding: 6px 15px 6px 15px;
+          font-weight: 700;
+          display: block;
+          border-radius: 0 !important;
+          margin-top: 0;
+          margin-bottom: 0 !important;
+          margin-left: -10px;
+          margin-right: -10px;
+        }
+        .panel-full {
+          flex: 1 1 100%;
+          width: 100%;
+          min-width: 0;
+          margin-top: 0 !important;
+          padding-top: 0 !important;
+        }
+        .base-table-wrapper {
+          height: auto !important;
+          min-height: unset !important;
+          overflow-y: hidden !important;
+          padding-top: 0px !important;
+          padding-bottom: 0px !important;
+          margin-top: 0px !important;
+          overflow-x: auto !important;
+        }
+        .base-table {
+          height: auto !important;
+          width: 100% !important;
+          min-width: 100% !important;
+          table-layout: fixed !important;
+          margin-top: 0px !important;
+        }
+        .base-table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
+          border-right: 1px solid #cbd5e1 !important;
+          text-align: center !important;
+          vertical-align: middle !important;
+          padding: 6px 4px !important;
+          white-space: normal !important;
+          word-break: break-word !important;
+          line-height: 1.2 !important;
+        }
+        .base-table th:last-child {
+          border-right: none !important;
+        }
+        .base-table td {
+          padding: 6px 0.75rem !important;
+          vertical-align: middle !important;
+          color: #000 !important;
+          font-weight: 600 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          border-bottom: 1px solid #e2e8f0 !important;
+          border-right: 1px solid #e2e8f0 !important;
+        }
+        .base-table td:last-child {
+          border-right: none !important;
+        }
+        .base-table tbody tr {
+          height: 45px !important;
+        }
+        .base-table tbody tr:hover {
+          background-color: #f8fafc;
+        }
+      `,
+        }}
+      />
 
-      {/* Dashboard Bar */}
-      <div className="dashboard-header">
-        <h2 className="dashboard-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <LayoutDashboard size={18} color="#2b6cb0" />
-          Bảng điều khiển hệ thống
-        </h2>
-        
-        <button 
-          type="button"
-          className="mobile-search-toggle" 
-          onClick={() => setSearchOpen(!searchOpen)}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "8px",
-            color: "#2b6cb0",
-            display: "none",
-            alignItems: "center",
-            justifyContent: "center"
-          }}
-          title="Tìm kiếm"
-        >
-          <Search size={18} />
-        </button>
+      {/* Banner chuẩn giống tất cả các bảng khác */}
+      <div className="breadcrumb-banner">THÔNG BÁO</div>
 
-        <div className={`search-wrapper ${searchOpen ? "mobile-show" : "mobile-hide"}`}>
-          <input type="text" className="search-input" placeholder="Nhập nội dung cần tìm..." />
-          <button className="search-btn" title="Tìm kiếm">
-            <Search size={16} />
-          </button>
-        </div>
-      </div>
-
-      {/* Dashboard Widgets Content */}
-      <div className="dashboard-content">
-        {/* Stats Grid */}
-        <div className="stats-grid">
-          {/* Stat 1 */}
-          <div className="stat-widget">
-            <div className="stat-icon-wrapper" style={{ background: "#e0f2fe", color: "#0284c7" }}>
-              <Ship size={24} />
-            </div>
-            <div className="stat-details">
-              <span className="stat-label">Tàu đang cập cảng</span>
-              <span className="stat-val">12 tàu</span>
-              <span className="stat-desc">▲ +2 tàu so với hôm qua</span>
-            </div>
-          </div>
-
-          {/* Stat 2 */}
-          <div className="stat-widget">
-            <div className="stat-icon-wrapper" style={{ background: "#ecfdf5", color: "#059669" }}>
-              <BarChart3 size={24} />
-            </div>
-            <div className="stat-details">
-              <span className="stat-label">Container thông qua</span>
-              <span className="stat-val">85,240 TEU</span>
-              <span className="stat-desc" style={{ color: "#059669" }}>▲ +8% tuần này</span>
-            </div>
-          </div>
-
-          {/* Stat 3 */}
-          <div className="stat-widget">
-            <div className="stat-icon-wrapper" style={{ background: "#fef3c7", color: "#d97706" }}>
-              <Truck size={24} />
-            </div>
-            <div className="stat-details">
-              <span className="stat-label">Lượt xe cổng cảng</span>
-              <span className="stat-val">3,150 lượt</span>
-              <span className="stat-desc" style={{ color: "#d97706" }}>▼ -3% giờ cao điểm</span>
-            </div>
-          </div>
-
-          {/* Stat 4 */}
-          <div className="stat-widget">
-            <div className="stat-icon-wrapper" style={{ background: "#f3e8ff", color: "#7c3aed" }}>
-              <Activity size={24} />
-            </div>
-            <div className="stat-details">
-              <span className="stat-label">Hiệu suất vận hành</span>
-              <span className="stat-val">98.4%</span>
-              <span className="stat-desc" style={{ color: "#7c3aed" }}>▲ Tối ưu công suất</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Dashboard Row */}
-        <div className="dashboard-row">
-          {/* Chart widget */}
-          <div className="chart-card">
-            <div className="chart-header">
-              <span className="chart-title">Sản lượng hàng hóa qua cảng (6 tháng gần đây)</span>
-              <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: "700" }}>Đơn vị: Nghìn TEU</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px" }}>
-              <svg viewBox="0 0 500 200" style={{ width: "100%", height: "100%" }}>
-                <defs>
-                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4"/>
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/>
-                  </linearGradient>
-                </defs>
-                {/* Grid lines */}
-                <line x1="40" y1="20" x2="480" y2="20" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="40" y1="60" x2="480" y2="60" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="40" y1="100" x2="480" y2="100" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="40" y1="140" x2="480" y2="140" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="40" y1="180" x2="480" y2="180" stroke="#cbd5e1" strokeWidth="1.5" />
-
-                {/* Chart labels */}
-                <text x="15" y="24" fill="#64748b" fontSize="9" fontWeight="700">100</text>
-                <text x="15" y="64" fill="#64748b" fontSize="9" fontWeight="700">75</text>
-                <text x="15" y="104" fill="#64748b" fontSize="9" fontWeight="700">50</text>
-                <text x="15" y="144" fill="#64748b" fontSize="9" fontWeight="700">25</text>
-                <text x="20" y="184" fill="#64748b" fontSize="9" fontWeight="700">0</text>
-
-                <text x="65" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T12</text>
-                <text x="145" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T01</text>
-                <text x="225" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T02</text>
-                <text x="305" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T03</text>
-                <text x="385" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T04</text>
-                <text x="465" y="195" fill="#000000" fontSize="9" fontWeight="700" textAnchor="middle">T05</text>
-
-                {/* Path and Gradient */}
-                <path d="M 65 140 L 145 110 L 225 130 L 305 70 L 385 50 L 465 30 L 465 180 L 65 180 Z" fill="url(#chartGrad)" />
-                <path d="M 65 140 L 145 110 L 225 130 L 305 70 L 385 50 L 465 30" fill="none" stroke="#2b6cb0" strokeWidth="3" />
-
-                {/* Data Points */}
-                <circle cx="65" cy="140" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
-                <circle cx="145" cy="110" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
-                <circle cx="225" cy="130" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
-                <circle cx="305" cy="70" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
-                <circle cx="385" cy="50" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
-                <circle cx="465" cy="30" r="4" fill="#ffffff" stroke="#2b6cb0" strokeWidth="2" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Vessel Schedules widget */}
-          <div className="vessels-card">
-            <span className="chart-title">Lịch tàu cập cảng (Hôm nay)</span>
-            <div className="table-wrapper">
-              <table className="db-table">
-                <thead>
+      <div className="employee-layout">
+        <div className="panel-full">
+          <div className="base-table-wrapper">
+            <table className="base-table">
+              <thead>
+                <tr>
+                  <th className="th-first" style={{ width: "45px", textAlign: "center" }}>
+                    STT
+                  </th>
+                  <th style={{ width: "100px" }}>Số văn bản</th>
+                  <th style={{ width: "75px", textAlign: "center" }}>Ngày soạn</th>
+                  <th style={{ width: "375px" }}>Tên văn bản</th>
+                  <th style={{ width: "90px", textAlign: "center" }}>Chi nhánh</th>
+                  <th style={{ width: "85px", textAlign: "center" }}>Ngày hiệu lực</th>
+                  <th className="th-last" style={{ width: "60px", textAlign: "center" }}>
+                    Tải
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
                   <tr>
-                    <th>Tên Tàu</th>
-                    <th>Cảng cập</th>
-                    <th>Thời gian</th>
-                    <th>Trạng thái</th>
+                    <td colSpan={7} style={{ textAlign: "center", color: "#64748b", padding: "2rem" }}>
+                      Đang tải danh sách văn bản...
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
+                ) : items.length === 0 ? (
                   <tr>
-                    <td>ASIAN BRIDGE V.24</td>
-                    <td>Tân Cảng Cát Lái</td>
-                    <td>08:30</td>
-                    <td><span className="status-badge status-active">Đang làm hàng</span></td>
+                    <td colSpan={7} style={{ textAlign: "center", color: "#64748b", padding: "2rem" }}>
+                      Chưa có văn bản thông báo nào
+                    </td>
                   </tr>
-                  <tr>
-                    <td>GREEN HORIZON V.12</td>
-                    <td>Cái Mép Terminal</td>
-                    <td>11:45</td>
-                    <td><span className="status-badge status-active">Đang làm hàng</span></td>
-                  </tr>
-                  <tr>
-                    <td>PACIFIC VOYAGER 06</td>
-                    <td>Tân Cảng Hiệp Phước</td>
-                    <td>15:20</td>
-                    <td><span className="status-badge status-pending">Đang neo chờ</span></td>
-                  </tr>
-                  <tr>
-                    <td>OOCL BANGKOK 09</td>
-                    <td>Tân Cảng Cát Lái</td>
-                    <td>18:00</td>
-                    <td><span className="status-badge status-pending">Đang neo chờ</span></td>
-                  </tr>
-                  <tr>
-                    <td>WAN HAI 203 V.10</td>
-                    <td>Tân Cảng Cát Lái</td>
-                    <td>05:30</td>
-                    <td><span className="status-badge status-closed">Đã rời cảng</span></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                ) : (
+                  items.map((item, idx) => {
+                    let attachments: any[] = [];
+                    if (item.attachments) {
+                      try {
+                        attachments = JSON.parse(item.attachments);
+                      } catch (e) {}
+                    }
+
+                    return (
+                      <tr key={item.id}>
+                        <td style={{ textAlign: "center" }}>{idx + 1}</td>
+                        <td style={{ color: "#003466", fontWeight: 700 }}>{item.documentNumber}</td>
+                        <td style={{ textAlign: "center" }}>{formatDate(item.draftDate)}</td>
+                        <td
+                          title={item.title}
+                          style={{
+                            maxWidth: "375px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {item.title}
+                        </td>
+                        <td
+                          title={item.branch}
+                          style={{
+                            maxWidth: "90px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            textAlign: "center",
+                          }}
+                        >
+                          {item.branch}
+                        </td>
+                        <td style={{ textAlign: "center" }}>{formatDate(item.effectiveDate)}</td>
+                        <td style={{ textAlign: "center" }}>
+                          {attachments && attachments.length > 0 ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "center" }}>
+                              {attachments.map((att: any, attIdx: number) => (
+                                <div key={attIdx} style={{ display: "inline-flex", alignItems: "center" }}>
+                                  {att.fileContent ? (
+                                    <a
+                                      href={att.fileContent}
+                                      download={att.fileName || `${item.documentNumber}.pdf`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      style={{
+                                        color: "#2563eb",
+                                        textDecoration: "underline",
+                                        fontWeight: 600,
+                                        fontSize: "12px",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      Tải PDF
+                                    </a>
+                                  ) : (
+                                    <span style={{ color: "#94a3b8", fontWeight: 400 }}>Không có</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: "#94a3b8", fontWeight: 400 }}>Không có</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

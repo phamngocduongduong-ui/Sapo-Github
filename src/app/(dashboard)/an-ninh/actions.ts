@@ -135,11 +135,16 @@ export async function getRegistrations() {
 
 export async function verifyEmployee(code: string) {
   try {
+    const cleanCode = code.trim();
     const employee = await prisma.employee.findFirst({
       where: {
         OR: [
-          { employeeCode: code },
-          { cardCode: code }
+          { employeeCode: cleanCode },
+          { cardCode: cleanCode },
+          { employeeCode: cleanCode.toUpperCase() },
+          { cardCode: cleanCode.toUpperCase() },
+          { employeeCode: cleanCode.toLowerCase() },
+          { cardCode: cleanCode.toLowerCase() }
         ]
       }
     });

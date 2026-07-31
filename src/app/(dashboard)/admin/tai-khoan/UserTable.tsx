@@ -17,6 +17,9 @@ type User = {
   deviceSecret: string | null;
   pendingDeviceSecret: string | null;
   deviceStatus: string;
+  deviceChangeReason?: string | null;
+  deviceInfo?: string | null;
+  accessSource?: string | null;
 };
 
 
@@ -536,6 +539,40 @@ export default function UserTable({ users, activeEmployees, branches, availableP
 
 
           </div>
+
+          {selectedUser && selectedUser.deviceStatus === "PENDING" && (
+            <div style={{
+              width: "100%",
+              margin: "8px 0 12px 0",
+              padding: "12px 16px",
+              background: "#fffbeb",
+              border: "1px solid #fcd34d",
+              borderRadius: "8px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              fontSize: "13px"
+            }}>
+              <div style={{ fontWeight: 700, color: "#b45309", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span>⚠️ CHI TIẾT YÊU CẦU ĐỔI THIẾT BỊ:</span>
+                <span style={{ color: "#000" }}>{selectedUser.employeeName || selectedUser.username}</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px", background: "#ffffff", padding: "10px 14px", borderRadius: "6px", border: "1px solid #fef3c7" }}>
+                <div>
+                  <span style={{ color: "#64748b", fontWeight: 600 }}>📝 Lý do thay đổi:</span>{" "}
+                  <strong style={{ color: "#dc2626" }}>{selectedUser.deviceChangeReason || "Chưa nhập lý do"}</strong>
+                </div>
+                <div>
+                  <span style={{ color: "#64748b", fontWeight: 600 }}>📱 Máy & Trình duyệt:</span>{" "}
+                  <strong style={{ color: "#003466" }}>{selectedUser.deviceInfo || "Không xác định"}</strong>
+                </div>
+                <div>
+                  <span style={{ color: "#64748b", fontWeight: 600 }}>🔗 Nguồn kết nối:</span>{" "}
+                  <strong style={{ color: "#059669" }}>{selectedUser.accessSource || "Web trực tiếp"}</strong>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="base-table-wrapper desktop-only">
             <table className="base-table">

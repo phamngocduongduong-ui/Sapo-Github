@@ -21,6 +21,15 @@ export default function CheckEmployee() {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const isEmployeeActive = (status?: string | null) => {
+    if (!status) return true;
+    const s = status.trim().toUpperCase();
+    if (s === "NGHỈ VIỆC" || s === "NGƯNG HOẠT ĐỘNG" || s === "INACTIVE" || s === "RESIGNED") {
+      return false;
+    }
+    return true;
+  };
+
   const playSpeakSound = (text: string) => {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
@@ -41,7 +50,7 @@ export default function CheckEmployee() {
           const matched = results[0];
           setLastVerifiedEmployee(matched);
           setSearchedCode(query);
-          if (matched.status === "ACTIVE") {
+          if (isEmployeeActive(matched.status)) {
             setLastVerifiedStatus("success");
             playSpeakSound("Hợp lệ");
           } else {
@@ -111,7 +120,7 @@ export default function CheckEmployee() {
         verifyEmployee(query).then((result) => {
           if (result) {
             setLastVerifiedEmployee(result);
-            if (result.status === "ACTIVE") {
+            if (isEmployeeActive(result.status)) {
               setLastVerifiedStatus("success");
               playSpeakSound("Hợp lệ");
             } else {
@@ -143,7 +152,7 @@ export default function CheckEmployee() {
   const handleRowClick = (emp: any) => {
     setLastVerifiedEmployee(emp);
     setSearchedCode(emp.employeeCode);
-    if (emp.status === "ACTIVE") {
+    if (isEmployeeActive(emp.status)) {
       setLastVerifiedStatus("success");
       playSpeakSound("Hợp lệ");
     } else {
@@ -430,7 +439,7 @@ export default function CheckEmployee() {
         </form>
 
         {/* Results Card Area */}
-        <div style={{ margin: "0 auto", maxWidth: "900px", width: "100%" }}>
+        <div style={{ margin: "0 auto", width: "fit-content", minWidth: "900px", maxWidth: "100%" }}>
           {loading ? (
             <div style={{
               background: "white",
@@ -589,7 +598,7 @@ export default function CheckEmployee() {
                   display: "flex",
                   gap: "42px",
                   alignItems: "center",
-                  flexWrap: "wrap"
+                  flexWrap: "nowrap"
                 }}>
                   {/* Avatar */}
                   <div style={{
@@ -614,7 +623,7 @@ export default function CheckEmployee() {
                   <div style={{ flex: 1, minWidth: "220px" }}>
                     {/* Name */}
                     <div style={{ marginBottom: "9px" }}>
-                      <h2 style={{ fontSize: "47px", fontWeight: 800, color: "#1e293b", margin: 0 }}>
+                      <h2 style={{ fontSize: "47px", fontWeight: 800, color: "#1e293b", margin: 0, whiteSpace: "nowrap" }}>
                         {lastVerifiedEmployee.fullName.toUpperCase()}
                       </h2>
                     </div>
@@ -670,20 +679,12 @@ export default function CheckEmployee() {
                         </div>
                       </div>
 
-                      {(lastVerifiedEmployee.phone || lastVerifiedEmployee.cardCode) && (
+                      {lastVerifiedEmployee.cardCode && (
                         <div style={{ display: "flex", alignItems: "center", gap: "24px", flexWrap: "wrap" }}>
-                          {lastVerifiedEmployee.phone && (
-                            <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#475569", fontSize: "25px", fontWeight: 500 }}>
-                              <Phone size={31} color="#64748b" />
-                              <span>Số ĐT: <strong>{lastVerifiedEmployee.phone}</strong></span>
-                            </div>
-                          )}
-                          {lastVerifiedEmployee.cardCode && (
-                            <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#475569", fontSize: "25px", fontWeight: 500 }}>
-                              <Fingerprint size={31} color="#64748b" />
-                              <span>Mã thẻ từ: <strong>{lastVerifiedEmployee.cardCode}</strong></span>
-                            </div>
-                          )}
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#475569", fontSize: "25px", fontWeight: 500 }}>
+                            <Fingerprint size={31} color="#64748b" />
+                            <span>Mã thẻ từ: <strong>{lastVerifiedEmployee.cardCode}</strong></span>
+                          </div>
                         </div>
                       )}
                     </div>

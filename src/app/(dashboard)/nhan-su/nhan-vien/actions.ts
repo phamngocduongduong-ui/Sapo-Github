@@ -40,7 +40,7 @@ export async function createEmployee(formData: FormData) {
       where: { cardCode: trimmedCard }
     });
     if (duplicateCard) {
-      throw new Error(`Mã thẻ đã sử dụng cho nhân viên ${duplicateCard.fullName}`);
+      throw new Error(`Mã thẻ "${trimmedCard}" đã được gán cho nhân viên ${duplicateCard.fullName} (${duplicateCard.employeeCode}). Vui lòng cập nhật mã thẻ mới!`);
     }
   }
 
@@ -126,7 +126,7 @@ export async function updateEmployee(id: string, formData: FormData) {
       }
     });
     if (duplicateCard) {
-      throw new Error(`Mã thẻ đã sử dụng cho nhân viên ${duplicateCard.fullName}`);
+      throw new Error(`Mã thẻ "${trimmedCard}" đã được gán cho nhân viên ${duplicateCard.fullName} (${duplicateCard.employeeCode}). Vui lòng cập nhật mã thẻ mới!`);
     }
   }
 

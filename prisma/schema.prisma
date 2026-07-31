@@ -599,6 +599,9 @@ model user {
   deviceSecret        String?      @db.VarChar(255)
   pendingDeviceSecret String?      @db.VarChar(255)
   deviceStatus        String       @default("APPROVED")
+  deviceChangeReason  String?      @db.Text
+  deviceInfo          String?      @db.Text
+  accessSource        String?      @db.VarChar(255)
 }
 
 model violation {
@@ -1017,6 +1020,33 @@ model receiptvoucher {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+model document {
+  id             String   @id @default(cuid())
+  documentNumber String   @unique(map: "Document_documentNumber_key")
+  draftDate      DateTime
+  title          String
+  branch         String
+  effectiveDate  DateTime
+  attachments    String?  @db.LongText
+  status         String   @default("Còn hiệu lực")
+  isDeployed     Boolean  @default(false)
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model documentconfirmation {
+  id           String   @id @default(cuid())
+  documentId   String
+  username     String
+  employeeName String?
+  branch       String?
+  confirmedAt  DateTime @default(now())
+
+  @@unique([documentId, username], map: "DocumentConfirmation_doc_user_key")
+}
+
 
 
 

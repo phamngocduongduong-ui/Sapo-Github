@@ -108,10 +108,11 @@ export default function SalaryIncreaseTable({
 
       {showModal && (
         <div style={{ 
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", 
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 
-        }}>
-          <div className="card" style={{ width: "100%", maxWidth: "500px", padding: "1.5rem" }}>
+          position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.6)", 
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
+          padding: "1rem"
+        }} onClick={() => setShowModal(false)}>
+          <div className="card" style={{ width: "100%", maxWidth: "480px", padding: "1.25rem", borderRadius: "12px" }} onClick={(e) => e.stopPropagation()}>
             <h3>💰 Đề xuất tăng lương</h3>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>

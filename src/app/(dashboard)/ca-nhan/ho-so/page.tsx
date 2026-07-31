@@ -130,34 +130,21 @@ export default async function ProfilePage({
   const tier = getSeniorityTier(employee?.startDate);
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: "100%", paddingBottom: "2rem" }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
 
         {/* Base-style Elegant White Header Card */}
-        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "15px 24px", marginBottom: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-          <div style={{ display: "flex", gap: "2rem", alignItems: "center" }}>
+        <div className="profile-header-card">
+          <div className="profile-header-flex">
             <div style={{ position: "relative" }}>
-              <div style={{
-                width: "96px",
-                height: "96px",
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #0072bc 0%, #005a96 100%)",
-                color: "#ffffff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "2.75rem",
-                fontWeight: 700,
-                border: "4px solid #ffffff",
-                boxShadow: "0 4px 10px rgba(0,72,188,0.15)"
-              }}>
+              <div className="profile-avatar">
                 {empName.charAt(0)}
               </div>
-              <div style={{ position: "absolute", bottom: "2px", right: "2px", width: "18px", height: "18px", background: "#10b981", borderRadius: "50%", border: "3px solid #ffffff" }}></div>
+              <div className="profile-avatar-status"></div>
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-                <h1 style={{ margin: 0, fontSize: "1.75rem", fontWeight: 700, color: "#1e293b" }}>{empName}</h1>
+                <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700, color: "#1e293b" }}>{empName}</h1>
                 <span style={{ background: "#eff6ff", color: "#0072bc", padding: "3px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600, border: "1px solid #bfdbfe" }}>
                   {employee?.employeeCode || "MS-XXXX"}
                 </span>
@@ -165,7 +152,7 @@ export default async function ProfilePage({
                   {tier.name}
                 </span>
               </div>
-              <p style={{ margin: "0.5rem 0 0", fontSize: "0.95rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <p className="profile-header-sub">
                 <Briefcase size={16} color="#0072bc" /> <span style={{ fontWeight: 600, color: "#475569" }}>{employee?.position || "Chuyên viên"}</span>
                 <span style={{ color: "#cbd5e1" }}>•</span>
                 <Building size={16} color="#0072bc" /> <span style={{ fontWeight: 600, color: "#475569" }}>{employee?.department || "Phòng ban"}</span>
@@ -176,7 +163,7 @@ export default async function ProfilePage({
                   </>
                 )}
               </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "1.5rem", marginTop: "1rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem" }}>
+              <div className="profile-header-contacts">
                 <span style={{ fontSize: "0.85rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.4rem" }}><Mail size={15} /> {employee?.email || "Chưa thiết lập"}</span>
                 <span style={{ fontSize: "0.85rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.4rem" }}><Phone size={15} /> {employee?.phone || "Chưa thiết lập"}</span>
                 <span style={{ fontSize: "0.85rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.4rem" }}><Calendar size={15} /> Ngày gia nhập: {formatDate(employee?.startDate) || "—"}</span>
@@ -185,12 +172,12 @@ export default async function ProfilePage({
           </div>
         </div>
 
-        {/* Base-style Dual Column Layout */}
-        <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: "1.5rem", alignItems: "start" }}>
+        {/* Dual Column Layout */}
+        <div className="profile-main-layout">
 
-          {/* Left Navigation Sidebar */}
+          {/* Navigation Sidebar / Mobile Tab Bar */}
           <div className="sidebar-menu-base">
-            <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9", fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div className="sidebar-title-desktop">
               Danh mục hồ sơ
             </div>
             <a href="/ca-nhan/ho-so?tab=1" className={`menu-item-base ${activeTab === "1" ? "active" : ""}`}>
@@ -217,12 +204,12 @@ export default async function ProfilePage({
             {/* TAB 1: THÔNG TIN CÁ NHÂN */}
             {activeTab === "1" && (
               <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid #f1f5f9" }}>
-                  <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid #f1f5f9", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700 }}>
                     <UserCheck size={20} color="#0072bc" /> Hồ sơ liên hệ & Định danh
                   </h3>
                   {!isEditing ? (
-                    <a href="/ca-nhan/ho-so?tab=1&edit=true" className="btn-base btn-outline" style={{ padding: "6px 14px", borderRadius: "6px" }}>
+                    <a href="/ca-nhan/ho-so?tab=1&edit=true" className="btn-base btn-outline" style={{ padding: "6px 14px", borderRadius: "6px", fontSize: "13px" }}>
                       Hiệu chỉnh hồ sơ
                     </a>
                   ) : (
@@ -240,7 +227,7 @@ export default async function ProfilePage({
                   <input type="hidden" name="branch" value={employee?.branch || ""} />
 
                   <div style={{ padding: "16px 20px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 24px" }}>
+                    <div className="profile-form-grid">
 
                       <InfoItemBase label="Số CCCD / Hộ chiếu" name="idCardNumber" value={employee?.idCardNumber || "—"} editing={isEditing} />
                       <InfoItemBase
@@ -283,14 +270,14 @@ export default async function ProfilePage({
                         )}
                       />
 
-                      <div style={{ gridColumn: "1 / -1" }}>
+                      <div className="full-width-grid-item">
                         <InfoItemBase label="Địa chỉ cư trú hiện tại" name="address" value={employee?.address || "—"} editing={isEditing} />
                       </div>
                     </div>
                   </div>
 
                   {isEditing && (
-                    <div style={{ padding: "1.25rem 1.75rem", background: "#f8fafc", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                    <div style={{ padding: "1rem 1.25rem", background: "#f8fafc", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
                       <a href="/ca-nhan/ho-so?tab=1" className="btn-base btn-outline" style={{ borderRadius: "6px" }}>Hủy bỏ</a>
                       <button type="submit" className="btn-base btn-primary" style={{ borderRadius: "6px", padding: "8px 20px" }}>Cập nhật thông tin</button>
                     </div>
@@ -303,7 +290,7 @@ export default async function ProfilePage({
             {activeTab === "2" && (
               <div>
                 <div style={{ padding: "12px 20px", borderBottom: "1px solid #f1f5f9" }}>
-                  <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700 }}>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700 }}>
                     <Briefcase size={20} color="#0072bc" /> Thông tin Công sự & Tuyển dụng
                   </h3>
                 </div>
@@ -312,18 +299,18 @@ export default async function ProfilePage({
 
                   {/* Job specifications */}
                   <h4 style={{ margin: "0 0 8px 0", fontSize: "0.95rem", color: "#475569", fontWeight: 700 }}>📊 Vị trí và Thâm niên</h4>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "1.25rem" }}>
+                  <div className="profile-specs-grid">
                     <div style={{ background: "#f8fafc", padding: "10px 14px", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
-                      <span style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 700 }}>Mã nhân sự</span>
-                      <div style={{ fontSize: "1rem", fontWeight: 700, color: "#1e293b", marginTop: "4px" }}>{employee?.employeeCode || "MS-XXXX"}</div>
+                      <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 700 }}>Mã nhân sự</span>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#1e293b", marginTop: "2px" }}>{employee?.employeeCode || "MS-XXXX"}</div>
                     </div>
                     <div style={{ background: "#f8fafc", padding: "10px 14px", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
-                      <span style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 700 }}>Thâm niên công tác</span>
-                      <div style={{ fontSize: "1rem", fontWeight: 700, color: "#1e293b", marginTop: "4px" }}>{calculateSeniority(employee?.startDate)}</div>
+                      <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 700 }}>Thâm niên công tác</span>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#1e293b", marginTop: "2px" }}>{calculateSeniority(employee?.startDate)}</div>
                     </div>
                     <div style={{ background: "#f8fafc", padding: "10px 14px", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
-                      <span style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 700 }}>Hạng thành viên</span>
-                      <div style={{ fontSize: "1rem", fontWeight: 700, color: "#0072bc", marginTop: "4px" }}>{tier.name}</div>
+                      <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 700 }}>Hạng thành viên</span>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0072bc", marginTop: "2px" }}>{tier.name}</div>
                     </div>
                   </div>
 
@@ -336,10 +323,10 @@ export default async function ProfilePage({
                         border: "1px solid " + (index === 0 ? "#bfdbfe" : "#e2e8f0"),
                         borderLeft: "5px solid " + (index === 0 ? "#0072bc" : "#94a3b8"),
                         borderRadius: "8px",
-                        padding: "1.25rem",
+                        padding: "1rem",
                         marginBottom: "1rem"
                       }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
                           <div>
                             <span style={{ fontSize: "13px", fontWeight: 700, color: index === 0 ? "#0072bc" : "#475569" }}>
                               {contract.contractType}
@@ -361,7 +348,7 @@ export default async function ProfilePage({
                           </span>
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", fontSize: "13px", color: "#475569" }}>
+                        <div className="profile-contract-grid">
                           <div>📅 Ngày ký: <strong>{formatDate(contract.contractDate)}</strong></div>
                           <div>📅 Hiệu lực: <strong>{formatDate(contract.startDate)}</strong></div>
                           <div>📅 Hết hạn: <strong>{contract.endDate ? formatDate(contract.endDate) : "Vô thời hạn"}</strong></div>
@@ -378,8 +365,8 @@ export default async function ProfilePage({
                       </div>
                     ))
                   ) : (
-                    <div style={{ textAlign: "center", padding: "2.5rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1", color: "#94a3b8" }}>
-                      <FileText size={40} style={{ margin: "0 auto 10px", opacity: 0.6 }} />
+                    <div style={{ textAlign: "center", padding: "2rem", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1", color: "#94a3b8" }}>
+                      <FileText size={36} style={{ margin: "0 auto 8px", opacity: 0.6 }} />
                       <p style={{ margin: 0, fontSize: "13px" }}>Chưa lập hợp đồng lao động trên hệ thống.</p>
                     </div>
                   )}
@@ -392,7 +379,7 @@ export default async function ProfilePage({
             {activeTab === "3" && (
               <div>
                 <div style={{ padding: "12px 20px", borderBottom: "1px solid #f1f5f9" }}>
-                  <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700 }}>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700 }}>
                     <Calendar size={20} color="#0072bc" /> Quản lý Chuyên cần & Nghỉ phép
                   </h3>
                 </div>
@@ -400,7 +387,7 @@ export default async function ProfilePage({
                 <div style={{ padding: "16px 20px" }}>
 
                   {/* Dashboard Metrics inside tabs */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", marginBottom: "2rem" }}>
+                  <div className="profile-metrics-grid">
                     <MetricCardBase title="Nghỉ phép còn lại" value={remainingLeaveDays} unit="ngày" icon={<Calendar color="#0072bc" size={18} />} trend="Tiêu chuẩn 12 ngày" />
                     <MetricCardBase title="Đề xuất nghỉ chờ duyệt" value={pendingLeaveCount} unit="đơn" icon={<Clock color="#f59e0b" size={18} />} trend="Quy trình tự động" />
                     <MetricCardBase title="Đề xuất lương chờ duyệt" value={pendingSalaryCount} unit="đơn" icon={<TrendingUp color="#16a34a" size={18} />} trend="Đang chờ HR" />
@@ -408,9 +395,9 @@ export default async function ProfilePage({
                   </div>
 
                   {/* Attendance table overview */}
-                  <h4 style={{ margin: "0 0 1rem 0", fontSize: "0.95rem", color: "#475569", fontWeight: 700 }}>📊 Bảng chuyên cần năm {currentYear}</h4>
-                  <div style={{ overflowX: "auto", marginBottom: "2rem", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                  <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.95rem", color: "#475569", fontWeight: 700 }}>📊 Bảng chuyên cần năm {currentYear}</h4>
+                  <div style={{ overflowX: "auto", marginBottom: "1.5rem", border: "1px solid #e2e8f0", borderRadius: "8px", WebkitOverflowScrolling: "touch" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", minWidth: "500px" }}>
                       <thead>
                         <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", textAlign: "left" }}>
                           <th style={{ padding: "10px 12px", color: "#475569", fontWeight: 700 }}>Tháng</th>
@@ -443,9 +430,9 @@ export default async function ProfilePage({
                   </div>
 
                   {/* Leave history */}
-                  <h4 style={{ margin: "0 0 1rem 0", fontSize: "0.95rem", color: "#475569", fontWeight: 700 }}>📋 Lịch sử đề xuất nghỉ phép</h4>
-                  <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                  <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.95rem", color: "#475569", fontWeight: 700 }}>📋 Lịch sử đề xuất nghỉ phép</h4>
+                  <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "8px", WebkitOverflowScrolling: "touch" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", minWidth: "550px" }}>
                       <thead>
                         <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", textAlign: "left" }}>
                           <th style={{ padding: "10px 12px", color: "#475569", fontWeight: 700 }}>Ngày đề xuất</th>
@@ -498,7 +485,7 @@ export default async function ProfilePage({
             {activeTab === "4" && (
               <div>
                 <div style={{ padding: "12px 20px", borderBottom: "1px solid #f1f5f9" }}>
-                  <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700 }}>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700 }}>
                     <TrendingUp size={20} color="#0072bc" /> Quản lý Lương & Chế độ đãi ngộ
                   </h3>
                 </div>
@@ -506,7 +493,7 @@ export default async function ProfilePage({
                 <div style={{ padding: "16px 20px" }}>
 
                   {/* Outer flex for Salary timeline and requests */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.8fr", gap: "1.5rem", alignItems: "start" }}>
+                  <div className="profile-salary-grid">
 
                     {/* Left: Timeline component */}
                     <div>
@@ -531,12 +518,75 @@ export default async function ProfilePage({
         </div>
       </div>
 
-      {/* Dynamic styling for Base.vn styles */}
+      {/* Dynamic styling for Base.vn styles & Mobile responsiveness */}
       <style dangerouslySetInnerHTML={{
         __html: `
         * {
           font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
         }
+
+        .profile-header-card {
+          background: #ffffff !important;
+          border: 1px solid #e2e8f0 !important;
+          border-radius: 12px !important;
+          padding: 15px 24px !important;
+          margin-bottom: 1.25rem !important;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+        }
+        .profile-header-flex {
+          display: flex !important;
+          gap: 1.5rem !important;
+          align-items: center !important;
+        }
+        .profile-avatar {
+          width: 90px !important;
+          height: 90px !important;
+          border-radius: 50% !important;
+          background: linear-gradient(135deg, #0072bc 0%, #005a96 100%) !important;
+          color: #ffffff !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          font-size: 2.5rem !important;
+          font-weight: 700 !important;
+          border: 4px solid #ffffff !important;
+          box-shadow: 0 4px 10px rgba(0,72,188,0.15) !important;
+        }
+        .profile-avatar-status {
+          position: absolute !important;
+          bottom: 2px !important;
+          right: 2px !important;
+          width: 18px !important;
+          height: 18px !important;
+          background: #10b981 !important;
+          border-radius: 50% !important;
+          border: 3px solid #ffffff !important;
+        }
+        .profile-header-sub {
+          margin: 0.4rem 0 0 !important;
+          font-size: 0.9rem !important;
+          color: #64748b !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 0.5rem !important;
+          flex-wrap: wrap !important;
+        }
+        .profile-header-contacts {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 1.25rem !important;
+          margin-top: 0.75rem !important;
+          border-top: 1px solid #f1f5f9 !important;
+          padding-top: 0.75rem !important;
+        }
+
+        .profile-main-layout {
+          display: grid !important;
+          grid-template-columns: 250px 1fr !important;
+          gap: 1.25rem !important;
+          align-items: start !important;
+        }
+
         .sidebar-menu-base {
           background: #ffffff !important;
           border: 1px solid #e2e8f0 !important;
@@ -547,17 +597,27 @@ export default async function ProfilePage({
           gap: 4px !important;
           box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
         }
+        .sidebar-title-desktop {
+          padding: 10px 14px !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          font-size: 11px !important;
+          font-weight: 700 !important;
+          color: #94a3b8 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.05em !important;
+        }
         .menu-item-base {
           display: flex !important;
           align-items: center !important;
-          gap: 12px !important;
-          padding: 10px 16px !important;
+          gap: 10px !important;
+          padding: 10px 14px !important;
           border-radius: 8px !important;
           color: #475569 !important;
           font-size: 13px !important;
           font-weight: 600 !important;
           text-decoration: none !important;
           transition: all 0.2s ease !important;
+          white-space: nowrap !important;
         }
         .menu-item-base:hover {
           background: #f1f5f9 !important;
@@ -568,6 +628,45 @@ export default async function ProfilePage({
           color: #0072bc !important;
           font-weight: 700 !important;
         }
+
+        .profile-form-grid {
+          display: grid !important;
+          grid-template-columns: 1fr 1fr !important;
+          gap: 16px 20px !important;
+        }
+        .full-width-grid-item {
+          grid-column: 1 / -1 !important;
+        }
+
+        .profile-specs-grid {
+          display: grid !important;
+          grid-template-columns: repeat(3, 1fr) !important;
+          gap: 12px !important;
+          margin-bottom: 1.25rem !important;
+        }
+
+        .profile-contract-grid {
+          display: grid !important;
+          grid-template-columns: repeat(3, 1fr) !important;
+          gap: 0.85rem !important;
+          font-size: 13px !important;
+          color: #475569 !important;
+        }
+
+        .profile-metrics-grid {
+          display: grid !important;
+          grid-template-columns: repeat(4, 1fr) !important;
+          gap: 1rem !important;
+          margin-bottom: 1.5rem !important;
+        }
+
+        .profile-salary-grid {
+          display: grid !important;
+          grid-template-columns: 1.2fr 1.8fr !important;
+          gap: 1.5rem !important;
+          align-items: start !important;
+        }
+
         .seniority-badge-header {
           font-size: 0.75rem !important;
           font-weight: 600 !important;
@@ -595,7 +694,8 @@ export default async function ProfilePage({
           color: #c2410c !important;
           border-color: #ffedd5 !important;
         }
-        .select-base {
+
+        .select-base, .input-text-base {
           width: 100% !important;
           padding: 8px 12px !important;
           border-radius: 6px !important;
@@ -606,22 +706,10 @@ export default async function ProfilePage({
           outline: none !important;
           transition: border-color 0.2s !important;
         }
-        .select-base:focus {
+        .select-base:focus, .input-text-base:focus {
           border-color: #0072bc !important;
         }
-        .input-text-base {
-          width: 100% !important;
-          padding: 8px 12px !important;
-          border-radius: 6px !important;
-          border: 1px solid #cbd5e1 !important;
-          font-size: 13px !important;
-          outline: none !important;
-          transition: border-color 0.2s !important;
-          color: #334155 !important;
-        }
-        .input-text-base:focus {
-          border-color: #0072bc !important;
-        }
+
         .spinner-small-base {
           width: 14px !important;
           height: 14px !important;
@@ -632,6 +720,90 @@ export default async function ProfilePage({
         }
         @keyframes spin-base {
           to { transform: rotate(360deg); }
+        }
+
+        /* 📱 MOBILE RESPONSIVE STYLES (≤768px) */
+        @media (max-width: 768px) {
+          .profile-header-card {
+            padding: 14px 16px !important;
+            margin-bottom: 1rem !important;
+          }
+          .profile-header-flex {
+            flex-direction: column !important;
+            text-align: center !important;
+            gap: 0.75rem !important;
+          }
+          .profile-avatar {
+            width: 72px !important;
+            height: 72px !important;
+            font-size: 2rem !important;
+            margin: 0 auto !important;
+          }
+          .profile-header-flex h1 {
+            font-size: 1.35rem !important;
+            justify-content: center !important;
+          }
+          .profile-header-flex > div:nth-child(2) > div:first-child {
+            justify-content: center !important;
+          }
+          .profile-header-sub {
+            justify-content: center !important;
+            font-size: 0.85rem !important;
+          }
+          .profile-header-contacts {
+            flex-direction: column !important;
+            gap: 0.5rem !important;
+            align-items: center !important;
+          }
+
+          .profile-main-layout {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+          }
+
+          .sidebar-menu-base {
+            flex-direction: row !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: 6px !important;
+            gap: 6px !important;
+            border-radius: 10px !important;
+            margin-bottom: 0.25rem !important;
+          }
+          .sidebar-title-desktop {
+            display: none !important;
+          }
+          .menu-item-base {
+            padding: 8px 12px !important;
+            font-size: 12px !important;
+            border-radius: 6px !important;
+            flex-shrink: 0 !important;
+          }
+
+          .profile-form-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+
+          .profile-specs-grid {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+          }
+
+          .profile-contract-grid {
+            grid-template-columns: 1fr !important;
+            gap: 0.5rem !important;
+          }
+
+          .profile-metrics-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0.75rem !important;
+          }
+
+          .profile-salary-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1.25rem !important;
+          }
         }
       ` }} />
     </div>

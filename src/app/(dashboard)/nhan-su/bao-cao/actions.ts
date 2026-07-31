@@ -204,7 +204,7 @@ export async function getAttendanceReport(employeeCodes?: string[], startDateStr
         const reasonText = leaveRecord.reason 
           ? (leaveRecord.subReason ? `${leaveRecord.reason} (${leaveRecord.subReason})` : leaveRecord.reason)
           : "Nghỉ phép";
-        warning = `NGHỈ PHÉP (${reasonText})`;
+        warning = reasonText;
       } else {
         // Find checkin for this employee and this day
         const checkinRecord = checkins.find(c => {

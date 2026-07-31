@@ -1300,10 +1300,10 @@ export default function ReportClient() {
                         </thead>
                         <tbody>
                           {paginate(attendanceData, attendancePage).map((row, idx) => {
+                            const isLeave = row.checkInTime === "OFF" && row.checkOutTime === "OFF";
                             const warningClass = 
                               row.warning === "Đủ giờ công" ? "success" : 
-                              row.warning === "Không đủ giờ công" ? "warning" : 
-                              row.warning?.startsWith("NGHỈ PHÉP") ? "info" : "danger";
+                              row.warning === "Không đủ giờ công" ? "warning" : "danger";
                             return (
                               <tr key={idx}>
                                 <td style={{ textAlign: "center" }}>{(attendancePage - 1) * itemsPerPage + idx + 1}</td>
@@ -1314,9 +1314,15 @@ export default function ReportClient() {
                                 <td style={{ textAlign: "center", color: "#b45309" }}>{row.checkOutTime}</td>
                                 <td style={{ fontSize: "11px", fontFamily: "monospace" }}>{row.boundDevice}</td>
                                 <td style={{ textAlign: "center" }}>
-                                  <span className={`badge-status ${warningClass}`}>
-                                    {row.warning}
-                                  </span>
+                                  {isLeave ? (
+                                    <span style={{ color: "#0284c7", fontWeight: "700", fontSize: "12px", textTransform: "uppercase" }}>
+                                      {row.warning}
+                                    </span>
+                                  ) : (
+                                    <span className={`badge-status ${warningClass}`}>
+                                      {row.warning}
+                                    </span>
+                                  )}
                                 </td>
                               </tr>
                             );

@@ -590,8 +590,12 @@ export default function ResignationTable({ initialData, employees, canApprove, c
             border-radius: 14px !important;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2) !important;
             margin: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
           }
           .drawer-header {
+            flex-shrink: 0 !important;
             padding: 0.65rem 0.85rem !important;
             background: #003466 !important;
             color: #ffffff !important;

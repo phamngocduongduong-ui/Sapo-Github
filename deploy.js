@@ -152,20 +152,60 @@ async function main() {
       'SMTP_PASS="Duong@1991"\\n' +
       'SMTP_FROM_NAME="Phòng Nhân sự SAPO"\\n';
     await runRemoteCommand(conn, `printf '${envContent}' > ${remoteDeployPath}/.env`);
+    // Copy maintenance.html to /var/www/html/ so Nginx can serve custom error page during deployment
+    await runRemoteCommand(conn, `mkdir -p /var/www/html && cp ${remoteDeployPath}/public/maintenance.html /var/www/html/maintenance.html`);
     console.log('✔ Code extracted and remote .env configured.\n');
+
+    // Ensure Nginx handles 502/503/504 errors with maintenance.html
+    const initialNginxConfig = `cat << 'EOF' > /etc/nginx/sites-available/sapo-ems
+server {
+    listen 80;
+    server_name ems.sapodaklak.com 14.225.206.247;
+
+    error_page 502 503 504 /maintenance.html;
+
+    location = /maintenance.html {
+        root /var/www/html;
+        internal;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+EOF`;
+    await runRemoteCommand(conn, initialNginxConfig);
+    await runRemoteCommand(conn, 'ln -sf /etc/nginx/sites-available/sapo-ems /etc/nginx/sites-enabled/sapo-ems');
+    await runRemoteCommand(conn, 'rm -f /etc/nginx/sites-enabled/default');
+    await runRemoteCommand(conn, 'nginx -t && systemctl reload nginx || true');
 
     // 7. Install packages, run Prisma migrations, and Build
     console.log('Step 7: Installing node packages & building Next.js bundle on VPS...');
     const appSetupCmds = `
       export NVM_DIR="$HOME/.nvm"
       [ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"
+      
+      # Ensure Swap space is active to prevent Next.js build OOM (SIGKILL)
+      if [ ! -f /swapfile ]; then
+        fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+        chmod 600 /swapfile
+        mkswap /swapfile
+        swapon /swapfile
+      fi
+      
       pm2 stop sapo-ems || true
       cd ${remoteDeployPath}
       npm install
       npx prisma generate
       npx prisma db push --accept-data-loss
       node scratch/sync_admin_permissions.js
-      NODE_OPTIONS="--max-old-space-size=1024" npm run build
+      export NEXT_TELEMETRY_DISABLED=1
+      NODE_OPTIONS="--max-old-space-size=2048" npm run build
     `;
     await runRemoteCommand(conn, `bash -c '${appSetupCmds}'`);
     console.log('✔ App build and Prisma migrations completed successfully.\n');

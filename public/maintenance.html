@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hệ thống EMS đang nâng cấp</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body {
+      background: #f8fafc;
+      color: #1e293b;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .card {
+      background: #ffffff;
+      max-width: 480px;
+      width: 100%;
+      padding: 2.5rem 2rem;
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+      text-align: center;
+      border: 1px solid #e2e8f0;
+    }
+    .icon-wrapper {
+      width: 72px;
+      height: 72px;
+      background: #eff6ff;
+      color: #003466;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+      font-size: 32px;
+    }
+    h2 {
+      font-size: 20px;
+      color: #003466;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+    p {
+      font-size: 14px;
+      color: #475569;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .badge {
+      display: inline-block;
+      background: #f1f5f9;
+      color: #003466;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid #cbd5e1;
+    }
+    .loader {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #003466;
+      box-shadow: 20px 0 #003466, -20px 0 #003466;
+      animation: flash 1.2s infinite alternate;
+      margin-top: 1rem;
+    }
+    @keyframes flash {
+      0% { background-color: #003466; }
+      50% { background-color: #93c5fd; }
+      100% { background-color: #003466; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-wrapper">🔄</div>
+    <h2>Hệ thống EMS đang nâng cấp</h2>
+    <p>Hệ thống EMS đang trong quá trình đồng bộ phiên bản mới, vui lòng thử lại sau 1 phút.</p>
+    <div class="badge">Đang cập nhật phiên bản máy chủ...</div>
+    <div style="margin-top: 1.5rem;">
+      <div class="loader"></div>
+    </div>
+  </div>
+  <script>
+    setTimeout(function() {
+      window.location.reload();
+    }, 8000);
+  </script>
+</body>
+</html>

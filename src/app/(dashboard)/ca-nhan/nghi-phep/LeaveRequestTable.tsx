@@ -569,8 +569,8 @@ export default function LeaveRequestTable({
             .drawer-content {
               width: 100% !important;
               max-width: 440px !important;
-              height: 88vh !important;
-              max-height: 88vh !important;
+              height: auto !important;
+              max-height: 92vh !important;
               border-radius: 14px !important;
               box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2) !important;
               margin: auto !important;
@@ -580,41 +580,34 @@ export default function LeaveRequestTable({
             }
             .drawer-header {
               flex-shrink: 0 !important;
-              min-height: 52px !important;
-              padding: 10px 14px !important;
+              padding: 0.65rem 0.85rem !important;
               background: #003466 !important;
               color: #ffffff !important;
-              border-bottom: 2px solid #002447 !important;
+              border-bottom: 1px solid #002447 !important;
               border-radius: 14px 14px 0 0 !important;
               width: 100% !important;
-              display: flex !important;
-              flex-direction: column !important;
-              justify-content: center !important;
-              align-items: center !important;
-              text-align: center !important;
+              display: block !important;
             }
             .drawer-header h3, .header-titles h3, .drawer-header .header-titles h3 {
-              font-size: 16px !important;
+              font-size: 15px !important;
               color: #ffffff !important;
               font-weight: 700 !important;
               margin: 0 !important;
               padding: 0 !important;
               display: block !important;
               line-height: 1.3 !important;
-              text-align: center !important;
             }
             .drawer-header .header-sub, .drawer-header .header-sub span {
               font-size: 11px !important;
-              color: #e2e8f0 !important;
+              color: #cbd5e1 !important;
               display: block !important;
-              margin-top: 3px !important;
-              text-align: center !important;
+              margin-top: 2px !important;
             }
             .drawer-body {
-              flex: 1 !important;
+              padding: 0.5rem 0.85rem !important;
+              max-height: calc(92vh - 95px) !important;
               overflow-y: auto !important;
               -webkit-overflow-scrolling: touch !important;
-              padding: 10px 14px !important;
               gap: 0.35rem !important;
             }
             .drawer-form {
@@ -626,7 +619,7 @@ export default function LeaveRequestTable({
             }
             .drawer-footer {
               flex-shrink: 0 !important;
-              padding: 8px 14px !important;
+              padding: 0.45rem 0.85rem !important;
               background: #ffffff !important;
               border-top: 1px solid #f1f5f9 !important;
             }

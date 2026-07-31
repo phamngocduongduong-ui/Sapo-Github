@@ -15,21 +15,17 @@ export default function DeployedDocumentModal() {
 
   const fetchPendingDocs = async () => {
     try {
-      // Lấy ngày hiện tại dạng YYYY-MM-DD
       const today = new Date().toLocaleDateString("en-CA");
       const lastShownDate = localStorage.getItem("doc_modal_last_shown_date");
 
-      // Nếu trong ngày hôm nay thông báo đã hiển thị 1 lần rồi thì không hiển thị lại
       if (lastShownDate === today) {
         return;
       }
 
       const docs = await getPendingDeployedDocuments();
       if (docs && docs.length > 0) {
-        // Đánh dấu đã hiển thị 1 lần duy nhất trong ngày hôm nay
         localStorage.setItem("doc_modal_last_shown_date", today);
 
-        // Sắp xếp giảm dần theo Ngày hiệu lực (ngày hiệu lực gần nhất lên đầu)
         const sortedDocs = [...docs].sort((a: any, b: any) => {
           const timeA = a.effectiveDate ? new Date(a.effectiveDate).getTime() : 0;
           const timeB = b.effectiveDate ? new Date(b.effectiveDate).getTime() : 0;
@@ -75,7 +71,6 @@ export default function DeployedDocumentModal() {
     try {
       await confirmDocumentRead(currentDoc.id);
       setIsConfirmedChecked(false);
-      // Chuyển sang văn bản tiếp theo trong hàng đợi
       setPendingDocs((prev) => prev.slice(1));
     } catch (e: any) {
       alert(e.message || "Lỗi khi xác nhận đã đọc văn bản!");
@@ -86,7 +81,6 @@ export default function DeployedDocumentModal() {
 
   const handleReadLater = () => {
     setIsConfirmedChecked(false);
-    // Đóng toàn bộ thông báo ngày hôm nay
     setPendingDocs([]);
   };
 
@@ -133,93 +127,44 @@ export default function DeployedDocumentModal() {
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "rgba(15, 23, 42, 0.75)",
-        backdropFilter: "blur(4px)",
-        zIndex: 99999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "1rem",
-        animation: "fadeIn 0.2s ease-in-out",
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: "#ffffff",
-          borderRadius: "12px",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-          width: "100%",
-          maxWidth: "650px",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          maxHeight: "90vh",
-          border: "1px solid #cbd5e1",
-        }}
-      >
+    <div className="doc-modal-overlay">
+      <div className="doc-modal-card">
         {/* Header Banner */}
-        <div
-          style={{
-            backgroundColor: "#003466",
-            color: "#ffffff",
-            padding: "14px 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderBottom: "3px solid #ff5c00",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <AlertCircle size={22} style={{ color: "#ff5c00" }} />
-            <span style={{ fontWeight: 700, fontSize: "16px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              Thông báo văn bản quan trọng
-            </span>
+        <div className="doc-modal-header">
+          <div className="doc-modal-header-title">
+            <AlertCircle size={22} style={{ color: "#ff5c00", flexShrink: 0 }} />
+            <span>THÔNG BÁO VĂN BẢN QUAN TRỌNG</span>
           </div>
           {pendingDocs.length > 1 && (
-            <span style={{ fontSize: "12px", backgroundColor: "#ff5c00", padding: "2px 8px", borderRadius: "12px", fontWeight: 600 }}>
+            <span className="doc-modal-badge">
               {pendingDocs.length} văn bản mới
             </span>
           )}
         </div>
 
         {/* Content Body */}
-        <div style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
-          <div
-            style={{
-              backgroundColor: "#f8fafc",
-              padding: "14px",
-              borderRadius: "8px",
-              border: "1px solid #e2e8f0",
-              marginBottom: "16px",
-            }}
-          >
-            <div style={{ display: "flex", gap: "12px", marginBottom: "8px" }}>
-              <span style={{ fontWeight: 700, color: "#64748b", minWidth: "100px", fontSize: "13px" }}>Số văn bản:</span>
-              <span style={{ fontWeight: 700, color: "#003466", fontSize: "14px" }}>{currentDoc.documentNumber}</span>
+        <div className="doc-modal-body">
+          <div className="doc-info-box">
+            <div className="doc-info-row">
+              <span className="doc-info-label">Số văn bản:</span>
+              <span className="doc-info-val-highlight">{currentDoc.documentNumber}</span>
             </div>
-            <div style={{ display: "flex", gap: "12px", marginBottom: "8px" }}>
-              <span style={{ fontWeight: 700, color: "#64748b", minWidth: "100px", fontSize: "13px" }}>Chi nhánh:</span>
-              <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "13px" }}>{currentDoc.branch}</span>
+            <div className="doc-info-row">
+              <span className="doc-info-label">Chi nhánh:</span>
+              <span className="doc-info-val">{currentDoc.branch}</span>
             </div>
-            <div style={{ display: "flex", gap: "12px" }}>
-              <span style={{ fontWeight: 700, color: "#64748b", minWidth: "100px", fontSize: "13px" }}>Ngày hiệu lực:</span>
-              <span style={{ fontWeight: 600, color: "#059669", fontSize: "13px" }}>{formatDate(currentDoc.effectiveDate)}</span>
+            <div className="doc-info-row">
+              <span className="doc-info-label">Ngày hiệu lực:</span>
+              <span className="doc-info-val-date">{formatDate(currentDoc.effectiveDate)}</span>
             </div>
           </div>
 
-          <div style={{ marginBottom: "16px" }}>
-            <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#003466", marginBottom: "8px", lineHeight: "1.4" }}>
+          <div style={{ marginBottom: "16px", textAlign: "center" }}>
+            <h3 className="doc-title-text">
               {currentDoc.title}
             </h3>
             {currentDoc.note && (
-              <p style={{ fontSize: "13px", color: "#475569", lineHeight: "1.6", whiteSpace: "pre-wrap", background: "#f1f5f9", padding: "10px", borderRadius: "6px" }}>
+              <p className="doc-note-text">
                 {currentDoc.note}
               </p>
             )}
@@ -227,46 +172,23 @@ export default function DeployedDocumentModal() {
 
           {/* Attachments */}
           {attachments.length > 0 && (
-            <div style={{ marginTop: "16px", borderTop: "1px dashed #cbd5e1", paddingTop: "12px" }}>
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "#003466", display: "block", marginBottom: "8px" }}>
+            <div className="doc-attachments-box">
+              <span className="doc-attachments-label">
                 Tệp đính kèm:
               </span>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div className="doc-attachments-list">
                 {attachments.map((att: any, idx: number) => {
                   const displayName = att.name || att.fileName || `Tệp đính kèm ${idx + 1}`;
                   return (
                     <div
                       key={idx}
                       onClick={() => handleViewOrDownloadFile(att)}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        fontSize: "13px",
-                        color: "#0284c7",
-                        backgroundColor: "#f0f9ff",
-                        padding: "8px 14px",
-                        borderRadius: "6px",
-                        border: "1px solid #bae6fd",
-                        fontWeight: 500,
-                        width: "fit-content",
-                        cursor: "pointer",
-                        userSelect: "none",
-                        transition: "all 0.15s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "#e0f2fe";
-                        e.currentTarget.style.borderColor = "#7dd3fc";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "#f0f9ff";
-                        e.currentTarget.style.borderColor = "#bae6fd";
-                      }}
+                      className="doc-attachment-item"
                       title="Click để xem hoặc tải tệp đính kèm"
                     >
-                      <FileText size={18} style={{ color: "#0284c7" }} />
-                      <span style={{ textDecoration: "underline", fontWeight: 600 }}>{displayName}</span>
-                      <Download size={15} style={{ marginLeft: "4px", color: "#0284c7" }} />
+                      <FileText size={18} style={{ color: "#0284c7", flexShrink: 0 }} />
+                      <span className="doc-attachment-name">{displayName}</span>
+                      <Download size={15} style={{ marginLeft: "4px", color: "#0284c7", flexShrink: 0 }} />
                     </div>
                   );
                 })}
@@ -276,29 +198,8 @@ export default function DeployedDocumentModal() {
         </div>
 
         {/* Footer Confirmation Bar */}
-        <div
-          style={{
-            backgroundColor: "#f1f5f9",
-            padding: "14px 20px",
-            borderTop: "1px solid #e2e8f0",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "12px",
-          }}
-        >
-          <label
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              userSelect: "none",
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "#1e293b",
-            }}
-          >
+        <div className="doc-modal-footer">
+          <label className="doc-checkbox-label">
             <input
               type="checkbox"
               checked={isConfirmedChecked}
@@ -313,21 +214,11 @@ export default function DeployedDocumentModal() {
             <span>Đã đọc và xác nhận</span>
           </label>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className="doc-footer-buttons">
             <button
               type="button"
               onClick={handleReadLater}
-              style={{
-                backgroundColor: "#64748b",
-                color: "#ffffff",
-                border: "none",
-                padding: "8px 18px",
-                borderRadius: "6px",
-                fontWeight: 600,
-                fontSize: "13px",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-              }}
+              className="btn-read-later"
             >
               Đọc sau
             </button>
@@ -336,23 +227,318 @@ export default function DeployedDocumentModal() {
               type="button"
               onClick={handleConfirm}
               disabled={!isConfirmedChecked || isSubmitting}
-              style={{
-                backgroundColor: isConfirmedChecked ? "#003466" : "#94a3b8",
-                color: "#ffffff",
-                border: "none",
-                padding: "8px 20px",
-                borderRadius: "6px",
-                fontWeight: 700,
-                fontSize: "13px",
-                cursor: isConfirmedChecked ? "pointer" : "not-allowed",
-                transition: "all 0.2s ease",
-              }}
+              className={`btn-confirm ${isConfirmedChecked ? "active" : "disabled"}`}
             >
               {isSubmitting ? "Đang lưu..." : "Xác nhận & Lưu"}
             </button>
           </div>
         </div>
       </div>
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .doc-modal-overlay {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          background-color: rgba(15, 23, 42, 0.75) !important;
+          backdrop-filter: blur(4px) !important;
+          z-index: 99999 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 1rem !important;
+          box-sizing: border-box !important;
+        }
+
+        .doc-modal-card {
+          background-color: #ffffff !important;
+          border-radius: 12px !important;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+          width: 100% !important;
+          max-width: 620px !important;
+          overflow: hidden !important;
+          display: flex !important;
+          flex-direction: column !important;
+          max-height: 90vh !important;
+          border: 1px solid #cbd5e1 !important;
+          margin: 0 auto !important;
+        }
+
+        .doc-modal-header {
+          background-color: #003466 !important;
+          color: #ffffff !important;
+          padding: 14px 20px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          border-bottom: 3px solid #ff5c00 !important;
+          gap: 12px !important;
+        }
+
+        .doc-modal-header-title {
+          display: flex !important;
+          align-items: center !important;
+          gap: 10px !important;
+          font-weight: 700 !important;
+          font-size: 15px !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.5px !important;
+        }
+
+        .doc-modal-badge {
+          font-size: 12px !important;
+          background-color: #ff5c00 !important;
+          color: #ffffff !important;
+          padding: 2px 10px !important;
+          border-radius: 12px !important;
+          font-weight: 600 !important;
+          white-space: nowrap !important;
+        }
+
+        .doc-modal-body {
+          padding: 20px !important;
+          overflow-y: auto !important;
+          flex: 1 !important;
+        }
+
+        .doc-info-box {
+          background-color: #f8fafc !important;
+          padding: 14px 16px !important;
+          border-radius: 8px !important;
+          border: 1px solid #e2e8f0 !important;
+          margin-bottom: 16px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 8px !important;
+        }
+
+        .doc-info-row {
+          display: flex !important;
+          gap: 12px !important;
+          align-items: center !important;
+        }
+
+        .doc-info-label {
+          font-weight: 700 !important;
+          color: #64748b !important;
+          min-width: 100px !important;
+          font-size: 13px !important;
+        }
+
+        .doc-info-val-highlight {
+          font-weight: 700 !important;
+          color: #003466 !important;
+          font-size: 14px !important;
+        }
+
+        .doc-info-val {
+          font-weight: 600 !important;
+          color: #1e293b !important;
+          font-size: 13px !important;
+        }
+
+        .doc-info-val-date {
+          font-weight: 600 !important;
+          color: #059669 !important;
+          font-size: 13px !important;
+        }
+
+        .doc-title-text {
+          font-size: 15px !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          margin-bottom: 8px !important;
+          line-height: 1.5 !important;
+          text-align: center !important;
+        }
+
+        .doc-note-text {
+          font-size: 13px !important;
+          color: #475569 !important;
+          line-height: 1.6 !important;
+          white-space: pre-wrap !important;
+          background: #f1f5f9 !important;
+          padding: 12px !important;
+          border-radius: 6px !important;
+          text-align: left !important;
+        }
+
+        .doc-attachments-box {
+          margin-top: 16px !important;
+          border-top: 1px dashed #cbd5e1 !important;
+          padding-top: 12px !important;
+        }
+
+        .doc-attachments-label {
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          display: block !important;
+          margin-bottom: 8px !important;
+          text-align: center !important;
+        }
+
+        .doc-attachments-list {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 8px !important;
+          align-items: center !important;
+        }
+
+        .doc-attachment-item {
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          font-size: 13px !important;
+          color: #0284c7 !important;
+          background-color: #f0f9ff !important;
+          padding: 8px 14px !important;
+          border-radius: 6px !important;
+          border: 1px solid #bae6fd !important;
+          font-weight: 500 !important;
+          cursor: pointer !important;
+          user-select: none !important;
+          transition: all 0.15s ease !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        .doc-attachment-item:hover {
+          background-color: #e0f2fe !important;
+          border-color: #7dd3fc !important;
+        }
+
+        .doc-attachment-name {
+          text-decoration: underline !important;
+          font-weight: 600 !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
+
+        .doc-modal-footer {
+          background-color: #f1f5f9 !important;
+          padding: 14px 20px !important;
+          border-top: 1px solid #e2e8f0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 12px !important;
+        }
+
+        .doc-checkbox-label {
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          cursor: pointer !important;
+          user-select: none !important;
+          font-size: 14px !important;
+          font-weight: 600 !important;
+          color: #1e293b !important;
+        }
+
+        .doc-footer-buttons {
+          display: flex !important;
+          align-items: center !important;
+          gap: 10px !important;
+        }
+
+        .btn-read-later {
+          background-color: #64748b !important;
+          color: #ffffff !important;
+          border: none !important;
+          padding: 8px 18px !important;
+          border-radius: 6px !important;
+          font-weight: 600 !important;
+          font-size: 13px !important;
+          cursor: pointer !important;
+          transition: all 0.2s ease !important;
+        }
+
+        .btn-confirm {
+          border: none !important;
+          padding: 8px 20px !important;
+          border-radius: 6px !important;
+          font-weight: 700 !important;
+          font-size: 13px !important;
+          transition: all 0.2s ease !important;
+        }
+        .btn-confirm.active {
+          background-color: #003466 !important;
+          color: #ffffff !important;
+          cursor: pointer !important;
+        }
+        .btn-confirm.disabled {
+          background-color: #94a3b8 !important;
+          color: #ffffff !important;
+          cursor: not-allowed !important;
+        }
+
+        /* 📱 MOBILE RESPONSIVE (≤640px) */
+        @media (max-width: 640px) {
+          .doc-modal-overlay {
+            padding: 0.5rem !important;
+          }
+          .doc-modal-card {
+            max-height: 94vh !important;
+            border-radius: 10px !important;
+          }
+          .doc-modal-header {
+            flex-direction: column !important;
+            text-align: center !important;
+            padding: 12px 14px !important;
+            gap: 6px !important;
+          }
+          .doc-modal-header-title {
+            justify-content: center !important;
+            font-size: 13px !important;
+            text-align: center !important;
+          }
+          .doc-modal-body {
+            padding: 14px !important;
+          }
+          .doc-info-box {
+            align-items: center !important;
+            text-align: center !important;
+            padding: 10px 12px !important;
+          }
+          .doc-info-row {
+            justify-content: center !important;
+            width: 100% !important;
+          }
+          .doc-info-label {
+            min-width: auto !important;
+          }
+          .doc-attachment-item {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+          .doc-modal-footer {
+            flex-direction: column !important;
+            padding: 12px 14px !important;
+            gap: 12px !important;
+            align-items: center !important;
+          }
+          .doc-checkbox-label {
+            justify-content: center !important;
+            width: 100% !important;
+            font-size: 13.5px !important;
+          }
+          .doc-footer-buttons {
+            width: 100% !important;
+            justify-content: center !important;
+            gap: 10px !important;
+          }
+          .btn-read-later, .btn-confirm {
+            flex: 1 !important;
+            text-align: center !important;
+            padding: 10px 12px !important;
+            font-size: 13px !important;
+          }
+        }
+      ` }} />
     </div>
   );
 }

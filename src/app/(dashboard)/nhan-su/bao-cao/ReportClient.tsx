@@ -1318,9 +1318,9 @@ export default function ReportClient() {
                                 <td style={{ textAlign: "center", color: "#b45309" }}>{row.checkOutTime}</td>
                                 <td style={{ 
                                   fontSize: "11px", 
-                                  fontFamily: (row.boundDevice === "Chờ phê duyệt" || row.boundDevice === "Chưa liên kết") ? "inherit" : "monospace",
-                                  color: row.boundDevice === "Chờ phê duyệt" ? "#d97706" : "inherit",
-                                  fontWeight: row.boundDevice === "Chờ phê duyệt" ? "700" : "600"
+                                  fontFamily: "inherit",
+                                  color: row.boundDevice === "Chờ phê duyệt" ? "#d97706" : row.boundDevice === "Đã liên kết" ? "#166534" : "#64748b",
+                                  fontWeight: (row.boundDevice === "Chờ phê duyệt" || row.boundDevice === "Đã liên kết") ? "700" : "600"
                                 }}>
                                   {row.boundDevice}
                                 </td>

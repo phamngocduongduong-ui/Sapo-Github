@@ -202,7 +202,7 @@ export async function getAttendanceReport(employeeCodes?: string[], startDateStr
         ) {
           boundDevice = "Chờ phê duyệt";
         } else if (devInfo.secret) {
-          boundDevice = devInfo.secret.substring(0, 8) + "...";
+          boundDevice = "Đã liên kết";
         }
       }
 

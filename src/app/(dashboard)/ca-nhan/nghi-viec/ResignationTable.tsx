@@ -804,7 +804,7 @@ export default function ResignationTable({ initialData, employees, canApprove, c
               <div style={{
                 display: "flex",
                 gap: "0.5rem",
-                justify: "flex-end",
+                justifyContent: "flex-end",
                 alignItems: "center",
                 marginTop: "8px",
                 paddingTop: "8px",

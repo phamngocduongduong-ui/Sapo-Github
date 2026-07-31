@@ -70,6 +70,17 @@ export default function ResignationTable({ initialData, employees, canApprove, c
     setCurrentPage(1);
   }, [search, selectedBranch, selectedStatus]);
 
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen]);
+
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
 
   const REASONS = [
@@ -155,6 +166,8 @@ export default function ResignationTable({ initialData, employees, canApprove, c
           align-items: center !important;
           gap: 0.5rem !important;
           margin: 0 !important;
+          padding-top: 5px !important;
+          padding-bottom: 5px !important;
         }
         .badge-count {
           background: #e2e8f0 !important;
@@ -196,9 +209,15 @@ export default function ResignationTable({ initialData, employees, canApprove, c
           border: 1px solid transparent !important;
           font-weight: 500 !important;
         }
-        .btn-primary {
-          background: #0072bc !important;
+        .btn-primary, .btn-base.btn-primary, button.btn-primary {
+          background: #003466 !important;
+          background-image: none !important;
           color: #fff !important;
+          border: none !important;
+        }
+        .btn-primary:hover, .btn-base.btn-primary:hover, button.btn-primary:hover {
+          background: #002447 !important;
+          background-image: none !important;
         }
         .btn-outline {
           background: #fff !important;
@@ -218,29 +237,46 @@ export default function ResignationTable({ initialData, employees, canApprove, c
           padding-bottom: 60px !important;
         }
         .base-table {
-          width: 100% !important;
-          border-collapse: collapse !important;
-          font-size: 13px !important;
-          table-layout: fixed !important;
           height: auto !important;
+          width: 100% !important;
+          table-layout: fixed !important;
+          border-collapse: collapse !important;
+          font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif !important;
+          font-size: 13px !important;
+        }
+        .base-table input,
+        .base-table select,
+        .base-table button,
+        .base-table table,
+        .base-table td,
+        .base-table th {
+          font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif !important;
+          font-size: 13px !important;
         }
         .base-table th {
-          background: #f1f5f9 !important;
-          padding: 0px 0.75rem !important;
+          text-transform: uppercase !important;
           font-weight: 700 !important;
-          color: #334155 !important;
-          border-bottom: 1px solid #e0e6ed !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
           text-align: center !important;
           height: 35px !important;
+          padding: 6px 10px !important;
+          font-size: 13px !important;
         }
         .base-table td {
-          padding: 0px 0.75rem !important;
-          color: #1e293b !important;
-          border-bottom: 1px solid #f1f5f9 !important;
+          padding: 6px 0.75rem !important;
           vertical-align: middle !important;
+          color: #000000 !important;
+          font-weight: 600 !important;
+          font-size: 13px !important;
+          border-bottom: 1px solid #e2e8f0 !important;
         }
         .base-table tbody tr {
           height: 45px !important;
+        }
+        .base-table tbody tr:hover {
+          background-color: #f8fafc !important;
         }
         .avatar-base {
           width: 24px !important;
@@ -283,9 +319,9 @@ export default function ResignationTable({ initialData, employees, canApprove, c
           border: 1px solid #b2f2bb !important;
         }
         .status-pending {
-          background: #fffaf0 !important;
-          color: #9c4221 !important;
-          border: 1px solid #feebc8 !important;
+          background: #f0f7ff !important;
+          color: #003466 !important;
+          border: 1px solid #bae6fd !important;
         }
         .status-inactive {
           background: #fff5f5 !important;
@@ -294,7 +330,7 @@ export default function ResignationTable({ initialData, employees, canApprove, c
         }
         .status-new {
           background: #f7fafc !important;
-          color: #2d3748 !important;
+          color: #003466 !important;
           border: 1px solid #e2e8f0 !important;
         }
         .base-pagination {
@@ -303,6 +339,7 @@ export default function ResignationTable({ initialData, employees, canApprove, c
           padding-top: 0px !important;
           padding-bottom: 0px !important;
         }
+
         /* Side Drawer Styles */
         .drawer-overlay {
           position: fixed !important;
@@ -325,11 +362,19 @@ export default function ResignationTable({ initialData, employees, canApprove, c
         }
         .drawer-header {
           padding: 0.65rem 1.25rem !important;
-          border-bottom: 1px solid #f1f5f9 !important;
+          border-bottom: 1px solid #002447 !important;
           display: flex !important;
           justify-content: space-between !important;
           align-items: center !important;
-          background: #fdfdfd !important;
+          background: #003466 !important;
+          color: #ffffff !important;
+        }
+        .drawer-header h3, .header-titles h3, .drawer-header .header-titles h3 {
+          color: #ffffff !important;
+          font-size: 16px !important;
+          font-weight: 700 !important;
+          margin: 0 !important;
+          display: block !important;
         }
         .drawer-close-btn {
           font-size: 1.5rem !important;
@@ -372,7 +417,7 @@ export default function ResignationTable({ initialData, employees, canApprove, c
         .section-title {
           font-size: 13px !important;
           font-weight: 700 !important;
-          color: #0072bc !important;
+          color: #003466 !important;
           margin-bottom: 0.2rem !important;
           margin-top: 0.1rem !important;
           border-bottom: 1px solid #f1f5f9 !important;
@@ -406,11 +451,236 @@ export default function ResignationTable({ initialData, employees, canApprove, c
           border-radius: 0.375rem !important;
           font-size: 0.875rem !important;
         }
+        .modal-overlay-base {
+          position: fixed !important;
+          inset: 0 !important;
+          background: rgba(15, 23, 42, 0.5) !important;
+          backdrop-filter: blur(4px) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          z-index: 9999 !important;
+          padding: 1rem !important;
+        }
+        .modal-content-base {
+          background: white !important;
+          border-radius: 16px !important;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+          width: 100% !important;
+          max-width: 440px !important;
+          overflow: hidden !important;
+        }
+
+        @media (max-width: 768px) {
+          .base-toolbar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.5rem !important;
+          }
+          .toolbar-left {
+            width: 100% !important;
+            flex-wrap: wrap !important;
+            gap: 0.5rem !important;
+          }
+          .search-box-base {
+            flex: 1 !important;
+            min-width: 140px !important;
+          }
+          .toolbar-right {
+            width: 100% !important;
+          }
+          .toolbar-right .btn-primary {
+            width: 100% !important;
+            justify-content: center !important;
+            height: 38px !important;
+          }
+          .base-table-wrapper {
+            display: none !important;
+          }
+          .mobile-leave-cards-container {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            margin-top: 0.5rem !important;
+            padding-bottom: 60px !important;
+          }
+          .proposal-card {
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 10px !important;
+            padding: 12px 16px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            user-select: none !important;
+          }
+          .proposal-card:hover {
+            background: #f8fafc !important;
+          }
+          .card-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+          }
+          .card-header {
+            border-bottom: 1px solid #f1f5f9 !important;
+            padding-bottom: 6px !important;
+            margin-bottom: 8px !important;
+          }
+          .code-box {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+          }
+          .idx-pill {
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            padding: 2px 8px !important;
+            border-radius: 6px !important;
+          }
+          .proposal-code {
+            font-weight: 700 !important;
+            color: #003466 !important;
+            font-size: 14px !important;
+          }
+          .card-body {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 6px !important;
+            font-size: 13px !important;
+          }
+          .info-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+          }
+          .info-label {
+            color: #64748b !important;
+            font-weight: 500 !important;
+          }
+          .info-val {
+            color: #1e293b !important;
+            font-weight: 600 !important;
+            text-align: right !important;
+          }
+          .status-pill {
+            font-weight: 700 !important;
+            font-size: 13px !important;
+          }
+          .status-pill.status-active { color: #16a34a !important; }
+          .status-pill.status-pending { color: #003466 !important; }
+          .status-pill.status-inactive { color: #ef4444 !important; }
+          .status-pill.status-new { color: #003466 !important; }
+
+          .drawer-overlay {
+            justify-content: center !important;
+            align-items: center !important;
+            background: rgba(15, 23, 42, 0.6) !important;
+            padding: 10px !important;
+            touch-action: none !important;
+            overscroll-behavior: contain !important;
+          }
+          .drawer-content {
+            width: 100% !important;
+            max-width: 440px !important;
+            height: auto !important;
+            max-height: 92vh !important;
+            border-radius: 14px !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2) !important;
+            margin: auto !important;
+          }
+          .drawer-header {
+            padding: 0.65rem 0.85rem !important;
+            background: #003466 !important;
+            color: #ffffff !important;
+            border-bottom: 1px solid #002447 !important;
+            border-radius: 14px 14px 0 0 !important;
+            width: 100% !important;
+            display: block !important;
+          }
+          .drawer-header h3, .header-titles h3, .drawer-header .header-titles h3 {
+            font-size: 15px !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+            line-height: 1.3 !important;
+          }
+          .drawer-header .header-sub, .drawer-header .header-sub span {
+            font-size: 11px !important;
+            color: #cbd5e1 !important;
+            display: block !important;
+            margin-top: 2px !important;
+          }
+          .drawer-body {
+            padding: 0.5rem 0.85rem !important;
+            max-height: calc(92vh - 95px) !important;
+            gap: 0.3rem !important;
+          }
+          .drawer-form {
+            gap: 0.3rem !important;
+          }
+          .drawer-form label {
+            margin-bottom: 0.1rem !important;
+            font-size: 10.5px !important;
+          }
+          .drawer-footer {
+            padding: 0.45rem 0.85rem !important;
+          }
+          .drawer-footer button {
+            flex: 1 !important;
+            height: 35px !important;
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            justify-content: center !important;
+          }
+          .form-grid-responsive {
+            grid-template-columns: 1fr !important;
+            gap: 0.3rem !important;
+          }
+          .reasons-grid-mobile {
+            grid-template-columns: 1fr !important;
+            gap: 0.25rem !important;
+            padding: 0.35rem 0.5rem !important;
+          }
+          input.input-base, select.input-base {
+            height: 34px !important;
+            padding: 3px 8px !important;
+            font-size: 12px !important;
+          }
+          textarea.input-base {
+            width: 100% !important;
+            box-sizing: border-box !important;
+            min-height: 45px !important;
+            overflow-y: auto !important;
+            white-space: pre-wrap !important;
+            word-wrap: break-word !important;
+            resize: vertical !important;
+            line-height: 1.4 !important;
+            padding: 6px 8px !important;
+            font-size: 12px !important;
+          }
+          .modal-content-base {
+            width: 100% !important;
+            max-width: 340px !important;
+            margin: auto !important;
+            padding: 0.85rem 0.75rem !important;
+            border-radius: 12px !important;
+          }
+        }
+        @media (min-width: 769px) {
+          .mobile-leave-cards-container {
+            display: none !important;
+          }
+        }
       `}} />
       {/* Header Toolbar */}
       <div className="base-toolbar">
         <div className="toolbar-left">
-          <h3 className="page-title-base">📄 Quản lý Nghỉ việc</h3>
+          <h3 className="page-title-base">Danh sách nghỉ việc</h3>
           <span className="badge-count">{filteredData.length}</span>
           <div className="search-box-base">
             <Search size={16} className="search-icon" />
@@ -427,21 +697,15 @@ export default function ResignationTable({ initialData, employees, canApprove, c
         </div>
         <div className="toolbar-right">
           <button
-            onClick={() => router.refresh()}
-            className="btn-base btn-outline"
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-          >
-            <RotateCcw size={18} /> Làm mới
-          </button>
-          <button
             onClick={() => {
               setEditingItem(null);
               setSelectedReasons([]);
               setIsModalOpen(true);
             }}
             className="btn-base btn-primary"
+            style={{ background: "#003466", backgroundImage: "none", color: "#ffffff", border: "none" }}
           >
-            <Plus size={18} style={{ marginRight: "6px" }} /> Đăng ký
+            Đăng ký
           </button>
         </div>
       </div>
@@ -480,6 +744,156 @@ export default function ResignationTable({ initialData, employees, canApprove, c
           </div>
         </div>
       )}
+
+      {/* Mobile Card List (Displayed on screens <= 768px) - Styled like Security List cards */}
+      <div className="mobile-leave-cards-container">
+        {paginatedData.map((item, idx) => {
+          const isCreator = item.employeeName === currentUserName;
+
+          return (
+            <div key={item.id} className="proposal-card">
+              {/* Header: STT, Proposal Code, Status */}
+              <div className="card-row card-header">
+                <div className="code-box">
+                  <span className="idx-pill">#{(currentPage - 1) * itemsPerPage + idx + 1}</span>
+                  <span className="proposal-code">{item.resignationCode || `NV-${item.id.slice(-6).toUpperCase()}`}</span>
+                </div>
+                <span className={`status-pill ${item.status === "Đã phê duyệt" ? "status-active" :
+                    item.status === "Chờ phê duyệt" ? "status-pending" :
+                      (item.status === "Từ chối" || item.status === "Đã hủy") ? "status-inactive" : "status-new"
+                  }`}>
+                  {item.status}
+                </span>
+              </div>
+
+              {/* Card Body */}
+              <div className="card-body">
+                <div className="info-row">
+                  <span className="info-label">Nhân viên:</span>
+                  <span className="info-val">{item.employeeName}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Chi nhánh:</span>
+                  <span className="info-val">{item.branch || "—"}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Ngày nghỉ việc:</span>
+                  <span className="info-val" style={{ color: "#2563eb" }}>
+                    {new Date(item.resignationDate).toLocaleDateString("vi-VN")}
+                  </span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Lý do:</span>
+                  <span className="info-val">{item.reason}</span>
+                </div>
+                {item.note && (
+                  <div className="info-row">
+                    <span className="info-label">Ghi chú:</span>
+                    <span className="info-val" style={{ fontWeight: 500, fontStyle: "italic" }}>{item.note}</span>
+                  </div>
+                )}
+                <div className="info-row" style={{ marginTop: "2px", borderTop: "1px solid #f1f5f9", paddingTop: "4px" }}>
+                  <span className="info-label">Ngày tạo:</span>
+                  <span className="info-val" style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>
+                    {new Date(item.createdAt).toLocaleDateString("vi-VN")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Mobile Card Actions */}
+              <div style={{
+                display: "flex",
+                gap: "0.5rem",
+                justify: "flex-end",
+                alignItems: "center",
+                marginTop: "8px",
+                paddingTop: "8px",
+                borderTop: "1px solid #f1f5f9",
+                flexWrap: "wrap"
+              }}>
+                <button
+                  type="button"
+                  className="btn-base btn-outline"
+                  style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", color: "#003466", borderColor: "#cbd5e1", background: "#ffffff" }}
+                  onClick={() => setHistoryRecordId(item.id)}
+                >
+                  Lịch sử
+                </button>
+
+                {item.status === "Tạo mới" && (isCreator || canApprove) && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-base btn-outline"
+                      style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", color: "#003466", borderColor: "#003466", background: "#ffffff" }}
+                      onClick={() => {
+                        setEditingItem(item);
+                        setSelectedReasons(item.reason ? item.reason.split(", ") : []);
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-base btn-primary"
+                      style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", background: "#003466", backgroundImage: "none", color: "#ffffff", border: "none" }}
+                      onClick={() => handleStatusChange(item.id, "Chờ phê duyệt", `của NV ${item.employeeName}`)}
+                    >
+                      Gửi duyệt
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-base btn-outline"
+                      style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", color: "#ef4444", borderColor: "#fee2e2", background: "#ffffff" }}
+                      onClick={() => handleStatusChange(item.id, "Đã hủy", `của NV ${item.employeeName}`)}
+                    >
+                      Hủy
+                    </button>
+                  </>
+                )}
+
+                {item.status === "Chờ phê duyệt" && (isCreator || canApprove) && (
+                  <button
+                    type="button"
+                    className="btn-base btn-outline"
+                    style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", color: "#003466", borderColor: "#003466", background: "#ffffff" }}
+                    onClick={() => handleStatusChange(item.id, "Tạo mới", `của NV ${item.employeeName}`)}
+                  >
+                    Thu hồi
+                  </button>
+                )}
+
+                {item.status === "Chờ phê duyệt" && canApprove && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-base btn-primary"
+                      style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", background: "#003466", backgroundImage: "none", color: "#ffffff", border: "none" }}
+                      onClick={() => handleStatusChange(item.id, "Đã phê duyệt", `của NV ${item.employeeName}`)}
+                    >
+                      Duyệt
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-base btn-outline"
+                      style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", color: "#ef4444", borderColor: "#fecaca", background: "#ffffff" }}
+                      onClick={() => handleStatusChange(item.id, "Từ chối", `của NV ${item.employeeName}`)}
+                    >
+                      Từ chối
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {filteredData.length === 0 && (
+          <div style={{ textAlign: "center", padding: "2rem", color: "#64748b", background: "#fff", borderRadius: "10px", border: "1px solid #cbd5e1" }}>
+            Chưa có dữ liệu nghỉ việc
+          </div>
+        )}
+      </div>
 
       {/* Main Table */}
       <div className="base-table-wrapper">
@@ -527,8 +941,8 @@ export default function ResignationTable({ initialData, employees, canApprove, c
                 </td>
                 <td>
                   <span className={`status-pill ${item.status === "Đã phê duyệt" ? "status-active" :
-                      item.status === "Chờ phê duyệt" ? "status-pending" :
-                        item.status === "Đã hủy" || item.status === "Từ chối" ? "status-inactive" : "status-new"
+                    item.status === "Chờ phê duyệt" ? "status-pending" :
+                      item.status === "Đã hủy" || item.status === "Từ chối" ? "status-inactive" : "status-new"
                     }`}>
                     {item.status}
                   </span>
@@ -687,14 +1101,13 @@ export default function ResignationTable({ initialData, employees, canApprove, c
       {isModalOpen && (
         <div className="drawer-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="drawer-content animate-drawer-in" onClick={(e) => e.stopPropagation()}>
-            <div className="drawer-header">
+            <div className="drawer-header" style={{ background: "#003466", color: "#ffffff" }}>
               <div className="header-titles">
-                <h3>{editingItem ? "✏️ Hiệu chỉnh đơn" : "📄 Đăng ký nghỉ việc"}</h3>
-                <p className="header-sub" style={{ fontSize: "11px", color: "#64748b", margin: "4px 0 0 0" }}>
-                  NHÂN VIÊN: <span style={{ color: "#2563eb", fontWeight: 700 }}>{editingItem?.employeeName || currentUserName}</span> • NGÀY TẠO: {editingItem ? new Date(editingItem.createdAt).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN")}
+                <h3 style={{ color: "#ffffff", margin: 0 }}>{editingItem ? "Hiệu chỉnh đơn nghỉ việc" : "Đăng ký nghỉ việc"}</h3>
+                <p className="header-sub" style={{ fontSize: "11px", color: "#cbd5e1", margin: "2px 0 0 0" }}>
+                  NHÂN VIÊN: <span style={{ color: "#93c5fd", fontWeight: 600 }}>{editingItem?.employeeName || currentUserName}</span> • NGÀY TẠO: {editingItem ? new Date(editingItem.createdAt).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN")}
                 </p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="drawer-close-btn">&times;</button>
             </div>
 
             <div className="drawer-body" style={{ padding: "0.75rem 1.25rem" }}>
@@ -714,7 +1127,7 @@ export default function ResignationTable({ initialData, employees, canApprove, c
               }} className="drawer-form" style={{ gap: "0.75rem" }}>
                 <input type="hidden" name="employeeName" value={editingItem?.employeeName || currentUserName} />
 
-                <div style={{ display: "grid", gridTemplateColumns: userBranches.length > 1 ? "1fr 1fr" : "1fr", gap: "0.75rem" }}>
+                <div className="form-grid-responsive" style={{ display: "grid", gridTemplateColumns: userBranches.length > 1 ? "1fr 1fr" : "1fr", gap: "0.75rem" }}>
                   {userBranches.length > 1 ? (
                     <div className="form-group-base">
                       <label style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: "0.3rem", display: "block" }}>Chi nhánh <span className="required">*</span></label>
@@ -750,7 +1163,7 @@ export default function ResignationTable({ initialData, employees, canApprove, c
                 <div className="form-section" style={{ padding: "0" }}>
                   <h4 className="section-title" style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: "0.3rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.25rem" }}>Lý do (Chọn nhiều) <span className="required">*</span></h4>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.1fr", gap: "0.35rem 0.5rem", padding: "0.5rem 0.65rem", background: "#f8fafc", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                  <div className="reasons-grid-mobile" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.1fr", gap: "0.35rem 0.5rem", padding: "0.5rem 0.65rem", background: "#f8fafc", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
                     {REASONS.map(r => (
                       <label key={r} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "11px", cursor: "pointer", color: "#334155", margin: 0, whiteSpace: "nowrap" }}>
                         <input
@@ -774,9 +1187,26 @@ export default function ResignationTable({ initialData, employees, canApprove, c
                     <textarea
                       name="note"
                       className="input-base"
-                      style={{ width: "100%", height: "40px", minHeight: "40px", padding: "0.35rem 0.5rem", fontSize: "13px", fontFamily: "inherit" }}
+                      rows={2}
                       placeholder="Ghi chú thêm (nếu có)"
                       defaultValue={editingItem?.note || ""}
+                      onInput={(e) => {
+                        const target = e.currentTarget;
+                        target.style.setProperty("height", "auto", "important");
+                        target.style.setProperty("height", `${Math.max(45, target.scrollHeight)}px`, "important");
+                      }}
+                      onFocus={(e) => {
+                        const target = e.currentTarget;
+                        target.style.setProperty("height", "auto", "important");
+                        target.style.setProperty("height", `${Math.max(45, target.scrollHeight)}px`, "important");
+                      }}
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        minHeight: "45px",
+                        lineHeight: "1.4",
+                        resize: "vertical"
+                      }}
                     />
                   </div>
                 </div>
@@ -785,8 +1215,8 @@ export default function ResignationTable({ initialData, employees, canApprove, c
 
             <div className="drawer-footer">
               <button type="button" onClick={() => setIsModalOpen(false)} className="btn-base btn-outline">Thoát</button>
-              <button type="submit" form="resignation-form" className="btn-base btn-primary" disabled={selectedReasons.length === 0}>
-                {editingItem ? "Cập nhật đơn" : "Lưu đơn"}
+              <button type="submit" form="resignation-form" className="btn-base btn-primary" disabled={selectedReasons.length === 0} style={{ background: "#003466", color: "#ffffff", border: "none" }}>
+                Gửi
               </button>
             </div>
           </div>
@@ -843,9 +1273,9 @@ export default function ResignationTable({ initialData, employees, canApprove, c
               )}
             </div>
             <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-              <button 
+              <button
                 type="button"
-                className="sapo-btn sapo-btn-secondary" 
+                className="sapo-btn sapo-btn-secondary"
                 style={{
                   flex: 1,
                   padding: "10px 20px",
@@ -858,14 +1288,14 @@ export default function ResignationTable({ initialData, employees, canApprove, c
                   cursor: "pointer",
                   justifyContent: "center",
                   height: "40px"
-                }} 
+                }}
                 onClick={() => setConfirmUpdate(null)}
               >
                 Hủy bỏ
               </button>
-              <button 
+              <button
                 type="button"
-                className="sapo-btn" 
+                className="sapo-btn"
                 style={{
                   flex: 1,
                   padding: "10px 20px",
@@ -878,7 +1308,7 @@ export default function ResignationTable({ initialData, employees, canApprove, c
                   cursor: "pointer",
                   justifyContent: "center",
                   height: "40px"
-                }} 
+                }}
                 onClick={executeStatusChange}
               >
                 Xác nhận

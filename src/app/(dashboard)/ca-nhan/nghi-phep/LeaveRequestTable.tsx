@@ -144,6 +144,17 @@ export default function LeaveRequestTable({
     setCurrentPage(1);
   }, [search]);
 
+  useEffect(() => {
+    if (showModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showModal]);
+
   // canApprove is now based on specific permission
   const canApprove = hasApprovePerm;
 
@@ -231,6 +242,60 @@ export default function LeaveRequestTable({
     <>
       <style dangerouslySetInnerHTML={{
         __html: `
+        .base-table-wrapper {
+          height: auto !important;
+          min-height: unset !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          padding-bottom: 0px !important;
+          background: #fff !important;
+          border-radius: 8px !important;
+          border: 1px solid #e0e6ed !important;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+          width: 100% !important;
+        }
+        .base-table {
+          height: auto !important;
+          width: 100% !important;
+          table-layout: auto !important;
+          border-collapse: collapse !important;
+          font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif !important;
+          font-size: 13px !important;
+        }
+        .base-table input,
+        .base-table select,
+        .base-table button,
+        .base-table table,
+        .base-table td,
+        .base-table th {
+          font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif !important;
+          font-size: 13px !important;
+        }
+        .base-table th {
+          text-transform: uppercase !important;
+          font-weight: 700 !important;
+          color: #003466 !important;
+          background: #f1f5f9 !important;
+          border-bottom: 2px solid #ff5c00 !important;
+          text-align: center !important;
+          height: 35px !important;
+          padding: 6px 10px !important;
+          font-size: 13px !important;
+        }
+        .base-table td {
+          padding: 6px 0.75rem !important;
+          vertical-align: middle !important;
+          color: #000000 !important;
+          font-weight: 600 !important;
+          font-size: 13px !important;
+          border-bottom: 1px solid #e2e8f0 !important;
+        }
+        .base-table tbody tr {
+          height: 45px !important;
+        }
+        .base-table tbody tr:hover {
+          background-color: #f8fafc !important;
+        }
         .base-toolbar {
           display: flex !important;
           justify-content: space-between !important;
@@ -260,6 +325,8 @@ export default function LeaveRequestTable({
           align-items: center !important;
           gap: 0.5rem !important;
           margin: 0 !important;
+          padding-top: 5px !important;
+          padding-bottom: 5px !important;
         }
         .badge-count {
           background: #e2e8f0 !important;
@@ -270,59 +337,368 @@ export default function LeaveRequestTable({
           border-radius: 999px !important;
           margin-left: 0.25rem !important;
         }
-        .base-table-wrapper {
-          max-height: 435px !important;
-          height: auto !important;
-          overflow-y: auto !important;
-          padding-bottom: 60px !important;
+        @media (max-width: 640px) {
+          .leave-summary-grid {
+            display: none !important;
+          }
+          .base-toolbar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.5rem !important;
+          }
+          .toolbar-left {
+            width: 100% !important;
+            flex-wrap: wrap !important;
+            gap: 0.5rem !important;
+          }
+          .search-box-base {
+            flex: 1 !important;
+            min-width: 140px !important;
+          }
+          .toolbar-right {
+            width: 100% !important;
+          }
+          .toolbar-right .btn-primary {
+            width: 100% !important;
+            justify-content: center !important;
+            height: 38px !important;
+          }
+          .desktop-only-table {
+            display: none !important;
+          }
+          .mobile-leave-cards-container {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            margin-top: 0.5rem !important;
+            padding-bottom: 60px !important;
+          }
+          .proposal-card {
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 10px !important;
+            padding: 12px 16px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            user-select: none !important;
+          }
+          .proposal-card:hover {
+            background: #f8fafc !important;
+          }
+          .card-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+          }
+          .card-header {
+            border-bottom: 1px solid #f1f5f9 !important;
+            padding-bottom: 6px !important;
+            margin-bottom: 8px !important;
+          }
+          .code-box {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+          }
+          .idx-pill {
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            padding: 2px 7px !important;
+            border-radius: 5px !important;
+          }
+          .proposal-code {
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            color: #003466 !important;
+          }
+          .card-body {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 6px !important;
+          }
+          .info-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: flex-start !important;
+            font-size: 13px !important;
+          }
+          .info-label {
+            color: #64748b !important;
+            font-weight: 500 !important;
+          }
+          .info-val {
+            color: #000 !important;
+            font-weight: 700 !important;
+            text-align: right !important;
+          }
+          .status-pill {
+            font-weight: 700 !important;
+            font-size: 13px !important;
+          }
         }
-        .base-table {
-          height: auto !important;
+        @media (min-width: 641px) {
+          .mobile-leave-cards-container {
+            display: none !important;
+          }
+          .desktop-only-table {
+            display: block !important;
+          }
         }
-        .base-table th {
-          background: #f1f5f9 !important;
-          padding: 0px 0.75rem !important;
-          font-weight: 700 !important;
-          color: #334155 !important;
-          border-bottom: 1px solid #e0e6ed !important;
-          text-align: center !important;
-          height: 35px !important;
-        }
-        .base-table td {
-          padding: 0px 0.75rem !important;
-          vertical-align: middle !important;
-        }
-        .base-table tbody tr {
-          height: 40px !important;
+          .info-label {
+            color: #64748b !important;
+            font-weight: 500 !important;
+          }
+          .info-val {
+            color: #000 !important;
+            font-weight: 700 !important;
+            text-align: right !important;
+          }
+          .status-pill {
+            font-weight: 700 !important;
+            font-size: 13px !important;
+          }
+          .status-pill.status-active { color: #16a34a !important; }
+          .status-pill.status-pending { color: #003466 !important; }
+          .status-pill.status-inactive { color: #ef4444 !important; }
+          .status-pill.status-new { color: #003466 !important; }
+
+          .btn-primary, .btn-base.btn-primary, button.btn-primary {
+            background: #003466 !important;
+            background-image: none !important;
+            color: #ffffff !important;
+            border: none !important;
+            box-shadow: 0 2px 4px rgba(0, 52, 102, 0.2) !important;
+          }
+          .btn-primary:hover, .btn-base.btn-primary:hover, button.btn-primary:hover {
+            background: #002447 !important;
+            background-image: none !important;
+          }
+
+          .drawer-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            background: rgba(15, 23, 42, 0.5) !important;
+            backdrop-filter: blur(3px) !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            z-index: 2000 !important;
+          }
+          .drawer-content {
+            background: white !important;
+            width: 100% !important;
+            max-width: 550px !important;
+            height: 100% !important;
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+          }
+          .drawer-header {
+            padding: 0.75rem 1.25rem !important;
+            border-bottom: 1px solid #002447 !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            background: #003466 !important;
+            color: #ffffff !important;
+          }
+          .drawer-header h3, .header-titles h3, .drawer-header .header-titles h3 {
+            color: #ffffff !important;
+            font-size: 16px !important;
+            font-weight: 700 !important;
+            margin: 0 !important;
+            display: block !important;
+          }
+          .drawer-close-btn {
+            font-size: 1.5rem !important;
+            color: #94a3b8 !important;
+            cursor: pointer !important;
+            border: none !important;
+            background: none !important;
+          }
+          .drawer-body {
+            padding: 1rem 1.25rem !important;
+            flex: 1 !important;
+            overflow-y: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 #f8fafc !important;
+          }
+          .drawer-footer {
+            padding: 0.75rem 1.25rem !important;
+            border-top: 1px solid #f1f5f9 !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 0.75rem !important;
+            background: #fdfdfd !important;
+          }
+          .modal-overlay-base {
+            position: fixed !important;
+            inset: 0 !important;
+            background: rgba(15, 23, 42, 0.5) !important;
+            backdrop-filter: blur(4px) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 9999 !important;
+            padding: 1rem !important;
+          }
+          .modal-content-base {
+            background: white !important;
+            border-radius: 16px !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+            width: 100% !important;
+            max-width: 440px !important;
+            overflow: hidden !important;
+          }
+
+          @media (max-width: 768px) {
+            .drawer-overlay {
+              justify-content: center !important;
+              align-items: center !important;
+              background: rgba(15, 23, 42, 0.6) !important;
+              padding: 10px !important;
+              touch-action: none !important;
+              overscroll-behavior: contain !important;
+            }
+            .drawer-content {
+              width: 100% !important;
+              max-width: 440px !important;
+              height: 88vh !important;
+              max-height: 88vh !important;
+              border-radius: 14px !important;
+              box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2) !important;
+              margin: auto !important;
+              display: flex !important;
+              flex-direction: column !important;
+              overflow: hidden !important;
+            }
+            .drawer-header {
+              flex-shrink: 0 !important;
+              min-height: 52px !important;
+              padding: 10px 14px !important;
+              background: #003466 !important;
+              color: #ffffff !important;
+              border-bottom: 2px solid #002447 !important;
+              border-radius: 14px 14px 0 0 !important;
+              width: 100% !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: center !important;
+              align-items: center !important;
+              text-align: center !important;
+            }
+            .drawer-header h3, .header-titles h3, .drawer-header .header-titles h3 {
+              font-size: 16px !important;
+              color: #ffffff !important;
+              font-weight: 700 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: block !important;
+              line-height: 1.3 !important;
+              text-align: center !important;
+            }
+            .drawer-header .header-sub, .drawer-header .header-sub span {
+              font-size: 11px !important;
+              color: #e2e8f0 !important;
+              display: block !important;
+              margin-top: 3px !important;
+              text-align: center !important;
+            }
+            .drawer-body {
+              flex: 1 !important;
+              overflow-y: auto !important;
+              -webkit-overflow-scrolling: touch !important;
+              padding: 10px 14px !important;
+              gap: 0.35rem !important;
+            }
+            .drawer-form {
+              gap: 0.35rem !important;
+            }
+            .drawer-form label {
+              margin-bottom: 0.1rem !important;
+              font-size: 10.5px !important;
+            }
+            .drawer-footer {
+              flex-shrink: 0 !important;
+              padding: 8px 14px !important;
+              background: #ffffff !important;
+              border-top: 1px solid #f1f5f9 !important;
+            }
+            .drawer-footer button {
+              flex: 1 !important;
+              height: 35px !important;
+              font-size: 12.5px !important;
+              font-weight: 600 !important;
+              justify-content: center !important;
+            }
+            .form-grid-responsive {
+              grid-template-columns: 1fr !important;
+              gap: 0.35rem !important;
+            }
+            input.input-base, select.input-base {
+              height: 34px !important;
+              padding: 3px 8px !important;
+              font-size: 12px !important;
+            }
+            textarea.input-base {
+              width: 100% !important;
+              box-sizing: border-box !important;
+              min-height: 45px !important;
+              overflow-y: auto !important;
+              white-space: pre-wrap !important;
+              word-wrap: break-word !important;
+              resize: vertical !important;
+              line-height: 1.4 !important;
+              padding: 6px 8px !important;
+              font-size: 12px !important;
+            }
+            .modal-content-base {
+              width: 100% !important;
+              max-width: 340px !important;
+              margin: auto !important;
+              padding: 0.85rem 0.75rem !important;
+              border-radius: 12px !important;
+            }
+          }
+        @media (min-width: 769px) {
+          .mobile-leave-cards-container {
+            display: none !important;
+          }
         }
       ` }} />
-      {/* Base-style Leave Summary Dashboard - Compact */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
-        <div className="base-card" style={{ padding: "1rem", background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", borderLeft: "4px solid #2563eb" }}>
+      {/* Base-style Leave Summary Dashboard - Compact (Hidden on mobile) */}
+      <div className="leave-summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div className="base-card leave-stat-card" style={{ padding: "1rem", background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", borderLeft: "4px solid #2563eb" }}>
           <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 600 }}>Tổng phép năm</span>
           <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", marginTop: "0.25rem" }}>
-            <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e293b" }}>{totalAnnualLeave}</span>
+            <span className="leave-stat-value" style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e293b" }}>{totalAnnualLeave}</span>
             <span style={{ color: "#64748b", fontSize: "12px", fontWeight: 500 }}>ngày</span>
           </div>
         </div>
-        <div className="base-card" style={{ padding: "1rem", background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", borderLeft: "4px solid #10b981" }}>
+        <div className="base-card leave-stat-card" style={{ padding: "1rem", background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", borderLeft: "4px solid #10b981" }}>
           <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 600 }}>Đã sử dụng (Đã duyệt)</span>
           <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", marginTop: "0.25rem" }}>
-            <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "#10b981" }}>{usedDays}</span>
+            <span className="leave-stat-value" style={{ fontSize: "1.5rem", fontWeight: 800, color: "#10b981" }}>{usedDays}</span>
             <span style={{ color: "#64748b", fontSize: "12px", fontWeight: 500 }}>ngày</span>
           </div>
         </div>
-        <div className="base-card" style={{ padding: "1rem", background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", borderLeft: "4px solid #f59e0b" }}>
+        <div className="base-card leave-stat-card" style={{ padding: "1rem", background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", borderLeft: "4px solid #f59e0b" }}>
           <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 600 }}>Đang chờ duyệt</span>
           <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", marginTop: "0.25rem" }}>
-            <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "#f59e0b" }}>{pendingDays}</span>
+            <span className="leave-stat-value" style={{ fontSize: "1.5rem", fontWeight: 800, color: "#f59e0b" }}>{pendingDays}</span>
             <span style={{ color: "#64748b", fontSize: "12px", fontWeight: 500 }}>ngày</span>
           </div>
         </div>
-        <div className="base-card" style={{ padding: "1rem", background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", borderLeft: "4px solid #6366f1" }}>
+        <div className="base-card leave-stat-card" style={{ padding: "1rem", background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", borderLeft: "4px solid #6366f1" }}>
           <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 600 }}>Số dư khả dụng</span>
           <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", marginTop: "0.25rem" }}>
-            <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "#2563eb" }}>{totalAnnualLeave - usedDays}</span>
+            <span className="leave-stat-value" style={{ fontSize: "1.5rem", fontWeight: 800, color: "#2563eb" }}>{totalAnnualLeave - usedDays}</span>
             <span style={{ color: "#64748b", fontSize: "12px", fontWeight: 500 }}>ngày</span>
           </div>
         </div>
@@ -331,7 +707,7 @@ export default function LeaveRequestTable({
       {/* Toolbar - Synced with EmployeeTable */}
       <div className="base-toolbar">
         <div className="toolbar-left">
-          <h3 className="page-title-base">🏖️ Danh sách nghỉ phép</h3>
+          <h3 className="page-title-base">Danh sách nghỉ phép</h3>
           <span className="badge-count">{initialRequests.length}</span>
           <div className="search-box-base">
             <Search size={16} className="search-icon" />
@@ -349,14 +725,163 @@ export default function LeaveRequestTable({
         <div className="toolbar-right">
           <button
             className="btn-base btn-primary"
+            style={{ background: "#003466", backgroundImage: "none", color: "#ffffff", border: "none" }}
             onClick={() => { setEditingRequest(null); setShowModal(true); }}
           >
-            <Plus size={18} style={{ marginRight: "6px" }} /> Thêm mới
+            Thêm mới
           </button>
         </div>
       </div>
 
-      <div className="base-table-wrapper">
+      {/* Mobile Card List (Displayed on Phone <= 640px) */}
+      <div className="mobile-leave-cards-container">
+        {paginatedData.map((req, idx) => {
+          const isCreator = req.employeeName === currentUserName;
+          const canApprove = hasApprovePerm;
+
+          return (
+            <div key={req.id} className="proposal-card">
+              <div className="card-row card-header">
+                <div className="code-box">
+                  <span className="idx-pill">#{idx + 1}</span>
+                  <span className="proposal-code">{req.leaveCode || `NP-${req.id.slice(-6).toUpperCase()}`}</span>
+                </div>
+                <span className={`status-pill ${
+                  req.status === "Đã phê duyệt" ? "status-active" :
+                  req.status === "Chờ phê duyệt" ? "status-pending" :
+                  (req.status === "Từ chối" || req.status === "Đã hủy") ? "status-inactive" : "status-new"
+                }`}>
+                  {req.status}
+                </span>
+              </div>
+
+              <div className="card-body">
+                <div className="info-row">
+                  <span className="info-label">Nhân viên:</span>
+                  <span className="info-val">{req.employeeName}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Thời gian nghỉ:</span>
+                  <span className="info-val">
+                    {new Date(req.startDate).toLocaleDateString("vi-VN")} ➔ {new Date(req.endDate).toLocaleDateString("vi-VN")}
+                  </span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Số ngày:</span>
+                  <span className="info-val" style={{ color: "#003466" }}>{req.totalDays} ngày</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Lý do:</span>
+                  <span className="info-val">
+                    {req.reason} {req.subReason ? `(${req.subReason})` : ''}
+                  </span>
+                </div>
+                {req.note && (
+                  <div className="info-row">
+                    <span className="info-label">Ghi chú:</span>
+                    <span className="info-val" style={{ fontWeight: 500, fontStyle: "italic" }}>{req.note}</span>
+                  </div>
+                )}
+                <div className="info-row" style={{ marginTop: "2px", borderTop: "1px solid #f1f5f9", paddingTop: "4px" }}>
+                  <span className="info-label">Ngày tạo:</span>
+                  <span className="info-val" style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>
+                    {new Date(req.createdAt).toLocaleDateString("vi-VN")}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{
+                display: "flex",
+                gap: "0.5rem",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                marginTop: "8px",
+                paddingTop: "8px",
+                borderTop: "1px solid #f1f5f9",
+                flexWrap: "wrap"
+              }}>
+                <button
+                  type="button"
+                  className="btn-base btn-outline"
+                  style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", color: "#003466", borderColor: "#cbd5e1" }}
+                  onClick={() => setHistoryRecordId(req.id)}
+                >
+                  Lịch sử
+                </button>
+
+                {req.status === "Tạo mới" && isCreator && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-base btn-outline"
+                      style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", color: "#003466", borderColor: "#003466" }}
+                      onClick={() => handleEdit(req)}
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-base btn-primary"
+                      style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", background: "#003466", backgroundImage: "none", color: "#ffffff", border: "none" }}
+                      onClick={() => handleStatusChange(req.id, "Chờ phê duyệt", `của NV ${req.employeeName}`)}
+                    >
+                      Gửi duyệt
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-base btn-outline"
+                      style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", color: "#ef4444", borderColor: "#fee2e2" }}
+                      onClick={() => handleDelete(req.id)}
+                    >
+                      Hủy
+                    </button>
+                  </>
+                )}
+
+                {req.status === "Chờ phê duyệt" && isCreator && (
+                  <button
+                    type="button"
+                    className="btn-base btn-outline"
+                    style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", color: "#003466", borderColor: "#003466" }}
+                    onClick={() => handleStatusChange(req.id, "Tạo mới", `của NV ${req.employeeName}`)}
+                  >
+                    Thu hồi
+                  </button>
+                )}
+
+                {req.status === "Chờ phê duyệt" && canApprove && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-base btn-primary"
+                      style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", background: "#003466", backgroundImage: "none", color: "#ffffff", border: "none" }}
+                      onClick={() => handleStatusChange(req.id, "Đã phê duyệt", `của NV ${req.employeeName}`)}
+                    >
+                      Duyệt
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-base btn-outline"
+                      style={{ padding: "4px 10px", fontSize: "12px", height: "32px", borderRadius: "6px", color: "#ef4444", borderColor: "#fecaca" }}
+                      onClick={() => handleStatusChange(req.id, "Từ chối", `của NV ${req.employeeName}`)}
+                    >
+                      Từ chối
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {initialRequests.length === 0 && (
+          <div style={{ textAlign: "center", padding: "2rem", color: "#64748b", background: "#fff", borderRadius: "10px", border: "1px solid #cbd5e1" }}>
+            Chưa có dữ liệu nghỉ phép
+          </div>
+        )}
+      </div>
+
+      {/* Windows / Desktop Table View */}
+      <div className="base-table-wrapper desktop-only-table">
         <table className="base-table" style={{ tableLayout: "fixed" }}>
           <thead>
             <tr>
@@ -563,14 +1088,15 @@ export default function LeaveRequestTable({
       {showModal && (
         <div className="drawer-overlay" onClick={handleClose}>
           <div className="drawer-content animate-drawer-in" onClick={(e) => e.stopPropagation()}>
-            <div className="drawer-header">
+            <div className="drawer-header" style={{ background: "#003466", color: "#ffffff" }}>
               <div className="header-titles">
-                <h3>{editingRequest ? "✏️ Cập nhật đề xuất" : "🏖️ Khởi tạo đề xuất nghỉ phép"}</h3>
-                <div className="header-sub">
-                  NGƯỜI GỬI: <span style={{ color: "#2563eb" }}>{editingRequest ? editingRequest.employeeName : currentUserName}</span>
+                <h3 style={{ color: "#ffffff", margin: 0 }}>
+                  {editingRequest ? "Cập nhật đề xuất nghỉ phép" : "Đăng ký nghỉ phép"}
+                </h3>
+                <div className="header-sub" style={{ color: "#cbd5e1" }}>
+                  NGƯỜI GỬI: <span style={{ color: "#93c5fd", fontWeight: 600 }}>{editingRequest ? editingRequest.employeeName : currentUserName}</span>
                 </div>
               </div>
-              <button onClick={handleClose} className="drawer-close-btn">&times;</button>
             </div>
 
             <div className="drawer-body">
@@ -599,7 +1125,7 @@ export default function LeaveRequestTable({
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div className="form-grid-responsive" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                   <div>
                     <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#64748b", marginBottom: "0.4rem", textTransform: "uppercase", fontFamily: "'Segoe UI', sans-serif" }}>Ngày bắt đầu *</label>
                     <input
@@ -724,7 +1250,23 @@ export default function LeaveRequestTable({
                     rows={2}
                     placeholder="Nhập nội dung bàn giao công việc hoặc ghi chú thêm..."
                     defaultValue={editingRequest?.note ?? ""}
-                    style={{ resize: "vertical", minHeight: "60px" }}
+                    onInput={(e) => {
+                      const target = e.currentTarget;
+                      target.style.setProperty("height", "auto", "important");
+                      target.style.setProperty("height", `${Math.max(45, target.scrollHeight)}px`, "important");
+                    }}
+                    onFocus={(e) => {
+                      const target = e.currentTarget;
+                      target.style.setProperty("height", "auto", "important");
+                      target.style.setProperty("height", `${Math.max(45, target.scrollHeight)}px`, "important");
+                    }}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      minHeight: "45px",
+                      lineHeight: "1.4",
+                      resize: "vertical"
+                    }}
                   />
                 </div>
 
@@ -747,8 +1289,9 @@ export default function LeaveRequestTable({
                     type="submit"
                     className="btn-base btn-primary"
                     disabled={isPending || new Date(endDate) < new Date(startDate)}
+                    style={{ background: "#003466", color: "#ffffff", border: "none" }}
                   >
-                    {isPending ? "⏳ Đang xử lý..." : (editingRequest ? "✅ Cập nhật" : "🚀 Gửi đề xuất")}
+                    {isPending ? "Đang xử lý..." : "Gửi"}
                   </button>
                 </div>
               </form>

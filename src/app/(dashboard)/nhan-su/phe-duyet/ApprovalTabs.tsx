@@ -451,6 +451,18 @@ export default function ApprovalTabs({
           display: flex !important;
           align-items: center !important;
         }
+        @media (max-width: 768px) {
+          .module-tabs-scroll {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-bottom: 6px !important;
+            flex-wrap: nowrap !important;
+          }
+          .module-tabs-scroll button {
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+          }
+        }
       ` }} />
 
       {!isEmbedded && (
@@ -466,7 +478,7 @@ export default function ApprovalTabs({
       <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0" }}>
         
         {/* Module Tabs */}
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "nowrap", alignItems: "center", overflowX: "auto", padding: "4px 2px" }}>
+        <div className="module-tabs-scroll" style={{ display: "flex", gap: "0.5rem", flexWrap: "nowrap", alignItems: "center", overflowX: "auto", padding: "4px 2px" }}>
           {(showHopDongLaoDongOnly || isLegacy) && (
             <button
               onClick={() => setActiveTab("contract")}

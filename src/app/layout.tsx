@@ -23,8 +23,18 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Sapo Mobile" />
+        <link rel="apple-touch-icon" href="/images/sapo_logo.png" />
         <script dangerouslySetInnerHTML={{
           __html: `
+          // Detect iframe embedded mobile mode
+          if (window.self !== window.top || window.location.search.includes('embedded=true')) {
+            document.documentElement.classList.add('is-embedded-mobile');
+          }
+
           // Prevent mobile pinch-to-zoom
           document.addEventListener('touchmove', function (event) {
             if (event.touches.length > 1) {

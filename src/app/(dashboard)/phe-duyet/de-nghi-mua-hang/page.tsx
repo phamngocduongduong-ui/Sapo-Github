@@ -3,9 +3,13 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import PurchasingProposalApprovalPage from "../../purchasing/phe-duyet-de-nghi/page";
 
-export default async function DeNghiMuaHangApprovalPage() {
+export const dynamic = "force-dynamic";
+
+export default async function DeNghiMuaHangApprovalPage({ searchParams }: { searchParams?: { embedded?: string } }) {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  const isEmbedded = searchParams?.embedded === "true";
 
   const user = await (prisma as any).user.findUnique({
     where: { id: session.userId },
@@ -24,7 +28,7 @@ export default async function DeNghiMuaHangApprovalPage() {
     });
   }
 
-  const hasAccess = isAdmin || permissions.has("PD_DE_NGHI_MH");
+  const hasAccess = isAdmin || permissions.has("PD_DE_NGHI_MH") || permissions.has("TM_PHE_DUYET_DE_NGHI") || permissions.has("TM_DE_NGHI") || permissions.has("PD_MUA_HANG") || permissions.has("PHE_DUYET");
   if (!hasAccess) {
     return (
       <div className="main-content" style={{ padding: "2rem" }}>
@@ -34,6 +38,6 @@ export default async function DeNghiMuaHangApprovalPage() {
   }
 
   return (
-    <PurchasingProposalApprovalPage isEmbedded={false} />
+    <PurchasingProposalApprovalPage isEmbedded={isEmbedded} />
   );
 }

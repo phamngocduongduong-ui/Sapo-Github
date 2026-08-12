@@ -1,24 +1,55 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import DeployedDocumentModal from "./DeployedDocumentModal";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
-
-export default function DashboardLayout({
+function DashboardLayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isEmbedded = searchParams.get("embedded") === "true";
+  const isMobileView = pathname === "/mobile";
 
-  // Close sidebar on route change
   useEffect(() => {
-    setIsSidebarOpen(false);
-  }, [pathname]);
+    if (typeof window !== "undefined") {
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+      if (isMobileDevice && pathname !== "/mobile" && !isEmbedded) {
+        window.location.replace("/mobile");
+      }
+    }
+  }, [pathname, isEmbedded]);
+
+  if (isMobileView || isEmbedded) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#ffffff", padding: 0, margin: 0 }}>
+        <main style={{ minHeight: "100vh", padding: 0, margin: 0 }}>
+          {children}
+        </main>
+      </div>
+    );
+  }
+
+  // Chặn không cho render giao diện Desktop nếu thiết bị là Mobile (tránh giật lag hay hiện trang cũ)
+  if (typeof window !== "undefined") {
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+    if (isMobileDevice && pathname !== "/mobile" && !isEmbedded) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f0f9ff" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: "36px", height: "36px", border: "2.5px solid #0284c7", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+            <div style={{ fontSize: "13px", fontWeight: 500, color: "#475569" }}>Đang tải giao diện di động...</div>
+          </div>
+        </div>
+      );
+    }
+  }
 
   return (
     <div className="app-container" style={{ display: "flex", width: "100%", minHeight: "100vh", position: "relative" }}>
@@ -73,5 +104,23 @@ export default function DashboardLayout({
         </footer>
       </div>
     </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: "100vh", background: "#ffffff", padding: 0, margin: 0 }}>
+        <main style={{ minHeight: "100vh", padding: 0, margin: 0 }}>
+          {children}
+        </main>
+      </div>
+    }>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </Suspense>
   );
 }

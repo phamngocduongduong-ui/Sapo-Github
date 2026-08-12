@@ -3,9 +3,13 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import PurchasingApprovalPage from "../../purchasing/phe-duyet/page";
 
-export default async function MuaHangApprovalPage() {
+export const dynamic = "force-dynamic";
+
+export default async function MuaHangApprovalPage({ searchParams }: { searchParams?: { embedded?: string } }) {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  const isEmbedded = searchParams?.embedded === "true";
 
   const user = await (prisma as any).user.findUnique({
     where: { id: session.userId },
@@ -24,7 +28,7 @@ export default async function MuaHangApprovalPage() {
     });
   }
 
-  const hasMuaHang = isAdmin || permissions.has("PD_MUA_HANG");
+  const hasMuaHang = isAdmin || permissions.has("PD_MUA_HANG") || permissions.has("TM_LENH_MUA") || permissions.has("PHE_DUYET");
   if (!hasMuaHang) {
     return (
       <div className="main-content" style={{ padding: "2rem" }}>
@@ -34,6 +38,6 @@ export default async function MuaHangApprovalPage() {
   }
 
   return (
-    <PurchasingApprovalPage isEmbedded={false} />
+    <PurchasingApprovalPage isEmbedded={isEmbedded} />
   );
 }

@@ -11,32 +11,57 @@ export async function getPheDuyetProposals() {
   if (!session) return [];
 
   const user = await (prisma as any).user.findUnique({
-    where: { id: session.userId }
+    where: { id: session.userId },
+    include: {
+      permission: {
+        include: {
+          permissiondetail: true
+        }
+      }
+    }
   });
   if (!user) return [];
 
-  const filter = await getUserModuleBranchFilter(user.id, "TM_PHE_DUYET_DE_NGHI", session.activeBranch, {
-    branchField: "branch"
-  });
+  const isAdmin = user.username === "admin" || user.role === "Admin";
+  let hasAccess = isAdmin;
+
+  if (!hasAccess && user.permission) {
+    user.permission.forEach((p: any) => {
+      p.permissiondetail?.forEach((d: any) => {
+        if (d.canAccess && ["PD_DE_NGHI_MH", "TM_PHE_DUYET_DE_NGHI", "PD_MUA_HANG", "TM_DE_NGHI", "PHE_DUYET"].includes(d.moduleKey)) {
+          hasAccess = true;
+        }
+      });
+    });
+  }
+
+  const activeBranch = session.activeBranch || user.branch?.split(",")[0]?.trim() || "";
+  const isHQ = !activeBranch || 
+               activeBranch.toUpperCase().includes("HCM") || 
+               activeBranch.toUpperCase().includes("HỒ CHÍ MINH") || 
+               activeBranch.toUpperCase().includes("HO CHI MINH") ||
+               activeBranch.toUpperCase().includes("TOÀN BỘ");
+
+  const cleanBranch = isHQ ? "" : activeBranch.replace(/SAPO|VP\./gi, "").trim();
+
+  const whereClause: any = {
+    status: { in: ["Chờ duyệt", "Chờ thực hiện", "Đã phê duyệt", "Từ chối", "Hoàn thành"] }
+  };
+
+  if (!isHQ && cleanBranch) {
+    whereClause.branch = { contains: cleanBranch };
+  }
 
   const proposals = await (prisma as any).purchasingproposal.findMany({
-    where: {
-      ...filter,
-      status: { in: ["Chờ duyệt", "Chờ thực hiện", "Đã phê duyệt", "Từ chối", "Hoàn thành"] }
-    },
+    where: whereClause,
     include: { items: true },
     orderBy: { updatedAt: "desc" },
   });
 
-  // Calculate ordered quantity and PO status for each item
-  for (const proposal of proposals) {
-    const proposalCode = proposal.proposalCode;
-    const poDetails = await (prisma as any).purchaseorderdetail.findMany({
+  if (proposals.length > 0) {
+    const allPoDetails = await (prisma as any).purchaseorderdetail.findMany({
       where: {
         purchaseorder: {
-          purpose: {
-            contains: proposalCode
-          },
           status: {
             notIn: ["Tạo mới", "Từ chối"]
           }
@@ -48,6 +73,7 @@ export async function getPheDuyetProposals() {
         unit: true,
         purchaseorder: {
           select: {
+            purpose: true,
             status: true,
             poCode: true,
             deliveryDate: true,
@@ -57,33 +83,39 @@ export async function getPheDuyetProposals() {
       }
     });
 
-    for (const item of proposal.items) {
-      const matchedDetails = poDetails.filter((d: any) => d.proposalProductName === item.productName);
-      const orderedQty = matchedDetails.reduce((sum: number, d: any) => sum + (d.requestedQuantity || 0), 0);
-      (item as any).orderedQuantity = orderedQty;
-      
-      if (orderedQty > 0) {
-        const statuses = Array.from(new Set(matchedDetails.map((d: any) => d.purchaseorder?.status).filter(Boolean)));
-        (item as any).poStatus = statuses.join(", ");
-        
-        // Sort by PO creation time ascending (oldest first)
-        matchedDetails.sort((a: any, b: any) => {
-          const timeA = a.purchaseorder?.createdAt ? new Date(a.purchaseorder.createdAt).getTime() : 0;
-          const timeB = b.purchaseorder?.createdAt ? new Date(b.purchaseorder.createdAt).getTime() : 0;
-          return timeA - timeB;
-        });
+    // Group poDetails by proposal
+    for (const proposal of proposals) {
+      const proposalCode = proposal.proposalCode;
+      const poDetails = allPoDetails.filter((d: any) => d.purchaseorder?.purpose?.includes(proposalCode));
 
-        (item as any).orderHistory = matchedDetails.map((d: any) => ({
-          poCode: d.purchaseorder?.poCode || "",
-          quantity: d.requestedQuantity || 0,
-          unit: d.unit || "",
-          deliveryDate: d.purchaseorder?.deliveryDate 
-            ? new Date(d.purchaseorder.deliveryDate).toLocaleDateString("vi-VN") 
-            : "Chưa xếp lịch"
-        }));
-      } else {
-        (item as any).poStatus = "";
-        (item as any).orderHistory = [];
+      for (const item of proposal.items) {
+        const matchedDetails = poDetails.filter((d: any) => d.proposalProductName === item.productName);
+        const orderedQty = matchedDetails.reduce((sum: number, d: any) => sum + (d.requestedQuantity || 0), 0);
+        (item as any).orderedQuantity = orderedQty;
+        
+        if (orderedQty > 0) {
+          const statuses = Array.from(new Set(matchedDetails.map((d: any) => d.purchaseorder?.status).filter(Boolean)));
+          (item as any).poStatus = statuses.join(", ");
+          
+          // Sort by PO creation time ascending (oldest first)
+          matchedDetails.sort((a: any, b: any) => {
+            const timeA = a.purchaseorder?.createdAt ? new Date(a.purchaseorder.createdAt).getTime() : 0;
+            const timeB = b.purchaseorder?.createdAt ? new Date(b.purchaseorder.createdAt).getTime() : 0;
+            return timeA - timeB;
+          });
+
+          (item as any).orderHistory = matchedDetails.map((d: any) => ({
+            poCode: d.purchaseorder?.poCode || "",
+            quantity: d.requestedQuantity || 0,
+            unit: d.unit || "",
+            deliveryDate: d.purchaseorder?.deliveryDate 
+              ? new Date(d.purchaseorder.deliveryDate).toLocaleDateString("vi-VN") 
+              : "Chưa xếp lịch"
+          }));
+        } else {
+          (item as any).poStatus = "";
+          (item as any).orderHistory = [];
+        }
       }
     }
   }
@@ -122,6 +154,19 @@ export async function approveProposal(id: string) {
     changeDetail: `Phê duyệt đề nghị mua hàng: ${oldProposal.proposalCode}`
   });
 
+  await (prisma as any).notification.create({
+    data: {
+      id: require('crypto').randomUUID(),
+      title: "Phê duyệt nhu cầu mua hàng",
+      message: `Đề nghị mua hàng ${oldProposal.proposalCode} đã được phê duyệt. Vui lòng thực hiện các bước tiếp theo.`,
+      link: "/purchasing/lenh-mua",
+      type: "SUCCESS",
+      targetRole: `USER:${oldProposal.proposer}|PERM:TM_LENH_MUA,PD_MUA_HANG,THU_MUA`,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  });
+
   revalidatePath("/purchasing/de-nghi");
   revalidatePath("/purchasing/phe-duyet-de-nghi");
   revalidatePath("/purchasing/lenh-mua");
@@ -158,6 +203,19 @@ export async function rejectProposal(id: string, reason: string) {
     newData: { status: "Tạo mới", note: updatedProposal.note },
     changedBy: approver,
     changeDetail: `Từ chối đề nghị mua hàng: ${oldProposal.proposalCode}. Lý do: ${reason}`
+  });
+
+  await (prisma as any).notification.create({
+    data: {
+      id: require('crypto').randomUUID(),
+      title: "Phê duyệt nhu cầu mua hàng",
+      message: `Đề nghị mua hàng ${oldProposal.proposalCode} đã bị từ chối. Lý do: ${reason}`,
+      link: "/purchasing/de-nghi",
+      type: "ERROR",
+      targetRole: `USER:${oldProposal.proposer}`,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
   });
 
   revalidatePath("/purchasing/de-nghi");

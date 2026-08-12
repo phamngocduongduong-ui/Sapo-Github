@@ -86,8 +86,9 @@ export async function getUserModuleBranchFilter(
   
   if (allBranches) return {};
 
-  // Find the branch to filter
-  const branchToFilter = activeBranch || user.branch?.split(",")[0]?.trim() || "";
+  // Find the branches to filter
+  const userBranches = user.branch ? user.branch.split(",").map((b: string) => b.trim()).filter(Boolean) : [];
+  const branchToFilter = activeBranch || (userBranches.length === 1 ? userBranches[0] : null);
 
   // Evaluate Manager vs Staff
   let position = "";
@@ -124,6 +125,17 @@ export async function getUserModuleBranchFilter(
       // Find employees belonging to the filtered branch
       const employeesInBranch = await prisma.employee.findMany({
         where: { branch: branchToFilter },
+        select: { fullName: true }
+      });
+      const employeeNames = employeesInBranch.map(e => e.fullName);
+      conditions.push({ [fields.employeeInBranchField]: { in: employeeNames } });
+    }
+  } else if (!activeBranch && userBranches.length > 1) {
+    if (fields.branchField) {
+      conditions.push({ [fields.branchField]: { in: userBranches } });
+    } else if (fields.employeeInBranchField) {
+      const employeesInBranch = await prisma.employee.findMany({
+        where: { branch: { in: userBranches } },
         select: { fullName: true }
       });
       const employeeNames = employeesInBranch.map(e => e.fullName);

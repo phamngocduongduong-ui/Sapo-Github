@@ -23,6 +23,8 @@ async function generateNextLeaveCode() {
   return `NP${(max + 1).toString().padStart(4, "0")}`;
 }
 
+import crypto from "crypto";
+
 export async function createLeaveRequest(formData: FormData) {
   const session = await getSession();
   if (!session) throw new Error("Bạn chưa đăng nhập.");
@@ -68,8 +70,20 @@ export async function createLeaveRequest(formData: FormData) {
       subReason: subReason || null,
       note: note || null,
       branch: employee?.branch || null,
-      status: "Tạo mới",
+      status: "Chờ phê duyệt",
     },
+  });
+
+  // Tự động phát thông báo đề nghị phê duyệt mới
+  await (prisma as any).notification.create({
+    data: {
+      id: crypto.randomUUID(),
+      title: "Đề nghị nghỉ phép mới",
+      message: `Nhân viên ${employeeName} vừa tạo đơn xin nghỉ phép (${totalDays} ngày): ${reason}`,
+      link: "/phe-duyet/nhan-su",
+      type: "APPROVAL",
+      targetRole: "ADMIN|PERM:PD_NHAN_SU"
+    }
   });
 
   await logAudit({

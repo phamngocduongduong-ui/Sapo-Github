@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { 
-  X, LogOut, LayoutDashboard, Database, Users, 
+  Smartphone, X, LogOut, LayoutDashboard, Database, Users, 
   CreditCard, ShoppingBag, ShoppingCart, Factory, Box, Settings, ShieldCheck,
   Briefcase, MapPin, UserCog, Truck, Layers, Globe, Package, Ruler, Warehouse as WarehouseIcon, 
   Locate, User, FileText, GitPullRequest, CheckCircle2, Clock, Map, Calculator, 
@@ -20,6 +20,7 @@ const allMenuGroups = [
     label: "Cá nhân",
     icon: <User size={18} color="#0072bc" />,
     items: [
+      { href: "/mobile", label: "📱 Giao diện App Mobile", key: "CN_HO_SO", icon: <Smartphone size={14} color="#0072bc" /> },
       { href: "/ca-nhan/ho-so", label: "Hồ sơ", key: "CN_HO_SO", icon: <User size={14} color="#0072bc" /> },
       { href: "/ca-nhan/cham-cong", label: "Chấm công", key: "CN_CHAM_CONG", icon: <Calendar size={14} color="#0072bc" /> },
       { href: "/ca-nhan/nghi-phep", label: "Nghỉ phép", key: "CN_NGHI_PHEP", icon: <Calendar size={14} color="#0072bc" /> },
@@ -51,7 +52,7 @@ const allMenuGroups = [
       { href: "/phe-duyet/luong-thuong", label: "Bảng lương/thưởng", key: "PD_LUONG_THUONG", icon: <CreditCard size={14} color="#0072bc" /> },
       { href: "/phe-duyet/thanh-toan", label: "Thanh toán", key: "PD_THANH_TOAN", icon: <DollarSign size={14} color="#0072bc" /> },
       { href: "/phe-duyet/mua-hang", label: "Mua hàng", key: "PD_MUA_HANG", icon: <ShoppingCart size={14} color="#0072bc" /> },
-      { href: "/phe-duyet/de-nghi-mua-hang", label: "Đề nghị mua hàng", key: "PD_DE_NGHI_MH", icon: <ClipboardList size={14} color="#0072bc" /> },
+      { href: "/phe-duyet/de-nghi-mua-hang", label: "Phê duyệt nhu cầu mua", key: "PD_DE_NGHI_MH", icon: <ClipboardList size={14} color="#0072bc" /> },
     ]
   },
   {
@@ -183,6 +184,12 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
   const [userPerms, setUserPerms] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pendingCounts, setPendingCounts] = useState<{ total: number; proposal: number; leave: number; contract: number }>({
+    total: 0,
+    proposal: 0,
+    leave: 0,
+    contract: 0
+  });
 
   useEffect(() => {
     async function fetchPerms() {
@@ -207,7 +214,28 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
         setLoading(false);
       }
     }
+
+    async function fetchPendingCounts() {
+      try {
+        const res = await fetch("/api/mobile/notifications?t=" + Date.now(), { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.pendingCount !== undefined) {
+            setPendingCounts({
+              total: data.pendingCount || 0,
+              proposal: data.proposalCount || 0,
+              leave: data.leaveCount || 0,
+              contract: data.contractCount || 0
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
     fetchPerms();
+    fetchPendingCounts();
+    const interval = setInterval(fetchPendingCounts, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   // Lọc menu dựa trên quyền
@@ -337,6 +365,19 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
                 }}
               >
                 <span style={{ flex: 1, letterSpacing: "0.2px" }}>{group.label}</span>
+                {group.id === "approver" && pendingCounts.total > 0 && (
+                  <span style={{
+                    background: "#ff5c00",
+                    color: "#ffffff",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    borderRadius: "10px",
+                    padding: "1px 6px",
+                    marginRight: "6px"
+                  }}>
+                    {pendingCounts.total}
+                  </span>
+                )}
                 <ChevronDown 
                   size={14} 
                   style={{
@@ -350,6 +391,9 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
                 <div style={{ background: "#f8fafc", borderBottom: "1px solid #cbd5e1" }}>
                   {group.items.map((item) => {
                     const isItemActive = pathname === item.href;
+                    const itemBadgeCount = item.key === "PD_DE_NGHI_MH" ? pendingCounts.proposal :
+                                           item.key === "PD_NHAN_SU" ? pendingCounts.leave :
+                                           item.key === "PD_HOP_DONG_BH" ? pendingCounts.contract : 0;
                     return (
                       <Link 
                         key={item.href} 
@@ -379,7 +423,20 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
                         }}
                         target={(item as any).target}
                       >
-                        <span>{item.label}</span>
+                        <span style={{ flex: 1 }}>{item.label}</span>
+                        {itemBadgeCount > 0 && (
+                          <span style={{
+                            background: "#ff5c00",
+                            color: "#ffffff",
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            borderRadius: "10px",
+                            padding: "1px 6px",
+                            lineHeight: 1
+                          }}>
+                            {itemBadgeCount > 99 ? "99+" : itemBadgeCount}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}

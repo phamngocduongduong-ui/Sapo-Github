@@ -108,8 +108,13 @@ export async function createContract(formData: FormData, items: any[]) {
     changeDetail: `Tạo hợp đồng mới: ${contractNumber}`,
   });
 
+  if (contract.status === "Chờ phê duyệt" || contract.status === "Chờ duyệt") {
+    await notifyContractStatusChange(contract, contract.status, changedBy);
+  }
+
   revalidatePath("/sales/hop-dong");
   revalidatePath("/sales");
+  revalidatePath("/phe-duyet/hop-dong-ban-hang");
 }
 
 export async function updateContract(id: string, formData: FormData, items: any[]) {
@@ -218,15 +223,20 @@ export async function updateContract(id: string, formData: FormData, items: any[
     changeDetail: oldContract?.status !== status ? `Cập nhật hợp đồng (Chuyển trạng thái sang: ${status})` : "Cập nhật thông tin hợp đồng",
   });
 
+  if (oldContract?.status !== status) {
+    await notifyContractStatusChange(updatedContract, status, changedBy);
+  }
+
   revalidatePath("/sales/hop-dong");
   revalidatePath("/sales");
+  revalidatePath("/phe-duyet/hop-dong-ban-hang");
 }
 
 export async function approveContract(id: string) {
   const session = await getSession();
   const oldContract = await (prisma as any).contract.findUnique({ where: { id } });
 
-  await (prisma as any).contract.update({
+  const updatedContract = await (prisma as any).contract.update({
     where: { id },
     data: { status: "Đã phê duyệt" },
   });
@@ -244,8 +254,11 @@ export async function approveContract(id: string) {
     changeDetail: "Phê duyệt hợp đồng",
   });
 
+  await notifyContractStatusChange(updatedContract, "Đã phê duyệt", changedBy);
+
   revalidatePath("/sales/hop-dong");
   revalidatePath("/sales");
+  revalidatePath("/phe-duyet/hop-dong-ban-hang");
 }
 
 export async function deleteContract(id: string) {
@@ -271,6 +284,7 @@ export async function deleteContract(id: string) {
 
   revalidatePath("/sales/hop-dong");
   revalidatePath("/sales");
+  revalidatePath("/phe-duyet/hop-dong-ban-hang");
 }
 
 export async function updateContractStatus(id: string, status: string) {
@@ -295,6 +309,107 @@ export async function updateContractStatus(id: string, status: string) {
     changeDetail: `Chuyển trạng thái hợp đồng sang: ${status}`,
   });
 
+  if (oldContract?.status !== status) {
+    await notifyContractStatusChange(updatedContract, status, changedBy);
+  }
+
   revalidatePath("/sales/hop-dong");
   revalidatePath("/sales");
+  revalidatePath("/phe-duyet/hop-dong-ban-hang");
 }
+
+export async function notifyContractStatusChange(contract: any, newStatus: string, submitter?: string) {
+  if (!contract) return;
+  const contractNumber = contract.contractNumber || "";
+  const salesEmployee = (contract.salesEmployee || "").trim();
+
+  // Build target user identifiers specifically for the sales employee displayed on the contract form
+  const targetUserIdentifiers = new Set<string>();
+  if (salesEmployee) {
+    targetUserIdentifiers.add(salesEmployee);
+    
+    // Find user directly by employeeName or username
+    const matchedUsers = await (prisma as any).user.findMany({
+      where: {
+        OR: [
+          { employeeName: salesEmployee },
+          { username: salesEmployee }
+        ]
+      },
+      select: { username: true, employeeName: true }
+    });
+    matchedUsers.forEach((u: any) => {
+      if (u.username) targetUserIdentifiers.add(u.username);
+      if (u.employeeName) targetUserIdentifiers.add(u.employeeName);
+    });
+
+    // Also check employee table by fullName to locate user by employeeId
+    const matchedEmp = await (prisma as any).employee.findFirst({
+      where: { fullName: salesEmployee },
+      select: { id: true, fullName: true }
+    });
+    if (matchedEmp) {
+      const userByEmpId = await (prisma as any).user.findFirst({
+        where: { employeeId: matchedEmp.id },
+        select: { username: true, employeeName: true }
+      });
+      if (userByEmpId) {
+        if (userByEmpId.username) targetUserIdentifiers.add(userByEmpId.username);
+        if (userByEmpId.employeeName) targetUserIdentifiers.add(userByEmpId.employeeName);
+      }
+    }
+  }
+
+  // Fallback to submitter if no salesEmployee was selected on the form
+  if (targetUserIdentifiers.size === 0 && submitter && submitter !== "Hệ thống") {
+    targetUserIdentifiers.add(submitter);
+  }
+
+  const targetUsersStr = Array.from(targetUserIdentifiers).join(",");
+
+  if (newStatus === "Chờ phê duyệt" || newStatus === "Chờ duyệt") {
+    await (prisma as any).notification.create({
+      data: {
+        id: crypto.randomUUID(),
+        title: "Phê duyệt hợp đồng bán hàng",
+        message: `Hợp đồng số ${contractNumber}${salesEmployee ? ` của NVKD ${salesEmployee}` : ""} đang chờ phê duyệt.`,
+        link: "/phe-duyet/hop-dong-ban-hang",
+        type: "APPROVAL",
+        targetRole: "PERM:PD_HOP_DONG_BH",
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    });
+  } else if (newStatus === "Đã phê duyệt") {
+    if (targetUsersStr) {
+      await (prisma as any).notification.create({
+        data: {
+          id: crypto.randomUUID(),
+          title: "Phê duyệt hợp đồng bán hàng",
+          message: `Hợp đồng số ${contractNumber} đã được phê duyệt thành công.`,
+          link: "/sales/hop-dong",
+          type: "SUCCESS",
+          targetRole: `USER:${targetUsersStr}`,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+    }
+  } else if (newStatus === "Từ chối") {
+    if (targetUsersStr) {
+      await (prisma as any).notification.create({
+        data: {
+          id: crypto.randomUUID(),
+          title: "Phê duyệt hợp đồng bán hàng",
+          message: `Hợp đồng số ${contractNumber} đã bị từ chối phê duyệt.`,
+          link: "/sales/hop-dong",
+          type: "ERROR",
+          targetRole: `USER:${targetUsersStr}`,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+    }
+  }
+}
+

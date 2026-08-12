@@ -100,7 +100,7 @@ export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbed
 
   return (
     <>
-      <div className="purchasing-approval-container">
+      <div className="purchasing-approval-container" style={{ padding: isEmbedded ? "10px 8px" : "0px", boxSizing: "border-box" }}>
         <style dangerouslySetInnerHTML={{
           __html: `
           .purchasing-approval-container {
@@ -221,6 +221,7 @@ export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbed
             min-width: 1200px !important;
             table-layout: auto !important;
             border-collapse: collapse !important;
+            margin-bottom: 0px !important;
           }
           .base-table th {
             text-transform: uppercase !important;
@@ -351,6 +352,23 @@ export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbed
             font-weight: 700 !important;
             text-align: center !important;
           }
+          .mobile-only {
+            display: ${isEmbedded ? "flex" : "none"} !important;
+            ${isEmbedded ? "flex-direction: column !important; gap: 6px !important;" : ""}
+          }
+          .desktop-only {
+            display: ${isEmbedded ? "none" : "block"} !important;
+          }
+          @media (max-width: 768px) {
+            .desktop-only {
+              display: none !important;
+            }
+            .mobile-only {
+              display: flex !important;
+              flex-direction: column !important;
+              gap: 6px !important;
+            }
+          }
           `
         }} />
         {!isEmbedded && (
@@ -392,121 +410,233 @@ export default function PurchasingApprovalPage({ isEmbedded = false }: { isEmbed
             )}
           </div>
 
-          <div className="maintenance-layout" style={{ paddingTop: "0px" }}>
-            <div className="panel-full">
-              {selectedPOObj && (
-                <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "0px" }}>
-                  <button
-                    type="button"
-                    className="sapo-btn"
-                    onClick={() => openViewModal(selectedPOObj)}
-                  >
-                    Xem
-                  </button>
+          <div className="desktop-only">
+            <div className="maintenance-layout" style={{ paddingTop: "0px" }}>
+              <div className="panel-full">
+                {selectedPOObj && (
+                  <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "0px" }}>
+                    <button
+                      type="button"
+                      className="sapo-btn"
+                      onClick={() => openViewModal(selectedPOObj)}
+                    >
+                      Xem
+                    </button>
 
-                  {activeTab === "pending" && selectedPOObj.status === "Chờ phê duyệt" && (
-                    <>
-                      <button
-                        type="button"
-                        className="sapo-btn sapo-btn-success"
-                        onClick={() => handleApprove(selectedPOObj.id, selectedPOObj.poCode)}
-                      >
-                        Duyệt
-                      </button>
-                      <button
-                        type="button"
-                        className="sapo-btn sapo-btn-danger"
-                        onClick={() => handleReject(selectedPOObj.id, selectedPOObj.poCode)}
-                      >
-                        Từ chối
-                      </button>
-                    </>
-                  )}
-
-                  <button
-                    type="button"
-                    className="sapo-btn"
-                    onClick={() => setHistoryRecordId(selectedPOObj.id)}
-                  >
-                    Lịch sử
-                  </button>
-                </div>
-              )}
-
-              {/* Purchase Orders Table */}
-              <div className="base-table-wrapper" style={currentItems.length === 0 ? { height: "auto" } : undefined}>
-                <table className="base-table">
-                  <thead>
-                    <tr>
-                      <th className="nowrap" style={{ width: "50px" }}>STT</th>
-                      <th className="nowrap" style={{ width: "120px" }}>Mã lệnh</th>
-                      <th className="nowrap" style={{ width: "100px" }}>Ngày đề nghị</th>
-                      <th style={{ width: "170px" }}>Người tạo</th>
-                      <th style={{ width: "150px" }}>Chi nhánh</th>
-                      <th style={{ width: "250px" }}>Mục đích</th>
-                      <th className="nowrap" style={{ width: "120px" }}>Trạng thái</th>
-                      <th style={{ minWidth: "250px" }}>Thông tin hàng hóa</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} style={{ textAlign: "center", padding: "10px", color: "#64748b", fontWeight: 600 }}>
-                          Hiện không có dữ liệu cần phê duyệt
-                        </td>
-                      </tr>
-                    ) : (
-                      currentItems.map((item, idx) => {
-                        const isSelected = selectedPOId === item.id;
-                        return (
-                          <tr
-                            key={item.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedPOId(isSelected ? null : item.id);
-                            }}
-                            onDoubleClick={() => openViewModal(item)}
-                            className={`row-hoverable ${isSelected ? "row-selected" : ""}`}
-                            style={{ cursor: "pointer" }}
-                          >
-                            <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{idx + 1}</td>
-                            <td className="nowrap" style={{ textAlign: "center", fontWeight: 600, color: "#2563eb" }}>{item.poCode}</td>
-                            <td className="nowrap" style={{ textAlign: "center" }}>
-                              {new Date(item.requestedDate).toLocaleDateString("vi-VN")}
-                            </td>
-                            <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.creator}</td>
-                            <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.branch}</td>
-                            <td style={{ textAlign: "left" }}>{item.purpose}</td>
-                            <td className="nowrap" style={{ textAlign: "center" }}>
-                              <span
-                                className={`status-pill ${
-                                  item.status === "Đã giao hàng" || item.status === "Hoàn tất" || item.status === "Chờ giao hàng"
-                                    ? "status-active"
-                                    : item.status === "Chờ phê duyệt"
-                                    ? "status-pending"
-                                    : "status-new"
-                                }`}
-                              >
-                                {item.status}
-                              </span>
-                            </td>
-                            <td style={{ textAlign: "left", verticalAlign: "middle" }}>
-                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                {(item.purchaseorderdetail || []).map((goods: any, gIdx: number) => (
-                                  <div key={goods.id} style={{ fontSize: "12px", borderBottom: gIdx < (item.purchaseorderdetail.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "2px", color: "#334155" }}>
-                                    {gIdx + 1}. {goods.productName} - Mã: {goods.productCode} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.requestedQuantity).toLocaleString("en-US")}
-                                  </div>
-                                ))}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
+                    {activeTab === "pending" && selectedPOObj.status === "Chờ phê duyệt" && (
+                      <>
+                        <button
+                          type="button"
+                          className="sapo-btn sapo-btn-success"
+                          onClick={() => handleApprove(selectedPOObj.id, selectedPOObj.poCode)}
+                        >
+                          Duyệt
+                        </button>
+                        <button
+                          type="button"
+                          className="sapo-btn sapo-btn-danger"
+                          onClick={() => handleReject(selectedPOObj.id, selectedPOObj.poCode)}
+                        >
+                          Từ chối
+                        </button>
+                      </>
                     )}
-                  </tbody>
-                </table>
+
+                    <button
+                      type="button"
+                      className="sapo-btn"
+                      onClick={() => setHistoryRecordId(selectedPOObj.id)}
+                    >
+                      Lịch sử
+                    </button>
+                  </div>
+                )}
+
+                {/* Purchase Orders Table */}
+                <div className="base-table-wrapper" style={currentItems.length === 0 ? { height: "auto" } : undefined}>
+                  <table className="base-table">
+                    <thead>
+                      <tr>
+                        <th className="nowrap" style={{ width: "50px" }}>STT</th>
+                        <th className="nowrap" style={{ width: "120px" }}>Mã lệnh</th>
+                        <th className="nowrap" style={{ width: "100px" }}>Ngày đề nghị</th>
+                        <th style={{ width: "170px" }}>Người tạo</th>
+                        <th style={{ width: "150px" }}>Chi nhánh</th>
+                        <th style={{ width: "250px" }}>Mục đích</th>
+                        <th className="nowrap" style={{ width: "120px" }}>Trạng thái</th>
+                        <th style={{ minWidth: "250px" }}>Thông tin hàng hóa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: "center", padding: "10px", color: "#64748b", fontWeight: 600 }}>
+                            Hiện không có dữ liệu cần phê duyệt
+                          </td>
+                        </tr>
+                      ) : (
+                        currentItems.map((item, idx) => {
+                          const isSelected = selectedPOId === item.id;
+                          return (
+                            <tr
+                              key={item.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPOId(isSelected ? null : item.id);
+                              }}
+                              onDoubleClick={() => openViewModal(item)}
+                              className={`row-hoverable ${isSelected ? "row-selected" : ""}`}
+                              style={{ cursor: "pointer" }}
+                            >
+                              <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{idx + 1}</td>
+                              <td className="nowrap" style={{ textAlign: "center", fontWeight: 600, color: "#2563eb" }}>{item.poCode}</td>
+                              <td className="nowrap" style={{ textAlign: "center" }}>
+                                {new Date(item.requestedDate).toLocaleDateString("vi-VN")}
+                              </td>
+                              <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.creator}</td>
+                              <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.branch}</td>
+                              <td style={{ textAlign: "left" }}>{item.purpose}</td>
+                              <td className="nowrap" style={{ textAlign: "center" }}>
+                                <span
+                                  className={`status-pill ${
+                                    item.status === "Đã giao hàng" || item.status === "Hoàn tất" || item.status === "Chờ giao hàng"
+                                      ? "status-active"
+                                      : item.status === "Chờ phê duyệt"
+                                      ? "status-pending"
+                                      : "status-new"
+                                  }`}
+                                >
+                                  {item.status}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: "left", verticalAlign: "middle" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  {(item.purchaseorderdetail || []).map((goods: any, gIdx: number) => (
+                                    <div key={goods.id} style={{ fontSize: "12px", borderBottom: gIdx < (item.purchaseorderdetail.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "2px", color: "#334155" }}>
+                                      {gIdx + 1}. {goods.productName} - Mã: {goods.productCode} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.requestedQuantity).toLocaleString("en-US")}
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
+          </div>
+
+          {/* MOBILE VIEW */}
+          <div className="mobile-only" style={{ flexDirection: "column", gap: "6px", marginTop: "4px" }}>
+            {currentItems.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "20px 12px", color: "#64748b", background: "#ffffff", borderRadius: "14px", border: "1px solid #ffedd5", fontSize: "11px", fontWeight: 400 }}>
+                {activeTab === "pending" ? "Hiện không có dữ liệu cần phê duyệt" : "Hiện chưa có dữ liệu đã phê duyệt"}
+              </div>
+            ) : (
+              currentItems.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    background: "#ffffff",
+                    borderRadius: "14px",
+                    border: activeTab === "processed" ? "1px solid #d1fae5" : "1px solid #ffedd5",
+                    boxShadow: activeTab === "processed" ? "0 2px 8px rgba(5, 150, 105, 0.04)" : "0 2px 8px rgba(234, 88, 12, 0.04)",
+                    padding: "10px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", width: "100%", marginBottom: "2px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{
+                        fontSize: "9.5px",
+                        fontWeight: 600,
+                        background: activeTab === "processed" ? "#059669" : "#ea580c",
+                        color: "#ffffff",
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.2px",
+                        whiteSpace: "nowrap"
+                      }}>
+                        LỆNH MUA
+                      </span>
+                      <span style={{ fontSize: "11px", fontWeight: 600, color: "#64748b" }}>
+                        {item.poCode}
+                      </span>
+                    </div>
+                    <span style={{
+                      fontSize: "11px",
+                      fontWeight: 400,
+                      color: activeTab === "processed" ? "#059669" : "#d97706",
+                      background: activeTab === "processed" ? "#ecfdf5" : "#fffbeb",
+                      padding: "3px 10px",
+                      borderRadius: "12px",
+                      border: activeTab === "processed" ? "1px solid #a7f3d0" : "1px solid #fde68a"
+                    }}>
+                      {item.status}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: "13px", fontWeight: 600, color: "#0f172a" }}>
+                    {item.creator} <span style={{ fontSize: "11px", fontWeight: 400, color: "#64748b" }}>({item.branch})</span>
+                  </div>
+
+                  <div style={{ fontSize: "11px", color: "#475569" }}>
+                    Ngày đề nghị: {new Date(item.requestedDate).toLocaleDateString("vi-VN")}
+                  </div>
+
+                  {item.purpose && (
+                    <div style={{ fontSize: "11px", color: "#475569" }}>
+                      Mục đích: {item.purpose}
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: "4px", background: "#f8fafc", padding: "6px 8px", borderRadius: "8px" }}>
+                    {(item.purchaseorderdetail || []).map((goods: any, gIdx: number) => (
+                      <div key={goods.id || gIdx} style={{ fontSize: "11px", color: "#334155", borderBottom: gIdx < (item.purchaseorderdetail.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "2px", paddingTop: "2px" }}>
+                        {gIdx + 1}. {goods.productName} - Mã: {goods.productCode} - SL: <strong>{Number(goods.requestedQuantity).toLocaleString("en-US")} {goods.unit || ""}</strong>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: "flex", gap: "6px", marginTop: "6px", paddingTop: "6px", borderTop: "1px solid #f1f5f9" }}>
+                    <button
+                      type="button"
+                      className="sapo-btn btn-outline"
+                      onClick={() => openViewModal(item)}
+                      style={{ flex: 1, height: "30px", fontSize: "11px" }}
+                    >
+                      Xem chi tiết
+                    </button>
+                    {activeTab === "pending" && item.status === "Chờ phê duyệt" && (
+                      <>
+                        <button
+                          type="button"
+                          className="sapo-btn sapo-btn-success"
+                          onClick={() => handleApprove(item.id, item.poCode)}
+                          style={{ flex: 1, height: "30px", fontSize: "11px" }}
+                        >
+                          Duyệt
+                        </button>
+                        <button
+                          type="button"
+                          className="sapo-btn sapo-btn-danger"
+                          onClick={() => handleReject(item.id, item.poCode)}
+                          style={{ flex: 1, height: "30px", fontSize: "11px" }}
+                        >
+                          Từ chối
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

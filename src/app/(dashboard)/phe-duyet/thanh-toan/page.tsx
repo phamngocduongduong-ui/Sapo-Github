@@ -29,7 +29,7 @@ export default async function PaymentApprovalPage() {
     });
   }
 
-  const hasAccess = isAdmin || permissions.has("PD_THANH_TOAN");
+  const hasAccess = isAdmin || permissions.has("PD_THANH_TOAN") || permissions.has("KT_PHIEU_CHI") || permissions.has("PHE_DUYET");
   if (!hasAccess) {
     return (
       <div className="main-content" style={{ padding: "2rem" }}>

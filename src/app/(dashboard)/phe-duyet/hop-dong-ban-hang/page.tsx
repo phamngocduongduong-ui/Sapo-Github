@@ -3,9 +3,13 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import ApprovalTabs from "../../nhan-su/phe-duyet/ApprovalTabs";
 
-export default async function SalesContractApprovalPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SalesContractApprovalPage({ searchParams }: { searchParams?: { embedded?: string } }) {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  const isEmbedded = searchParams?.embedded === "true";
 
   const user = await (prisma as any).user.findUnique({
     where: { id: session.userId },
@@ -24,7 +28,7 @@ export default async function SalesContractApprovalPage() {
     });
   }
 
-  const hasHopDongBH = isAdmin || permissions.has("PD_HOP_DONG_BH");
+  const hasHopDongBH = isAdmin || permissions.has("PD_HOP_DONG_BH") || permissions.has("BH_HOP_DONG") || permissions.has("PHE_DUYET");
   if (!hasHopDongBH) {
     return (
       <div className="main-content" style={{ padding: "2rem" }}>
@@ -51,7 +55,7 @@ export default async function SalesContractApprovalPage() {
     <ApprovalTabs 
       pending={hrData.pending}
       approved={hrData.approved}
-      isEmbedded={false}
+      isEmbedded={isEmbedded}
       showHopDongBanHangOnly={true}
     />
   );

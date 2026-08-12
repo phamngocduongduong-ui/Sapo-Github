@@ -722,6 +722,7 @@ textarea::placeholder,
   /* Allow horizontal scroll for wide tables */
   overflow-y: hidden;
   /* No vertical scroll as requested */
+  padding-bottom: 0px;
 }
 
 .base-table {
@@ -729,6 +730,7 @@ textarea::placeholder,
   border-collapse: collapse;
   font-size: 13px;
   /* Increased to 13px */
+  margin-bottom: 0px;
 }
 
 .base-table th {
@@ -3424,6 +3426,43 @@ select.input-base {
 }
 .row-selected td:last-child {
   border-right: 1px solid #b9d5f0 !important;
+}
+
+/* --- EMBEDDED MOBILE APP VIEW OVERRIDES --- */
+html.is-embedded-mobile .login-header,
+html.is-embedded-mobile .sidebar,
+html.is-embedded-mobile footer,
+html.is-embedded-mobile .mobile-overlay,
+html.is-embedded-mobile .mobile-branch-switcher {
+  display: none !important;
+}
+
+html.is-embedded-mobile .main-content {
+  padding-top: 8px !important;
+  padding-bottom: 16px !important;
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+
+html.is-embedded-mobile .main-wrapper {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+
+html.is-embedded-mobile .authenticated-dashboard-container {
+  margin: 0 !important;
+}
+
+html.is-embedded-mobile .breadcrumb-banner,
+html.is-embedded-mobile .stats-dashboard-bar {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .base-checkin-wrapper .breadcrumb-banner,
+  .base-checkin-wrapper .stats-dashboard-bar {
+    display: none !important;
+  }
 }
 
 

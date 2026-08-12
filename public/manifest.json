@@ -1,0 +1,25 @@
+{
+  "name": "Sapo EMS Approval App",
+  "short_name": "Sapo Mobile",
+  "description": "Ứng dụng Cá nhân & Phê duyệt Sapo Group",
+  "start_url": "/mobile",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#003466",
+  "theme_color": "#003466",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/images/sapo_logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/sapo_logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

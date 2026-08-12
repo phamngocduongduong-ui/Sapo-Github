@@ -135,7 +135,7 @@ export async function generateProposalCode(branchName: string) {
   return `${prefix}${nextNum}`;
 }
 
-export async function createProposal(formData: FormData, details: any[]) {
+export async function createProposal(formData: FormData, details: any[], attachmentsList?: any[]) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
@@ -150,7 +150,8 @@ export async function createProposal(formData: FormData, details: any[]) {
   const deliveryDate = deliveryDateRaw ? new Date(deliveryDateRaw) : null;
   const deliveryPlace = formData.get("deliveryPlace") as string;
 
-  const attachments = formData.get("attachments") as string;
+  const attachmentsRaw = formData.get("attachments") as string;
+  const attachments = attachmentsList ? JSON.stringify(attachmentsList) : attachmentsRaw;
 
   const branch = selectedBranch || user?.branch?.split(",")[0].trim() || "";
   const proposalCode = await generateProposalCode(branch);
@@ -209,7 +210,7 @@ export async function createProposal(formData: FormData, details: any[]) {
   return proposal;
 }
 
-export async function updateProposal(id: string, formData: FormData, details: any[]) {
+export async function updateProposal(id: string, formData: FormData, details: any[], attachmentsList?: any[]) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
@@ -234,7 +235,8 @@ export async function updateProposal(id: string, formData: FormData, details: an
   const deliveryDate = deliveryDateRaw ? new Date(deliveryDateRaw) : null;
   const deliveryPlace = formData.get("deliveryPlace") as string;
 
-  const attachments = formData.get("attachments") as string;
+  const attachmentsRaw = formData.get("attachments") as string;
+  const attachments = attachmentsList ? JSON.stringify(attachmentsList) : attachmentsRaw;
 
   const branch = selectedBranch || oldProposal.branch;
   // If branch changes, regenerate proposalCode
@@ -360,6 +362,21 @@ export async function updateProposalStatus(id: string, status: string) {
     changedBy: changer,
     changeDetail: detailMsg
   });
+
+  if (status === "Chờ duyệt") {
+    await (prisma as any).notification.create({
+      data: {
+        id: require('crypto').randomUUID(),
+        title: "Phê duyệt nhu cầu mua hàng",
+        message: `Đề nghị mua hàng ${oldProposal.proposalCode} của ${oldProposal.proposer} đã được gửi và đang chờ phê duyệt.`,
+        link: "/phe-duyet/de-nghi-mua-hang",
+        type: "APPROVAL",
+        targetRole: "PERM:PD_DE_NGHI_MH,TM_PHE_DUYET_DE_NGHI",
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    });
+  }
 
   revalidatePath("/purchasing/de-nghi");
   revalidatePath("/purchasing/phe-duyet-de-nghi");

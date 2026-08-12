@@ -1,14 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useTransition, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { 
-  CheckCircle, X, RefreshCw, Eye, History, AlertTriangle, FileText, Calendar, ChevronDown
+  CheckCircle, CheckCircle2, XCircle, X, RefreshCw, Eye, History, AlertTriangle, FileText, Calendar, ChevronDown
 } from "lucide-react";
 import { 
   getPheDuyetProposals, approveProposal, rejectProposal, cancelApproveProposal
 } from "./actions";
 import HistoryModal from "../../HistoryModal";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
+import { FilePreviewModal } from "@/components/FilePreviewModal";
 
 export default function PurchasingProposalApprovalPage({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const [proposals, setProposals] = useState<any[]>([]);
@@ -16,13 +18,16 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
   const [selectedProposal, setSelectedProposal] = useState<any | null>(null);
   const [details, setDetails] = useState<any[]>([]);
   const [attachmentList, setAttachmentList] = useState<any[]>([]);
+  const [previewFile, setPreviewFile] = useState<any>(null);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ id: string, type: "APPROVE" | "REJECT" | "CANCEL_APPROVE", info: string } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useRealTimeSync("purchasing-proposal-approvals", proposals, setProposals, 3000, showModal);
 
@@ -49,8 +54,14 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
   }, []);
 
   async function fetchData() {
-    const data = await getPheDuyetProposals();
-    setProposals(data);
+    try {
+      const data = await getPheDuyetProposals();
+      setProposals(data);
+    } catch (e) {
+      console.error("Lỗi tải đề nghị:", e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function fetchUser() {
@@ -58,17 +69,6 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
       const res = await fetch("/api/user-permissions");
       const data = await res.json();
       setCurrentUser(data);
-      if (data && data.branch) {
-        const branchLower = data.branch.toLowerCase();
-        if (
-          !branchLower.includes("chi nhánh") && 
-          !branchLower.includes("toàn bộ") && 
-          !branchLower.includes("tất cả") &&
-          !data.branch.includes(",")
-        ) {
-          setFilterBranch(data.branch);
-        }
-      }
     } catch (e) {
       console.error("Failed to fetch user permissions", e);
     }
@@ -85,7 +85,13 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
         p.proposalCode.toLowerCase().includes(filterSearch.toLowerCase()) ||
         p.proposer.toLowerCase().includes(filterSearch.toLowerCase());
       const matchStatus = !filterStatus || p.status === filterStatus;
-      const matchBranch = !filterBranch || p.branch === filterBranch;
+      const matchBranch =
+        !filterBranch ||
+        p.branch === filterBranch ||
+        (p.branch && filterBranch && (
+          p.branch.toLowerCase().includes(filterBranch.toLowerCase()) ||
+          filterBranch.toLowerCase().includes(p.branch.toLowerCase())
+        ));
       const matchMonth =
         !filterMonth ||
         (new Date(p.proposalDate).getMonth() + 1).toString().padStart(2, "0") === filterMonth.split("-")[1];
@@ -157,7 +163,7 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
   };
 
   return (
-    <div className="maintenance-approval-container" style={{ width: "100%", minWidth: 0 }}>
+    <div className="maintenance-approval-container" style={{ width: "100%", minWidth: 0, padding: isEmbedded ? "10px 8px" : "0px", boxSizing: "border-box" }}>
       <style dangerouslySetInnerHTML={{
         __html: `
         .maintenance-approval-container {
@@ -309,6 +315,7 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
           table-layout: auto !important;
           border-collapse: collapse !important;
           border: 1px solid #cbd5e1 !important;
+          margin-bottom: 0px !important;
         }
         .base-table th {
           text-transform: uppercase !important;
@@ -341,11 +348,26 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
           border-radius: 6px !important;
           padding: 10px !important;
         }
+        .mobile-only {
+          display: ${isEmbedded ? "flex" : "none"} !important;
+          ${isEmbedded ? "flex-direction: column !important; gap: 6px !important;" : ""}
+        }
+        .desktop-only {
+          display: ${isEmbedded ? "none" : "block"} !important;
+        }
         .mobile-filter-header,
         .mobile-proposals-cards {
           display: none !important;
         }
         @media (max-width: 768px) {
+          .desktop-only {
+            display: none !important;
+          }
+          .mobile-only {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 6px !important;
+          }
           .mobile-filter-header {
             display: flex !important;
             justify-content: space-between;
@@ -394,34 +416,33 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
             margin-left: -10px !important;
             margin-right: -10px !important;
             margin-top: 0px !important;
-            margin-bottom: 10px !important;
+            margin-bottom: 0px !important;
           }
           .mobile-proposals-cards {
             display: flex !important;
             flex-direction: column !important;
             gap: 8px !important;
-            margin-top: 10px !important;
+            margin-top: 2px !important;
             padding-bottom: 20px !important;
             width: 100% !important;
           }
           .proposal-card {
             background: #ffffff !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 8px !important;
-            padding: 8px 12px !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+            border: 1px solid #ffedd5 !important;
+            border-radius: 14px !important;
+            padding: 10px 12px !important;
+            box-shadow: 0 2px 8px rgba(234, 88, 12, 0.04) !important;
             cursor: pointer !important;
             transition: all 0.2s ease !important;
             user-select: none !important;
           }
           .proposal-card:hover {
-            background: #f8fafc !important;
+            background: #ffffff !important;
           }
           .proposal-card.selected {
-            border: 1px solid #b9d5f0 !important;
-            border-left: 6px solid #003466 !important;
-            background-color: #f0f7ff !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 52, 102, 0.08) !important;
+            border: 2px solid #ea580c !important;
+            background-color: #ffffff !important;
+            box-shadow: 0 2px 8px rgba(234, 88, 12, 0.12) !important;
           }
           .card-row {
             display: flex !important;
@@ -665,34 +686,17 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
 
       {!isEmbedded && (
         <div className="breadcrumb-banner">
-          PHÊ DUYỆT ĐỀ NGHỊ MUA HÀNG
+          PHÊ DUYỆT NHU CẦU MUA
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="tabs-container">
-        <button 
-          className={`tab-btn ${activeTab === 1 ? "active" : ""}`}
-          onClick={() => { setActiveTab(1); setSelectedProposalId(null); }}
-        >
-          Chờ duyệt ({proposals.filter(p => p.status === "Chờ duyệt").length})
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === 2 ? "active" : ""}`}
-          onClick={() => { setActiveTab(2); setSelectedProposalId(null); }}
-        >
-          Đã duyệt ({proposals.filter(p => p.status !== "Chờ duyệt").length})
-        </button>
-      </div>
-
-
-
-      {/* Action Toolbar */}
-      <div className="maintenance-layout" style={{ paddingTop: "0px" }}>
-        <div className="panel-full">
-          <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "0px" }}>
+      {/* DESKTOP VIEW */}
+      <div className="desktop-only">
+        {/* Action Toolbar */}
+        <div className="maintenance-layout" style={{ paddingTop: "0px", marginTop: "0px" }}>
+          <div className="panel-full" style={{ padding: "0px", background: "transparent", border: "none", boxShadow: "none" }}>
             {selectedProposalObj && (
-              <>
+              <div className="search-container" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start", alignItems: "center", marginTop: "0px", marginBottom: "8px" }}>
                 <button
                   type="button"
                   className="sapo-btn"
@@ -737,188 +741,427 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
                 >
                   Lịch sử
                 </button>
-              </>
-            )}
-
-          </div>
-
-          {/* Table view */}
-          <div className="base-table-wrapper" style={filteredProposals.length === 0 ? { height: "auto" } : undefined}>
-            <table className="base-table">
-              <thead>
-                <tr>
-                  <th className="nowrap" style={{ width: "40px", minWidth: "40px" }}>STT</th>
-                  <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Số đề nghị</th>
-                  <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Ngày</th>
-                  <th style={{ width: "170px", minWidth: "170px" }}>Người đề nghị</th>
-                  <th style={{ width: "120px", minWidth: "120px" }}>Chi nhánh</th>
-                  <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Trạng thái</th>
-                  <th style={{ minWidth: "250px" }}>Thông tin hàng hóa</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProposals.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>
-                      Không có đề nghị nào trong danh sách này
-                    </td>
-                  </tr>
-                ) : (
-                  filteredProposals.map((item, idx) => {
-                    const isSelected = selectedProposalId === item.id;
-                    return (
-                      <tr
-                        key={item.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedProposalId(isSelected ? null : item.id);
-                        }}
-                        onDoubleClick={() => openViewModal(item)}
-                        className={`row-hoverable ${isSelected ? "row-selected" : ""}`}
-                        style={{ cursor: "pointer" }}
-                      >
-                        <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{idx + 1}</td>
-                        <td className="nowrap" style={{ textAlign: "center", fontWeight: 600, color: "var(--primary-color)" }}>{item.proposalCode}</td>
-                        <td className="nowrap" style={{ textAlign: "center" }}>
-                          {new Date(item.proposalDate).toLocaleDateString("vi-VN")}
-                        </td>
-                        <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.proposer}</td>
-                        <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.branch}</td>
-                        <td className="nowrap" style={{ textAlign: "center" }}>
-                          <span
-                            className={`status-pill ${
-                              item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện" || item.status === "Hoàn thành"
-                                ? "status-active"
-                                : item.status === "Tạo mới"
-                                ? "status-new"
-                                : item.status === "Chờ duyệt"
-                                ? "status-pending"
-                                : "status-inactive"
-                            }`}
-                          >
-                            {item.status}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: "left", verticalAlign: "middle" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            {(item.items || []).map((goods: any, gIdx: number) => (
-                              <div key={goods.id} style={{ fontSize: "12px", borderBottom: gIdx < (item.items.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "4px", paddingTop: "2px", color: "#334155" }}>
-                                <div>
-                                  {gIdx + 1}. {goods.productName} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
-                                </div>
-                                {goods.orderHistory && goods.orderHistory.length > 0 && (
-                                  <div style={{ paddingLeft: "15px", marginTop: "3px", color: "#16a34a", fontSize: "11px", display: "flex", flexDirection: "column", gap: "2px", fontWeight: "500" }}>
-                                    {goods.orderHistory.map((hist: any, hIdx: number) => (
-                                      <div key={hIdx} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                        <span style={{ display: "inline-block", width: "4px", height: "4px", borderRadius: "50%", backgroundColor: "#16a34a" }}></span>
-                                        <span>Lần đặt {hIdx + 1}: {hist.poCode} - SL: <strong style={{ color: "#15803d", fontWeight: "700" }}>{Number(hist.quantity).toLocaleString("en-US")} {hist.unit || ""}</strong> (Dự kiến giao: {hist.deliveryDate})</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Cards view (mobile) */}
-          <div className="mobile-proposals-cards">
-            {filteredProposals.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem", color: "#94a3b8", background: "#ffffff", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
-                Không có đề nghị nào
               </div>
-            ) : (
-              filteredProposals.map((item, idx) => {
-                const isSelected = selectedProposalId === item.id;
-                return (
-                  <div
-                    key={item.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedProposalId(isSelected ? null : item.id);
-                    }}
-                    onDoubleClick={() => openViewModal(item)}
-                    className={`proposal-card ${isSelected ? "selected" : ""}`}
-                  >
-                    <div className="card-row card-header">
-                      <div className="code-box">
-                        <span className="idx-pill">#{idx + 1}</span>
-                        <span className="proposal-code">{item.proposalCode}</span>
-                      </div>
-                      <span
-                        className={`status-pill ${
-                          item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện" || item.status === "Hoàn thành"
-                            ? "status-active"
-                            : item.status === "Tạo mới"
-                            ? "status-new"
-                            : item.status === "Chờ duyệt"
-                            ? "status-pending"
-                            : "status-inactive"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
-
-                    <div className="card-body">
-                      <div className="info-row">
-                        <span className="info-label">Ngày đề nghị:</span>
-                        <span className="info-val">{new Date(item.proposalDate).toLocaleDateString("vi-VN")}</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-label">Người đề nghị:</span>
-                        <span className="info-val highlight">{item.proposer}</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-label">Chi nhánh:</span>
-                        <span className="info-val highlight">{item.branch}</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-label">Mục đích:</span>
-                        <span className="info-val">{item.purpose}</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-label">Tình trạng:</span>
-                        <span className="info-val">{item.urgency}</span>
-                      </div>
-                      
-                      <div className="goods-section">
-                        <div className="goods-title">Thông tin hàng hóa:</div>
-                        <div className="goods-list">
-                          {(item.items || []).map((goods: any, gIdx: number) => (
-                            <div key={goods.id} className="goods-item">
-                              <span className="goods-num">{gIdx + 1}.</span> {goods.productName} 
-                              <div style={{ marginLeft: "14px", color: "#64748b", fontSize: "11px" }}>
-                                ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
-                              </div>
-                              {goods.orderHistory && goods.orderHistory.length > 0 && (
-                                <div style={{ marginLeft: "14px", marginTop: "3px", color: "#16a34a", fontSize: "11px", display: "flex", flexDirection: "column", gap: "2px", fontWeight: "500" }}>
-                                  {goods.orderHistory.map((hist: any, hIdx: number) => (
-                                    <div key={hIdx} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                      <span style={{ display: "inline-block", width: "4px", height: "4px", borderRadius: "50%", backgroundColor: "#16a34a" }}></span>
-                                      <span>Lần đặt {hIdx + 1}: {hist.poCode} - SL: <strong style={{ color: "#15803d", fontWeight: "700" }}>{Number(hist.quantity).toLocaleString("en-US")} {hist.unit || ""}</strong> (Dự kiến giao: {hist.deliveryDate})</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
             )}
+
+            {/* Table view */}
+            <div className="base-table-wrapper" style={filteredProposals.length === 0 ? { height: "auto" } : undefined}>
+              <table className="base-table">
+                <thead>
+                  <tr>
+                    <th className="nowrap" style={{ width: "40px", minWidth: "40px" }}>STT</th>
+                    <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Số đề nghị</th>
+                    <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Ngày</th>
+                    <th style={{ width: "170px", minWidth: "170px" }}>Người đề nghị</th>
+                    <th style={{ width: "120px", minWidth: "120px" }}>Chi nhánh</th>
+                    <th className="nowrap" style={{ width: "70px", minWidth: "70px" }}>Trạng thái</th>
+                    <th style={{ minWidth: "250px" }}>Thông tin hàng hóa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProposals.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>
+                        Không có đề nghị nào trong danh sách này
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredProposals.map((item, idx) => {
+                      const isSelected = selectedProposalId === item.id;
+                      return (
+                        <tr
+                          key={item.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProposalId(isSelected ? null : item.id);
+                          }}
+                          onDoubleClick={() => openViewModal(item)}
+                          className={`row-hoverable ${isSelected ? "row-selected" : ""}`}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <td className="nowrap" style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{idx + 1}</td>
+                          <td className="nowrap" style={{ textAlign: "center", fontWeight: 600, color: "var(--primary-color)" }}>{item.proposalCode}</td>
+                          <td className="nowrap" style={{ textAlign: "center" }}>
+                            {new Date(item.proposalDate).toLocaleDateString("vi-VN")}
+                          </td>
+                          <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.proposer}</td>
+                          <td style={{ textAlign: "center", color: "#000", fontWeight: 600 }}>{item.branch}</td>
+                          <td className="nowrap" style={{ textAlign: "center" }}>
+                            <span
+                              className={`status-pill ${
+                                item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện" || item.status === "Hoàn thành"
+                                  ? "status-active"
+                                  : item.status === "Tạo mới"
+                                  ? "status-new"
+                                  : item.status === "Chờ duyệt"
+                                  ? "status-pending"
+                                  : "status-inactive"
+                              }`}
+                            >
+                              {item.status}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: "left", verticalAlign: "middle" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              {(item.items || []).map((goods: any, gIdx: number) => (
+                                <div key={goods.id} style={{ fontSize: "12px", borderBottom: gIdx < (item.items.length - 1) ? "1px dashed #cbd5e1" : "none", paddingBottom: "4px", paddingTop: "2px", color: "#334155" }}>
+                                  <div>
+                                    {gIdx + 1}. {goods.productName} - ĐVT: {goods.unit || "—"} - SL: {Number(goods.quantity).toLocaleString("en-US")}
+                                  </div>
+                                  {goods.orderHistory && goods.orderHistory.length > 0 && (
+                                    <div style={{ paddingLeft: "15px", marginTop: "3px", color: "#16a34a", fontSize: "11px", display: "flex", flexDirection: "column", gap: "2px", fontWeight: "500" }}>
+                                      {goods.orderHistory.map((hist: any, hIdx: number) => (
+                                        <div key={hIdx} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                          <span style={{ display: "inline-block", width: "4px", height: "4px", borderRadius: "50%", backgroundColor: "#16a34a" }}></span>
+                                          <span>Lần đặt {hIdx + 1}: {hist.poCode} - SL: <strong style={{ color: "#15803d", fontWeight: "700" }}>{Number(hist.quantity).toLocaleString("en-US")} {hist.unit || ""}</strong> (Dự kiến giao: {hist.deliveryDate})</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* MOBILE VIEW (Đồng bộ chuẩn 100% Phê duyệt nhân sự) */}
+      <div className="mobile-only" style={{ flexDirection: "column", gap: "6px", marginTop: "4px" }}>
+        {/* 2-Tab Selector Bar: Cần phê duyệt vs Đã phê duyệt */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "4px",
+          background: "#f1f5f9",
+          padding: "3px",
+          borderRadius: "10px",
+          marginBottom: "6px"
+        }}>
+          {/* Tab 1: Cần phê duyệt */}
+          <button
+            onClick={() => { setActiveTab(1); setSelectedProposalId(null); }}
+            style={{
+              background: activeTab === 1 ? "#ffffff" : "transparent",
+              border: "none",
+              color: activeTab === 1 ? "#ea580c" : "#64748b",
+              borderRadius: "7px",
+              padding: "6px 8px",
+              fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+              fontSize: "13px",
+              fontWeight: activeTab === 1 ? 600 : 500,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "5px",
+              boxShadow: activeTab === 1 ? "0 2px 6px rgba(234, 88, 12, 0.12)" : "none",
+              transform: activeTab === 1 ? "scale(1.02)" : "scale(1)",
+              transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+            }}
+          >
+            <span style={{ fontSize: "12px" }}>⏳</span>
+            <span>Cần phê duyệt</span>
+            <span style={{
+              background: activeTab === 1 ? "#fee2e2" : "#e2e8f0",
+              color: activeTab === 1 ? "#dc2626" : "#64748b",
+              fontSize: "10.5px",
+              fontWeight: 600,
+              padding: "0px 5px",
+              borderRadius: "8px",
+              lineHeight: "1.2"
+            }}>
+              {proposals.filter(p => p.status === "Chờ duyệt").length}
+            </span>
+          </button>
+
+          {/* Tab 2: Đã phê duyệt */}
+          <button
+            onClick={() => { setActiveTab(2); setSelectedProposalId(null); }}
+            style={{
+              background: activeTab === 2 ? "#ffffff" : "transparent",
+              border: "none",
+              color: activeTab === 2 ? "#059669" : "#64748b",
+              borderRadius: "7px",
+              padding: "6px 8px",
+              fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+              fontSize: "13px",
+              fontWeight: activeTab === 2 ? 600 : 500,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "5px",
+              boxShadow: activeTab === 2 ? "0 2px 6px rgba(5, 150, 105, 0.12)" : "none",
+              transform: activeTab === 2 ? "scale(1.02)" : "scale(1)",
+              transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+            }}
+          >
+            <span style={{ fontSize: "12px" }}>✅</span>
+            <span>Đã phê duyệt</span>
+            <span style={{
+              background: activeTab === 2 ? "#d1fae5" : "#e2e8f0",
+              color: activeTab === 2 ? "#059669" : "#64748b",
+              fontSize: "10.5px",
+              fontWeight: 600,
+              padding: "0px 5px",
+              borderRadius: "8px",
+              lineHeight: "1.2"
+            }}>
+              {proposals.filter(p => p.status !== "Chờ duyệt").length}
+            </span>
+          </button>
+        </div>
+
+        {/* Cards view (mobile) */}
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "20px 12px", color: "#64748b", background: "#ffffff", borderRadius: "14px", border: "1px solid #ffedd5", fontSize: "11px", fontWeight: 400, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+            <div style={{ width: "16px", height: "16px", border: "2px solid #ea580c", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            <span>Đang tải dữ liệu...</span>
+          </div>
+        ) : filteredProposals.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "20px 12px", color: "#64748b", background: "#ffffff", borderRadius: "14px", border: "1px solid #ffedd5", fontSize: "11px", fontWeight: 400 }}>
+            {activeTab === 1 ? "Hiện không có dữ liệu cần phê duyệt" : "Hiện chưa có dữ liệu đã phê duyệt"}
+          </div>
+        ) : (
+          filteredProposals.map((item) => {
+            const isSelected = selectedProposalId === item.id;
+            const isExpanded = expandedId === item.id;
+
+            return (
+              <div
+                key={item.id}
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "14px",
+                  border: activeTab === 2 ? "1px solid #d1fae5" : "1px solid #ffedd5",
+                  boxShadow: activeTab === 2 ? "0 2px 8px rgba(5, 150, 105, 0.04)" : "0 2px 8px rgba(234, 88, 12, 0.04)",
+                  padding: "10px 12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px"
+                }}
+              >
+                {/* Row 1: Orange Capsule Badge + Proposal Code + Status Badge */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", width: "100%", marginBottom: "2px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{
+                      fontSize: "9.5px",
+                      fontWeight: 600,
+                      background: (activeTab === 2 || item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện") ? "#059669" : "#ea580c",
+                      color: "#ffffff",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.2px",
+                      whiteSpace: "nowrap",
+                      display: "inline-block"
+                    }}>
+                      MUA HÀNG
+                    </span>
+                    <span style={{ fontSize: "11px", fontWeight: 600, color: "#64748b" }}>
+                      {item.proposalCode}
+                    </span>
+                  </div>
+
+                  {(item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện" || item.status === "Hoàn thành" || item.status === "Từ chối") && (
+                    <span style={{
+                      fontSize: "11px",
+                      fontWeight: 400,
+                      color: (item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện" || item.status === "Hoàn thành") ? "#059669" : "#dc2626",
+                      background: (item.status === "Đã phê duyệt" || item.status === "Chờ thực hiện" || item.status === "Hoàn thành") ? "#ecfdf5" : "#fef2f2",
+                      padding: "3px 10px",
+                      borderRadius: "12px",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0
+                    }}>
+                      {item.status}
+                    </span>
+                  )}
+                </div>
+
+                {/* Row 2: Main Info Column (Title + Ngày + NV + Mục đích) & Right Action Buttons */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+                  {/* Left Info Column */}
+                  <div style={{ flex: 1 }}>
+                    {/* Main Title Text */}
+                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a", lineHeight: "1.3" }}>
+                      Phê duyệt nhu cầu mua hàng
+                    </div>
+
+                    {/* Line 1: Ngày */}
+                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "3px", fontWeight: 400 }}>
+                      Ngày: {new Date(item.proposalDate).toLocaleDateString("vi-VN")}
+                    </div>
+
+                    {/* Line 2: NV (Tên nhân viên) */}
+                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "1px", fontWeight: 400 }}>
+                      NV: {item.proposer}
+                    </div>
+
+                    {/* Line 3: Mục đích */}
+                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "1px", fontWeight: 400, lineHeight: "1.35" }}>
+                      Mục đích: {item.purpose}
+                    </div>
+                  </div>
+
+                  {/* Right Side Buttons (Duyệt ngay & Từ chối / Bỏ duyệt) */}
+                  {item.status === "Chờ duyệt" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "5px", alignItems: "flex-end", flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleApprove(item.id, item.proposalCode);
+                        }}
+                        style={{
+                          background: "linear-gradient(135deg, #ff5c00 0%, #ea580c 100%)",
+                          color: "#ffffff",
+                          border: "none",
+                          borderRadius: "8px",
+                          padding: "6px 12px",
+                          fontSize: "11px",
+                          fontWeight: 400,
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
+                          boxShadow: "0 2px 6px rgba(234, 88, 12, 0.2)"
+                        }}
+                      >
+                        Duyệt ngay →
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReject(item.id, item.proposalCode);
+                        }}
+                        style={{
+                          background: "#ffffff",
+                          color: "#dc2626",
+                          border: "1px solid #fca5a5",
+                          borderRadius: "8px",
+                          padding: "5px 10px",
+                          fontSize: "11px",
+                          fontWeight: 400,
+                          cursor: "pointer",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        ✕ Từ chối
+                      </button>
+                    </div>
+                  )}
+
+                  {(item.status === "Chờ thực hiện" || item.status === "Đã phê duyệt" || item.status === "Từ chối") && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "5px", alignItems: "flex-end", flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCancelApprove(item.id, item.proposalCode);
+                        }}
+                        style={{
+                          background: "#fef3c7",
+                          color: "#d97706",
+                          border: "1px solid #fde68a",
+                          borderRadius: "8px",
+                          padding: "5px 10px",
+                          fontSize: "11px",
+                          fontWeight: 400,
+                          cursor: "pointer",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        Bỏ duyệt
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Toggle Expand Details */}
+                <div
+                  style={{
+                    borderTop: activeTab === 2 ? "1px dashed #a7f3d0" : "1px dashed #fed7aa",
+                    paddingTop: "4px",
+                    marginTop: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between"
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedId(isExpanded ? null : item.id);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      fontSize: "11px",
+                      fontWeight: 400,
+                      color: activeTab === 2 ? "#059669" : "#ea580c",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}
+                  >
+                    <span>{isExpanded ? "▲ Thu gọn chi tiết" : "▼ Xem chi tiết đầy đủ"}</span>
+                  </button>
+                </div>
+
+                {/* Collapsible Goods Detail Box */}
+                {isExpanded && (
+                  <div style={{
+                    marginTop: "6px",
+                    padding: "8px 10px",
+                    background: "#fff7ed",
+                    borderRadius: "8px",
+                    border: "1px solid #ffedd5"
+                  }}>
+                    <div style={{ fontSize: "11px", fontWeight: 700, color: "#ea580c", marginBottom: "6px", textTransform: "uppercase" }}>
+                      Thông tin hàng hóa ({item.items?.length || 0})
+                    </div>
+                    {(!item.items || item.items.length === 0) ? (
+                      <div style={{ fontSize: "11px", color: "#94a3b8" }}>Không có hàng hóa</div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        {item.items.map((goods: any, gIdx: number) => (
+                          <div key={goods.id || gIdx} style={{ fontSize: "11px", borderBottom: gIdx < (item.items.length - 1) ? "1px dashed #fed7aa" : "none", paddingBottom: "4px" }}>
+                            <div style={{ fontWeight: 600, color: "#1e293b" }}>
+                              {gIdx + 1}. {goods.productName}
+                            </div>
+                            <div style={{ color: "#64748b", fontSize: "11px" }}>
+                              ĐVT: {goods.unit || "—"} | SL: <strong style={{ color: "#ea580c" }}>{Number(goods.quantity).toLocaleString("en-US")}</strong>
+                            </div>
+                            {goods.orderHistory && goods.orderHistory.length > 0 && (
+                              <div style={{ paddingLeft: "8px", marginTop: "3px", color: "#16a34a", fontSize: "10.5px" }}>
+                                {goods.orderHistory.map((hist: any, hIdx: number) => (
+                                  <div key={hIdx}>
+                                    • Lần đặt {hIdx + 1}: {hist.poCode} - SL: {Number(hist.quantity).toLocaleString("en-US")} {hist.unit || ""} (Giao: {hist.deliveryDate})
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* History log modal */}
@@ -1053,7 +1296,20 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
                           <td style={{ padding: "8px" }}>
                             {att.fileName ? (
                               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "12px", color: "#1e293b", fontWeight: 500 }}>📄 {att.fileName}</span>
+                                <span 
+                                  style={{ fontSize: "12px", color: "#1e293b", fontWeight: 500, cursor: "pointer", textDecoration: "underline" }}
+                                  onClick={() => setPreviewFile(att)}
+                                  title="Nhấn để xem trực tiếp"
+                                >
+                                  📄 {att.fileName}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewFile(att)}
+                                  style={{ fontSize: "11px", color: "#059669", background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "2px 8px", borderRadius: "4px", fontWeight: 700, cursor: "pointer" }}
+                                >
+                                  👁️ Xem trực tiếp
+                                </button>
                                 <a
                                   href={att.fileContent}
                                   download={att.fileName}
@@ -1084,96 +1340,133 @@ export default function PurchasingProposalApprovalPage({ isEmbedded = false }: {
         </div>
       )}
 
-      {/* Confirmation Modals */}
-      {confirmAction && (
-        <div className="modal-overlay-base" style={{ zIndex: 9999 }}>
-          <div className="modal-content-base" style={{ maxWidth: "450px", width: "90%", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem", textAlign: "center" }}>
-            <div style={{ 
-              width: "60px", 
-              height: "60px", 
-              borderRadius: "50%", 
-              background: confirmAction.type === "APPROVE" ? "#ecfdf5" : confirmAction.type === "REJECT" ? "#fef2f2" : "#fff7ed", 
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center", 
-              margin: "0 auto 1.25rem",
-              color: confirmAction.type === "APPROVE" ? "#10b981" : confirmAction.type === "REJECT" ? "#ef4444" : "#f97316"
+      {/* Standardized Mobile Approval Confirmation Modal (createPortal + translateY(-45px) + CheckCircle2/XCircle + Đồng ý/Thoát) */}
+      {typeof window !== "undefined" && confirmAction && createPortal(
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15, 23, 42, 0.4)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 999999,
+          padding: "16px"
+        }}>
+          <div style={{
+            width: "100%",
+            maxWidth: "300px",
+            padding: "18px 16px 14px 16px",
+            textAlign: "center",
+            borderRadius: "16px",
+            background: "#ffffff",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+            transform: "translateY(-45px)"
+          }}>
+            {/* Centered Circular Icon */}
+            <div style={{
+              width: "44px",
+              height: "44px",
+              borderRadius: "50%",
+              background: confirmAction.type === "APPROVE" ? "#e0f2fe" : "#fee2e2",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 10px auto"
             }}>
-              {confirmAction.type === "APPROVE" ? <CheckCircle size={32} /> : <AlertTriangle size={32} />}
-            </div>
-            <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 auto 0.75rem", color: "#1e293b" }}>
-              {confirmAction.type === "APPROVE" ? "Phê duyệt đề nghị" : 
-               confirmAction.type === "REJECT" ? "Từ chối đề nghị" : 
-               "Bỏ duyệt đề nghị"}
-            </h3>
-            <div style={{ color: "#475569", lineHeight: "1.6", margin: "0 auto 1rem" }}>
               {confirmAction.type === "APPROVE" ? (
-                <p style={{ margin: 0 }}>Bạn có chắc muốn phê duyệt đề nghị mua hàng <strong>{confirmAction.info}</strong> không?</p>
-              ) : confirmAction.type === "REJECT" ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px", textAlign: "left" }}>
-                  <p style={{ margin: 0, textAlign: "center" }}>Bạn có chắc muốn từ chối đề nghị <strong>{confirmAction.info}</strong>?</p>
-                  <div>
-                    <label className="filter-label" style={{ marginBottom: "5px" }}>Lý do từ chối *</label>
-                    <input 
-                      type="text" 
-                      className="input" 
-                      style={{ width: "100%" }} 
-                      placeholder="Nhập lý do từ chối..." 
-                      value={rejectReason} 
-                      onChange={(e) => setRejectReason(e.target.value)} 
-                      required
-                    />
-                  </div>
-                </div>
+                <CheckCircle2 size={22} color="#003466" strokeWidth={2.2} />
               ) : (
-                <p style={{ margin: 0 }}>Bạn có chắc muốn hủy bỏ phê duyệt cho đề nghị <strong>{confirmAction.info}</strong> và đưa về trạng thái "Chờ duyệt"?</p>
+                <XCircle size={22} color="#ef4444" strokeWidth={2.2} />
               )}
             </div>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "10px" }}>
-              <button 
+
+            {/* Simple content text */}
+            <div style={{
+              fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+              fontSize: "13px",
+              fontWeight: 400,
+              color: "#334155",
+              marginBottom: confirmAction.type === "REJECT" ? "10px" : "14px",
+              lineHeight: "1.3"
+            }}>
+              {confirmAction.type === "APPROVE" ? "Bạn có chắc chắn phê duyệt không?" : 
+               confirmAction.type === "REJECT" ? "Bạn có chắc chắn từ chối không?" :
+               "Bạn có chắc chắn bỏ duyệt không?"}
+            </div>
+
+            {confirmAction.type === "REJECT" && (
+              <div style={{ marginBottom: "14px", textAlign: "left" }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#475569", marginBottom: "4px", fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif' }}>
+                  Lý do từ chối <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input 
+                  type="text" 
+                  style={{
+                    width: "100%",
+                    height: "34px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    padding: "0 10px",
+                    fontSize: "12px",
+                    fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                    outline: "none"
+                  }}
+                  placeholder="Nhập lý do từ chối..." 
+                  value={rejectReason} 
+                  onChange={(e) => setRejectReason(e.target.value)} 
+                  required
+                />
+              </div>
+            )}
+
+            {/* Action Buttons: Thoát & Đồng ý */}
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
                 type="button"
-                className="sapo-btn sapo-btn-secondary" 
                 style={{
                   flex: 1,
-                  padding: "10px 20px",
-                  backgroundColor: "#f1f5f9",
-                  color: "#475569",
-                  border: "1px solid #cbd5e1",
+                  height: "36px",
                   borderRadius: "8px",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  justifyContent: "center",
-                  height: "40px"
-                }} 
+                  background: "#f1f5f9",
+                  color: "#334155",
+                  fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  border: "none",
+                  cursor: "pointer"
+                }}
                 onClick={() => setConfirmAction(null)}
               >
-                Hủy bỏ
+                Thoát
               </button>
-              <button 
+              <button
                 type="button"
-                className="sapo-btn" 
                 style={{
                   flex: 1,
-                  padding: "10px 20px",
-                  backgroundColor: confirmAction.type === "REJECT" ? "#ef4444" : "#003466",
-                  color: "#ffffff",
-                  border: "none",
+                  height: "36px",
                   borderRadius: "8px",
+                  background: confirmAction.type === "APPROVE" ? "#003466" : "#ef4444",
+                  color: "#ffffff",
+                  fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                  fontSize: "13px",
                   fontWeight: 600,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  justifyContent: "center",
-                  height: "40px"
-                }} 
+                  border: "none",
+                  cursor: "pointer"
+                }}
                 onClick={executeAction}
                 disabled={isPending}
               >
-                Xác nhận
+                Đồng ý
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {previewFile && (
+        <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
       )}
     </div>
   );

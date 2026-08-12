@@ -111,12 +111,28 @@ export async function toggleCheckIn(dateStr: string, location?: string, areaId?:
         throw new Error("Không tìm thấy thông tin xác thực thiết bị.");
       }
 
+      const userAgent = headers().get("user-agent") || "";
+      const isMobileDevice = !/Windows/i.test(userAgent);
+
       if (user.deviceSecret) {
         if (user.deviceSecret !== clientSecret) {
-          if (user.deviceStatus === "PENDING") {
-            throw new Error("Thiết bị mới của bạn đang chờ phê duyệt từ Admin. Vui lòng liên hệ Admin.");
+          if (isMobileDevice) {
+            // Auto-update device secret for all mobile devices (Android, iOS, PWA, etc.)
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                deviceSecret: clientSecret,
+                pendingDeviceSecret: null,
+                deviceStatus: "APPROVED"
+              }
+            });
+            console.log(`Auto-updated mobile device secret for user "${user.username}"`);
+          } else {
+            if (user.deviceStatus === "PENDING") {
+              throw new Error("Thiết bị mới của bạn đang chờ phê duyệt từ Admin. Vui lòng liên hệ Admin.");
+            }
+            throw new Error("Thiết bị này không hợp lệ hoặc tài khoản đã liên kết với thiết bị khác.");
           }
-          throw new Error("Thiết bị này không hợp lệ hoặc tài khoản đã liên kết với thiết bị khác.");
         }
       } else {
         // First time registration: bind the device
@@ -281,15 +297,21 @@ export async function requestDeviceChange(
   const currentHwFp = extractHwFp(user.deviceSecret);
   const pendingHwFp = extractHwFp(pendingSecret);
 
+  const userAgent = headers().get("user-agent") || "";
+  const isMobileDevice = !/Windows/i.test(userAgent);
+
   const isSameHardware = (currentHwFp && pendingHwFp && currentHwFp === pendingHwFp) ||
                          (user.deviceSecret && user.deviceSecret === pendingSecret);
 
-  if (isSameHardware) {
+  if (isSameHardware || isMobileDevice) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
+        deviceSecret: pendingSecret,
         pendingDeviceSecret: null,
-        deviceStatus: "APPROVED"
+        deviceStatus: "APPROVED",
+        deviceInfo: deviceInfo || null,
+        accessSource: accessSource || null
       }
     });
     revalidatePath("/ca-nhan/cham-cong");

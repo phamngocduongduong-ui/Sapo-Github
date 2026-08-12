@@ -1013,6 +1013,7 @@ export default function ContractTable({ initialContracts, customers: initialCust
           width: 100% !important;
           min-width: 1200px !important;
           table-layout: auto !important;
+          margin-bottom: 0px !important;
         }
         .base-table th {
           text-transform: uppercase !important;

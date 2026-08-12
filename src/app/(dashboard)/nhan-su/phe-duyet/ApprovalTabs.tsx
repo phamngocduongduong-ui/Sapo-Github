@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { updateApprovalStatus } from "./actions";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, CheckCircle2, XCircle, User } from "lucide-react";
 
 interface ApprovalTabsProps {
   pending: any;
@@ -40,12 +41,15 @@ export default function ApprovalTabs({
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [mobileApprovalTab, setMobileApprovalTab] = useState<"pending" | "approved">("pending");
 
   // Clear selection on tab change
   useEffect(() => {
     setSelectedItemId(null);
     setExpandedId(null);
   }, [activeTab]);
+
+  const [rejectReason, setRejectReason] = useState("");
 
   // Confirmation state
   const [confirmState, setConfirmState] = useState<{
@@ -122,6 +126,7 @@ export default function ApprovalTabs({
   const selectedItem = currentList.find(item => `${item.moduleType}-${item.id}` === selectedItemKey) || null;
 
   async function handleAction(id: string, type: string, action: string, label?: string) {
+    setRejectReason("");
     setConfirmState({
       show: true,
       id,
@@ -133,12 +138,17 @@ export default function ApprovalTabs({
 
   async function executeAction() {
     const { id, type, action } = confirmState;
+    if (action === 'reject' && !rejectReason.trim()) {
+      alert("Vui lòng nhập lý do từ chối");
+      return;
+    }
+
     setConfirmState(prev => ({ ...prev, show: false }));
 
     startTransition(async () => {
       try {
-        const newStatus = action === 'approve' ? "Đã phê duyệt" : "Tạo mới";
-        await updateApprovalStatus(id, type, newStatus);
+        const newStatus = action === 'approve' ? "Đã phê duyệt" : "Từ chối";
+        await updateApprovalStatus(id, type, newStatus, action === 'reject' ? rejectReason.trim() : undefined);
         setSelectedItemId(null);
         setExpandedId(null);
         router.refresh();
@@ -191,13 +201,9 @@ export default function ApprovalTabs({
         );
       case "LeaveRequest":
         return (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1rem", maxWidth: "800px" }}>
-            <div style={{ gridColumn: "span 2", fontWeight: 700, borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem", color: "#003466" }}>ĐƠN NGHỈ PHÉP</div>
-            <div><span style={{ color: "#64748b" }}>Lý do nghỉ:</span> <strong>{item.reason}</strong></div>
-            <div><span style={{ color: "#64748b" }}>Tổng số ngày:</span> <strong>{item.totalDays} ngày</strong></div>
-            <div><span style={{ color: "#64748b" }}>Từ ngày:</span> <strong>{new Date(item.startDate).toLocaleDateString("vi-VN")}</strong></div>
-            <div><span style={{ color: "#64748b" }}>Đến ngày:</span> <strong>{new Date(item.endDate).toLocaleDateString("vi-VN")}</strong></div>
-            <div style={{ gridColumn: "span 2" }}><span style={{ color: "#64748b" }}>Ghi chú:</span> <strong>{item.note || "—"}</strong></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "11px", color: "#64748b", fontWeight: 400 }}>
+            <div>Lý do nghỉ phép: {item.reason || "—"}</div>
+            <div>Ghi chú: {item.note || "—"}</div>
           </div>
         );
       case "SalaryChange":
@@ -343,7 +349,7 @@ export default function ApprovalTabs({
   }
 
   return (
-    <>
+    <div style={{ padding: isEmbedded ? "10px 8px" : "0px", width: "100%", boxSizing: "border-box" }}>
       <style dangerouslySetInnerHTML={{
         __html: `
         .breadcrumb-banner {
@@ -451,16 +457,32 @@ export default function ApprovalTabs({
           display: flex !important;
           align-items: center !important;
         }
+        ${isEmbedded ? `
+          .desktop-table-wrapper { display: none !important; }
+          .mobile-cards-view { display: flex !important; }
+          .breadcrumb-banner { display: none !important; }
+          .module-tabs-scroll { display: none !important; }
+        ` : ""}
         @media (max-width: 768px) {
-          .module-tabs-scroll {
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch !important;
-            padding-bottom: 6px !important;
-            flex-wrap: nowrap !important;
+          .breadcrumb-banner {
+            display: none !important;
           }
-          .module-tabs-scroll button {
-            flex-shrink: 0 !important;
-            white-space: nowrap !important;
+          .module-tabs-scroll {
+            display: none !important;
+          }
+          .desktop-table-wrapper {
+            display: none !important;
+          }
+          .mobile-cards-view {
+            display: flex !important;
+          }
+        }
+        @media (min-width: 769px) {
+          .desktop-table-wrapper {
+            display: ${isEmbedded ? "none" : "block"} !important;
+          }
+          .mobile-cards-view {
+            display: ${isEmbedded ? "flex" : "none"} !important;
           }
         }
       ` }} />
@@ -475,9 +497,7 @@ export default function ApprovalTabs({
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0" }}>
-        
-        {/* Module Tabs */}
+      {!isEmbedded && (
         <div className="module-tabs-scroll" style={{ display: "flex", gap: "0.5rem", flexWrap: "nowrap", alignItems: "center", overflowX: "auto", padding: "4px 2px" }}>
           {(showHopDongLaoDongOnly || isLegacy) && (
             <button
@@ -569,6 +589,9 @@ export default function ApprovalTabs({
             Làm mới
           </button>
         </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0" }}>
 
         {/* Toolbar Container */}
         {selectedItem && activeTab !== "all" && (
@@ -591,7 +614,315 @@ export default function ApprovalTabs({
           </div>
         )}
 
-        <div className="base-table-wrapper" style={{ overflow: "visible" }}>
+        {/* Mobile Native Card View (Auto active on mobile or embedded mode) */}
+        <div className="mobile-cards-view" style={{ display: isEmbedded ? "flex" : undefined, flexDirection: "column", gap: "6px", marginTop: "4px" }}>
+          
+          {/* 2-Tab Selector Bar: Cần phê duyệt vs Đã phê duyệt (Scale 1.02x khi active/hover) */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "4px",
+            background: "#f1f5f9",
+            padding: "3px",
+            borderRadius: "10px",
+            marginBottom: "6px"
+          }}>
+            {/* Tab 1: Cần phê duyệt */}
+            <button
+              onClick={() => setMobileApprovalTab("pending")}
+              style={{
+                background: mobileApprovalTab === "pending" ? "#ffffff" : "transparent",
+                border: "none",
+                color: mobileApprovalTab === "pending" ? "#ea580c" : "#64748b",
+                borderRadius: "7px",
+                padding: "6px 8px",
+                fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                fontSize: "13px",
+                fontWeight: mobileApprovalTab === "pending" ? 600 : 500,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "5px",
+                boxShadow: mobileApprovalTab === "pending" ? "0 2px 6px rgba(234, 88, 12, 0.12)" : "none",
+                transform: mobileApprovalTab === "pending" ? "scale(1.02)" : "scale(1)",
+                transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+              }}
+            >
+              <span style={{ fontSize: "12px" }}>⏳</span>
+              <span>Cần phê duyệt</span>
+              <span style={{
+                background: mobileApprovalTab === "pending" ? "#fee2e2" : "#e2e8f0",
+                color: mobileApprovalTab === "pending" ? "#dc2626" : "#64748b",
+                fontSize: "10.5px",
+                fontWeight: 600,
+                padding: "0px 5px",
+                borderRadius: "8px",
+                lineHeight: "1.2"
+              }}>
+                {flattenData(pending).length}
+              </span>
+            </button>
+
+            {/* Tab 2: Đã phê duyệt */}
+            <button
+              onClick={() => setMobileApprovalTab("approved")}
+              style={{
+                background: mobileApprovalTab === "approved" ? "#ffffff" : "transparent",
+                border: "none",
+                color: mobileApprovalTab === "approved" ? "#059669" : "#64748b",
+                borderRadius: "7px",
+                padding: "6px 8px",
+                fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                fontSize: "13px",
+                fontWeight: mobileApprovalTab === "approved" ? 600 : 500,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "5px",
+                boxShadow: mobileApprovalTab === "approved" ? "0 2px 6px rgba(5, 150, 105, 0.12)" : "none",
+                transform: mobileApprovalTab === "approved" ? "scale(1.02)" : "scale(1)",
+                transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+              }}
+            >
+              <span style={{ fontSize: "12px" }}>✅</span>
+              <span>Đã phê duyệt</span>
+              <span style={{
+                background: mobileApprovalTab === "approved" ? "#d1fae5" : "#e2e8f0",
+                color: mobileApprovalTab === "approved" ? "#059669" : "#64748b",
+                fontSize: "10.5px",
+                fontWeight: 600,
+                padding: "0px 5px",
+                borderRadius: "8px",
+                lineHeight: "1.2"
+              }}>
+                {flattenData(approved).length}
+              </span>
+            </button>
+          </div>
+
+          {((mobileApprovalTab === "pending" ? flattenData(pending) : flattenData(approved)).length === 0) ? (
+            <div style={{
+              background: "#ffffff",
+              borderRadius: "12px",
+              padding: "16px",
+              textAlign: "center",
+              color: "#64748b",
+              fontWeight: 600,
+              fontSize: "13px",
+              border: "1px solid #e2e8f0"
+            }}>
+              {mobileApprovalTab === "pending" ? "Hiện không có dữ liệu cần phê duyệt" : "Hiện chưa có dữ liệu đã phê duyệt"}
+            </div>
+          ) : (
+            (mobileApprovalTab === "pending" ? flattenData(pending) : flattenData(approved)).map((item) => {
+              const itemKey = `${item.moduleType}-${item.id}`;
+              const isSelected = selectedItemId === itemKey;
+              const isExpanded = expandedId === itemKey;
+
+              const empName = item.employeeName || item.fullName || "Hệ thống";
+              
+              // 2-Letter Initials for Avatar
+              const initialsParts = empName.trim().split(/\s+/);
+              const initials = initialsParts.length >= 2 
+                ? (initialsParts[0].charAt(0) + initialsParts[initialsParts.length - 1].charAt(0)).toUpperCase()
+                : empName.slice(0, 2).toUpperCase();
+
+              // Color map for avatar circles
+              const avatarColors = ["#ea580c", "#ef4444", "#2563eb", "#059669", "#7c3aed", "#d97706"];
+              let hash = 0;
+              for (let i = 0; i < empName.length; i++) hash += empName.charCodeAt(i);
+              const avatarBg = avatarColors[hash % avatarColors.length];
+
+              const codeText = item.contractNumber || item.leaveCode || item.resignationCode || item.payrollCode || item.changeCode || item.planNumber || item.employeeCode || item.orderCode || item.poCode || item.id || "—";
+              const dateText = new Date(item.createdAt || item.requestDate || item.planDate || Date.now()).toLocaleDateString("vi-VN");
+
+              // Title Text Logic
+              let titleText = item.moduleLabel;
+              if (item.moduleType === "LeaveRequest") {
+                titleText = "Đơn xin nghỉ phép";
+              } else if (item.moduleType === "Resignation") {
+                titleText = "Đơn xin nghỉ việc";
+              } else if (item.moduleType === "SalaryChange") {
+                titleText = "Đề xuất tăng/giảm lương";
+              } else if (item.moduleType === "TransferPromotion") {
+                titleText = "Đề xuất thuyên chuyển, bổ nhiệm";
+              } else if (item.moduleType === "LaborContract") {
+                titleText = "Hợp đồng lao động";
+              } else if (item.moduleType === "Payroll") {
+                titleText = `Bảng lương/thưởng Tháng ${item.month}/${item.year}`;
+              } else if (item.moduleType === "PurchaseOrder") {
+                titleText = "Đề nghị thanh toán đơn mua hàng";
+              } else if (item.moduleType === "Contract") {
+                titleText = "Hợp đồng bán hàng";
+              }
+
+              // Leave / Subtitle Detail Logic
+              let leaveDetailText = dateText;
+              if (item.moduleType === "LeaveRequest") {
+                const startStr = item.startDate ? new Date(item.startDate).toLocaleDateString("vi-VN") : dateText;
+                const endStr = item.endDate ? new Date(item.endDate).toLocaleDateString("vi-VN") : startStr;
+                leaveDetailText = `Từ ngày ${startStr} đến ngày ${endStr}`;
+              } else if (item.moduleType === "Resignation") {
+                const resDateStr = item.resignationDate ? new Date(item.resignationDate).toLocaleDateString("vi-VN") : dateText;
+                leaveDetailText = `Ngày sẽ nghỉ: ${resDateStr}`;
+              } else {
+                leaveDetailText = getDetailText(item);
+              }
+
+              return (
+                <div
+                  key={itemKey}
+                  style={{
+                    background: "#ffffff",
+                    borderRadius: "14px",
+                    border: isSelected ? "2px solid #ea580c" : (mobileApprovalTab === "approved" ? "1px solid #d1fae5" : "1px solid #ffedd5"),
+                    boxShadow: mobileApprovalTab === "approved" ? "0 2px 8px rgba(5, 150, 105, 0.04)" : "0 2px 8px rgba(234, 88, 12, 0.04)",
+                    padding: "10px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px"
+                  }}
+                >
+                  {/* Row 1: Pill Badge on Left + Status Badge (e.g., Đã phê duyệt) on Right (CÙNG DÒNG) */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", width: "100%", marginBottom: "2px" }}>
+                    <span style={{
+                      fontSize: "9.5px",
+                      fontWeight: 600,
+                      background: (mobileApprovalTab === "approved" || item.status === "Đã phê duyệt") ? "#059669" : "#ea580c",
+                      color: "#ffffff",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.2px",
+                      whiteSpace: "nowrap",
+                      display: "inline-block"
+                    }}>
+                      {item.moduleLabel}
+                    </span>
+
+                    {/* Status badge for non-pending items (Đã phê duyệt / Từ chối) on the SAME LINE as Orange Badge */}
+                    {(item.status === "Đã phê duyệt" || item.status === "Đã hủy" || item.status === "Từ chối") && (
+                      <span style={{
+                        fontSize: "11px",
+                        fontWeight: 400,
+                        color: item.status === "Đã phê duyệt" ? "#059669" : "#dc2626",
+                        background: item.status === "Đã phê duyệt" ? "#ecfdf5" : "#fef2f2",
+                        padding: "3px 10px",
+                        borderRadius: "12px",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0
+                      }}>
+                        {item.status}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Row 2: Main Info Column (Title + NV + Duration) & Right Action Buttons (Bố trí như cũ) */}
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+                    {/* Left Info Column */}
+                    <div style={{ flex: 1 }}>
+                      {/* Main Title Text */}
+                      <div style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a", lineHeight: "1.3" }}>
+                        {titleText}
+                      </div>
+
+                      {/* Line 1: Employee Name */}
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "3px", fontWeight: 400 }}>
+                        NV: {empName}
+                      </div>
+
+                      {/* Line 2: Branch Name */}
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "1px", fontWeight: 400 }}>
+                        Chi nhánh: {item.branchName || item.branch || item.department || "Buôn Ma Thuột"}
+                      </div>
+
+                      {/* Line 3: Leave duration / details */}
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "1px", fontWeight: 400, lineHeight: "1.35" }}>
+                        {leaveDetailText}
+                      </div>
+                    </div>
+
+                    {/* Right Side Buttons (Duyệt ngay & Từ chối) (Chữ không in đậm, fontWeight 400) */}
+                    {item.status !== "Đã phê duyệt" && item.status !== "Đã hủy" && item.status !== "Từ chối" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "5px", alignItems: "flex-end", flexShrink: 0 }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction(item.id, item.moduleType, 'approve', `${item.moduleLabel} - ${empName}`);
+                          }}
+                          style={{
+                            background: "linear-gradient(135deg, #ff5c00 0%, #ea580c 100%)",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: "8px",
+                            padding: "6px 12px",
+                            fontSize: "11px",
+                            fontWeight: 400,
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                            boxShadow: "0 2px 6px rgba(234, 88, 12, 0.2)"
+                          }}
+                        >
+                          Duyệt ngay →
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction(item.id, item.moduleType, 'reject', `${item.moduleLabel} - ${empName}`);
+                          }}
+                          style={{
+                            background: "#ffffff",
+                            color: "#dc2626",
+                            border: "1px solid #fca5a5",
+                            borderRadius: "8px",
+                            padding: "5px 10px",
+                            fontSize: "11px",
+                            fontWeight: 400,
+                            cursor: "pointer",
+                            whiteSpace: "nowrap"
+                          }}
+                        >
+                          ✕ Từ chối
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Toggle Expand Details (Chữ không in đậm, fontWeight 400) */}
+                  <div
+                    onClick={() => setExpandedId(isExpanded ? null : itemKey)}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 400,
+                      color: mobileApprovalTab === "approved" ? "#059669" : "#ea580c",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "2px 0",
+                      cursor: "pointer",
+                      borderTop: mobileApprovalTab === "approved" ? "1px dashed #a7f3d0" : "1px dashed #fed7aa",
+                      marginTop: "2px"
+                    }}
+                  >
+                    {isExpanded ? "▲ Thu gọn chi tiết" : "▼ Xem chi tiết đầy đủ"}
+                  </div>
+
+                  {/* Expanded Detail Body */}
+                  {isExpanded && (
+                    <div style={{ background: "#fff7ed", padding: "10px", borderRadius: "10px", fontSize: "12px", border: "1px solid #ffedd5" }}>
+                      {renderItemDetails(item)}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="desktop-table-wrapper base-table-wrapper" style={{ overflow: "visible", display: isEmbedded ? "none" : undefined }}>
           <table className="base-table" style={{ overflow: "visible" }}>
             <thead>
               <tr>
@@ -696,49 +1027,130 @@ export default function ApprovalTabs({
         </div>
 
         {/* Action Confirmation Modal */}
-        {confirmState.show && (
-          <div className="modal-overlay" style={{
-            position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.65)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 9999, backdropFilter: "blur(2px)"
+        {confirmState.show && typeof window !== "undefined" && createPortal(
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(15, 23, 42, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999999,
+            backdropFilter: "blur(2px)",
+            padding: "16px"
           }}>
-            <div className="card" style={{
-              width: "100%", maxWidth: "400px", padding: "2rem", textAlign: "center",
-              borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+            <div style={{
+              width: "100%",
+              maxWidth: "300px",
+              padding: "18px 16px 14px 16px",
+              textAlign: "center",
+              borderRadius: "16px",
+              background: "#ffffff",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+              transform: "translateY(-45px)"
             }}>
-              <div style={{ fontSize: "3.5rem", marginBottom: "1.25rem" }}>
-                {confirmState.action === 'approve' ? "✅" : "❌"}
+              {/* Centered Circular Icon */}
+              <div style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "50%",
+                background: confirmState.action === 'approve' ? "#e0f2fe" : "#fee2e2",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 10px auto"
+              }}>
+                {confirmState.action === 'approve' ? (
+                  <CheckCircle2 size={22} color="#003466" strokeWidth={2.2} />
+                ) : (
+                  <XCircle size={22} color="#ef4444" strokeWidth={2.2} />
+                )}
               </div>
-              <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.75rem", fontFamily: "'Segoe UI', sans-serif" }}>
-                {confirmState.action === 'approve' ? "Phê duyệt hồ sơ" : "Từ chối hồ sơ"}
-              </h3>
-              <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "1.5rem", lineHeight: "1.6", fontFamily: "'Segoe UI', sans-serif" }}>
-                Bạn có chắc chắn muốn {confirmState.action === 'approve' ? "phê duyệt" : "từ chối"} <strong>{confirmState.label}</strong>?
-              </p>
-              <div style={{ display: "flex", gap: "1rem" }}>
+
+              {/* Simple content text */}
+              <div style={{
+                fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                fontSize: "13px",
+                fontWeight: 400,
+                color: "#334155",
+                marginBottom: confirmState.action === 'reject' ? "10px" : "14px",
+                lineHeight: "1.3"
+              }}>
+                {confirmState.action === 'approve' ? "Bạn có chắc chắn phê duyệt không?" : "Bạn có chắc chắn từ chối không?"}
+              </div>
+
+              {confirmState.action === 'reject' && (
+                <div style={{ marginBottom: "14px", textAlign: "left" }}>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#475569", marginBottom: "4px", fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif' }}>
+                    Lý do từ chối <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    style={{
+                      width: "100%",
+                      height: "34px",
+                      borderRadius: "6px",
+                      border: "1px solid #cbd5e1",
+                      padding: "0 10px",
+                      fontSize: "12px",
+                      fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                      outline: "none"
+                    }}
+                    placeholder="Nhập lý do từ chối..."
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Action Buttons: Thoát & Đồng ý */}
+              <div style={{ display: "flex", gap: "8px" }}>
                 <button
-                  className="sapo-btn btn-outline"
-                  style={{ flex: 1, height: "42px", borderRadius: "10px", fontWeight: 600 }}
+                  type="button"
+                  style={{
+                    flex: 1,
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "#f1f5f9",
+                    color: "#334155",
+                    fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    border: "none",
+                    cursor: "pointer"
+                  }}
                   onClick={() => setConfirmState(prev => ({ ...prev, show: false }))}
                 >
-                  Hủy
+                  Thoát
                 </button>
                 <button
-                  className="sapo-btn"
+                  type="button"
                   style={{
-                    flex: 1, height: "42px", borderRadius: "10px", fontWeight: 700,
-                    backgroundColor: confirmState.action === 'approve' ? "#003466" : "#ef4444",
-                    border: "none"
+                    flex: 1,
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: confirmState.action === 'approve' ? "#003466" : "#ef4444",
+                    color: "#ffffff",
+                    fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    border: "none",
+                    cursor: "pointer"
                   }}
                   onClick={executeAction}
                 >
-                  Xác nhận
+                  Đồng ý
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
-    </>
+    </div>
   );
 }

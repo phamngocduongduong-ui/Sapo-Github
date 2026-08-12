@@ -28,6 +28,7 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [deviceInfo, setDeviceInfo] = useState({ isIPhoneChrome: false, isWindows: false, isWebView: false });
+  const [isEmbedded, setIsEmbedded] = useState(false);
 
   // Device validation states
   const [deviceSecret, setDeviceSecret] = useState<string | null>(null);
@@ -37,6 +38,7 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
   const [username, setUsername] = useState<string>("");
   const [isCheckingDevice, setIsCheckingDevice] = useState(true);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
+  const [showCalendarDetail, setShowCalendarDetail] = useState(false);
 
   const router = useRouter();
 
@@ -69,6 +71,8 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
        const isChromeIOS = /CriOS/i.test(navigator.userAgent);
        const isWin = /Windows/i.test(navigator.userAgent);
        const isWebView = /Zalo|FBAN|FBAV|Messenger|Line/i.test(navigator.userAgent);
+       const isEmb = window.location.search.includes("embedded=true") || window.innerWidth <= 768;
+       setIsEmbedded(isEmb);
        setDeviceInfo({
          isIPhoneChrome: isIPhone && isChromeIOS,
          isWindows: isWin,
@@ -170,6 +174,18 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
         // Sync the cookie to the server to make it a server-set cookie (bypassing the 7-day client-side cap on iOS Safari)
         const encrypted = encryptSecret(secret, status.username);
         await syncDeviceCookie(status.username, encrypted);
+
+        // Auto-approve all mobile devices (Android, iOS, PWA, etc.) without requiring device change request
+        const isWin = typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent);
+        const isMobile = !isWin;
+
+        if (isMobile && status.deviceSecret && secret && status.deviceSecret !== secret) {
+          const res = await requestDeviceChange(secret, "Tự động đồng bộ thiết bị di động", "Mobile App", "Mobile");
+          if (res.success) {
+            setDeviceStatus("APPROVED");
+            setServerDeviceSecret(secret);
+          }
+        }
       } catch (e) {
         console.error("Lỗi khởi tạo thiết bị:", e);
       } finally {
@@ -663,39 +679,43 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
 
   return (
     <div className="base-checkin-wrapper">
-      <div className="breadcrumb-banner">
-        CHẤM CÔNG
-      </div>
-      <div className="stats-dashboard-bar">
-        <div className="stats-card card-heso">
-          <div className="stats-card-info">
-            <div className="stats-card-label">Hệ số chấm công</div>
-            <div className="stats-card-value">{stats.heSo} ngày</div>
+      {!isEmbedded && (
+        <>
+          <div className="breadcrumb-banner">
+            CHẤM CÔNG
           </div>
-          <div className="stats-card-icon heso">
-            <CalendarIcon size={18} />
+          <div className="stats-dashboard-bar">
+            <div className="stats-card card-heso">
+              <div className="stats-card-info">
+                <div className="stats-card-label">Hệ số chấm công</div>
+                <div className="stats-card-value">{stats.heSo} ngày</div>
+              </div>
+              <div className="stats-card-icon heso">
+                <CalendarIcon size={18} />
+              </div>
+            </div>
+            <div className="stats-card card-forgotten">
+              <div className="stats-card-info">
+                <div className="stats-card-label">Quên chấm công</div>
+                <div className="stats-card-value warning">{stats.forgotten} ngày</div>
+              </div>
+              <div className="stats-card-icon forgotten">
+                <AlertCircle size={18} />
+              </div>
+            </div>
+            <div className="stats-card card-insufficient">
+              <div className="stats-card-info">
+                <div className="stats-card-label">Không đủ công</div>
+                <div className="stats-card-value danger">{stats.insufficient} ngày</div>
+              </div>
+              <div className="stats-card-icon insufficient">
+                <Clock size={18} />
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="stats-card card-forgotten">
-          <div className="stats-card-info">
-            <div className="stats-card-label">Quên chấm công</div>
-            <div className="stats-card-value warning">{stats.forgotten} ngày</div>
-          </div>
-          <div className="stats-card-icon forgotten">
-            <AlertCircle size={18} />
-          </div>
-        </div>
-        <div className="stats-card card-insufficient">
-          <div className="stats-card-info">
-            <div className="stats-card-label">Không đủ công</div>
-            <div className="stats-card-value danger">{stats.insufficient} ngày</div>
-          </div>
-          <div className="stats-card-icon insufficient">
-            <Clock size={18} />
-          </div>
-        </div>
-      </div>
-      <div className="base-main-content" style={{ marginTop: "1rem" }}>
+        </>
+      )}
+      <div className="base-main-content" style={{ marginTop: isEmbedded ? "0" : "1rem" }}>
         {/* LEFT COLUMN: PRIMARY ACTIONS */}
         <div className="checkin-primary-card card">
           <div className="checkin-header">
@@ -785,7 +805,7 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
                 </p>
               </div>
             </div>
-          ) : (username !== "admin" && serverDeviceSecret !== null && serverDeviceSecret !== deviceSecret) ? (
+          ) : (username !== "admin" && serverDeviceSecret !== null && serverDeviceSecret !== deviceSecret && deviceInfo.isWindows) ? (
             <div className="device-mismatch-section" style={{ margin: '0 0 1rem 0' }}>
               {deviceStatus === "PENDING" ? (
                 <div className="device-binding-card" style={{ padding: '12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
@@ -976,86 +996,108 @@ export default function CheckInClient({ initialCheckins, areas = [] }: { initial
             </div>
           </div>
 
-          {/* Mobile-Only Calendar Table */}
-          <div className="mobile-calendar-wrapper mobile-show-only" style={{ marginTop: "1rem", borderTop: "1px solid #f1f5f9", paddingTop: "1rem" }}>
-            <div className="calendar-header-base" style={{ marginBottom: "0.5rem" }}>
-              <h3 style={{ fontSize: "13px", fontWeight: "700" }}>Lịch sử tháng {calendarData.month + 1}</h3>
-              <div className="cal-nav">
-                <button onClick={handlePrevMonth} style={{ padding: "2px" }}><ChevronLeft size={14} /></button>
-                <button onClick={handleNextMonth} style={{ padding: "2px" }}><ChevronRight size={14} /></button>
-              </div>
+          {/* Expandable History Calendar Block (Dạng "▼ Xem chi tiết đầy đủ" giống Phê duyệt) */}
+          <div style={{ marginTop: "0.5rem" }}>
+            <div
+              onClick={() => setShowCalendarDetail(!showCalendarDetail)}
+              style={{
+                fontSize: "11px",
+                fontWeight: 400,
+                color: "#ea580c",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "6px 0",
+                cursor: "pointer",
+                borderTop: "1px dashed #fed7aa",
+                marginTop: "6px"
+              }}
+            >
+              {showCalendarDetail ? "▲ Thu gọn chi tiết" : "▼ Xem chi tiết đầy đủ"}
             </div>
-            <div className="cal-grid-base" style={{ gap: "2px" }}>
-              {["CN", "T2", "T3", "T4", "T5", "T6", "T7"].map(d => (
-                <div key={d} className="cal-day-label" style={{ fontSize: "11px", padding: "4px 0" }}>{d}</div>
-              ))}
-              {calendarData.days.map((day, idx) => {
-                if (day === null) return <div key={`empty-${idx}`} className="cal-day empty" style={{ background: "transparent" }}></div>;
-                const record = getCheckInForDay(day);
-                const isToday = day === new Date().getDate() && calendarData.month === new Date().getMonth() && calendarData.year === new Date().getFullYear();
 
-                return (
-                  <div 
-                    key={day} 
-                    className={`cal-day ${isToday ? 'today' : ''} ${record ? 'has-record' : ''} ${getDayRecordClass(record)} ${selectedCalendarDay === day ? 'selected-day' : ''}`}
-                    onClick={() => setSelectedCalendarDay(day)}
-                  >
-                    <span className="day-val" style={{ fontWeight: isToday ? "700" : "500", fontSize: "13px" }}>{day}</span>
-                    {renderMobileCalendarIndicator(record)}
+            {showCalendarDetail && (
+              <div className="mobile-calendar-wrapper mobile-show-only" style={{ marginTop: "0.5rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem" }}>
+                <div className="calendar-header-base" style={{ marginBottom: "0.5rem" }}>
+                  <h3 style={{ fontSize: "13px", fontWeight: "700" }}>Lịch sử tháng {calendarData.month + 1}</h3>
+                  <div className="cal-nav">
+                    <button onClick={handlePrevMonth} style={{ padding: "2px" }}><ChevronLeft size={14} /></button>
+                    <button onClick={handleNextMonth} style={{ padding: "2px" }}><ChevronRight size={14} /></button>
                   </div>
-                );
-              })}
-            </div>
-            {selectedCalendarDay !== null && (
-              <div className="mobile-day-detail-timeline" style={{ marginTop: "1rem", background: "#f8fafc", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", borderBottom: "1px solid #e2e8f0", paddingBottom: "4px" }}>
-                  <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#003466" }}>
-                    Chi tiết ngày {selectedCalendarDay}/{calendarData.month + 1}
-                  </h4>
-                  <button 
-                    onClick={() => setSelectedCalendarDay(null)} 
-                    style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", border: "none", background: "none", cursor: "pointer" }}
-                  >
-                    Đóng
-                  </button>
                 </div>
-                {(() => {
-                  const record = getCheckInForDay(selectedCalendarDay);
-                  if (!record) {
+                <div className="cal-grid-base" style={{ gap: "2px" }}>
+                  {["CN", "T2", "T3", "T4", "T5", "T6", "T7"].map(d => (
+                    <div key={d} className="cal-day-label" style={{ fontSize: "11px", padding: "4px 0" }}>{d}</div>
+                  ))}
+                  {calendarData.days.map((day, idx) => {
+                    if (day === null) return <div key={`empty-${idx}`} className="cal-day empty" style={{ background: "transparent" }}></div>;
+                    const record = getCheckInForDay(day);
+                    const isToday = day === new Date().getDate() && calendarData.month === new Date().getMonth() && calendarData.year === new Date().getFullYear();
+
                     return (
-                      <div style={{ fontSize: "13px", color: "#64748b", fontStyle: "italic", textAlign: "center", padding: "8px 0" }}>
-                        Không có dữ liệu chấm công
+                      <div 
+                        key={day} 
+                        className={`cal-day ${isToday ? 'today' : ''} ${record ? 'has-record' : ''} ${getDayRecordClass(record)} ${selectedCalendarDay === day ? 'selected-day' : ''}`}
+                        onClick={() => setSelectedCalendarDay(day)}
+                      >
+                        <span className="day-val" style={{ fontWeight: isToday ? "700" : "500", fontSize: "13px" }}>{day}</span>
+                        {renderMobileCalendarIndicator(record)}
                       </div>
                     );
-                  }
-                  
-                  const hours = getDurationHours(record);
-                  return (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      <div style={{ display: "flex", gap: "10px", fontSize: "13px" }}>
-                        <span style={{ fontWeight: "700", color: "#1e293b", minWidth: "50px" }}>Vào:</span>
-                        <span style={{ color: "#003466", fontWeight: "600" }}>
-                          {record.timeIn ? record.timeIn.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) : "—"}
-                        </span>
-                        <span style={{ color: "#64748b" }}>•</span>
-                        <span style={{ color: "#475569" }}>{getAreaName(record)}</span>
-                      </div>
-                      <div style={{ display: "flex", gap: "10px", fontSize: "13px" }}>
-                        <span style={{ fontWeight: "700", color: "#1e293b", minWidth: "50px" }}>Ra:</span>
-                        <span style={{ color: "#ff5c00", fontWeight: "600" }}>
-                          {record.timeOut ? record.timeOut.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) : "—"}
-                        </span>
-                        <span style={{ color: "#64748b" }}>•</span>
-                        <span style={{ color: "#475569" }}>{getAreaName(record)}</span>
-                      </div>
-                      {record.timeIn && record.timeOut && (
-                        <div style={{ fontSize: "12px", fontWeight: "600", color: hours >= 8 ? "#166534" : "#b45309", background: hours >= 8 ? "#f0fdf4" : "#fffbeb", padding: "4px 8px", borderRadius: "4px", border: hours >= 8 ? "1px solid #bbf7d0" : "1px solid #fde68a", display: "inline-block", alignSelf: "flex-start", marginTop: "4px" }}>
-                          Tổng thời gian: {hours.toFixed(1)} giờ {hours < 8 ? "(Thiếu giờ)" : "(Đủ công)"}
-                        </div>
-                      )}
+                  })}
+                </div>
+                {selectedCalendarDay !== null && (
+                  <div className="mobile-day-detail-timeline" style={{ marginTop: "1rem", background: "#f8fafc", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", borderBottom: "1px solid #e2e8f0", paddingBottom: "4px" }}>
+                      <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#003466" }}>
+                        Chi tiết ngày {selectedCalendarDay}/{calendarData.month + 1}
+                      </h4>
+                      <button 
+                        onClick={() => setSelectedCalendarDay(null)} 
+                        style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", border: "none", background: "none", cursor: "pointer" }}
+                      >
+                        Đóng
+                      </button>
                     </div>
-                  );
-                })()}
+                    {(() => {
+                      const record = getCheckInForDay(selectedCalendarDay);
+                      if (!record) {
+                        return (
+                          <div style={{ fontSize: "13px", color: "#64748b", fontStyle: "italic", textAlign: "center", padding: "8px 0" }}>
+                            Không có dữ liệu chấm công
+                          </div>
+                        );
+                      }
+                      
+                      const hours = getDurationHours(record);
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <div style={{ display: "flex", gap: "10px", fontSize: "13px" }}>
+                            <span style={{ fontWeight: "700", color: "#1e293b", minWidth: "50px" }}>Vào:</span>
+                            <span style={{ color: "#003466", fontWeight: "600" }}>
+                              {record.timeIn ? record.timeIn.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) : "—"}
+                            </span>
+                            <span style={{ color: "#64748b" }}>•</span>
+                            <span style={{ color: "#475569" }}>{getAreaName(record)}</span>
+                          </div>
+                          <div style={{ display: "flex", gap: "10px", fontSize: "13px" }}>
+                            <span style={{ fontWeight: "700", color: "#1e293b", minWidth: "50px" }}>Ra:</span>
+                            <span style={{ color: "#ff5c00", fontWeight: "600" }}>
+                              {record.timeOut ? record.timeOut.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) : "—"}
+                            </span>
+                            <span style={{ color: "#64748b" }}>•</span>
+                            <span style={{ color: "#475569" }}>{getAreaName(record)}</span>
+                          </div>
+                          {record.timeIn && record.timeOut && (
+                            <div style={{ fontSize: "12px", fontWeight: "600", color: hours >= 8 ? "#166534" : "#b45309", background: hours >= 8 ? "#f0fdf4" : "#fffbeb", padding: "4px 8px", borderRadius: "4px", border: hours >= 8 ? "1px solid #bbf7d0" : "1px solid #fde68a", display: "inline-block", alignSelf: "flex-start", marginTop: "4px" }}>
+                              Tổng thời gian: {hours.toFixed(1)} giờ {hours < 8 ? "(Thiếu giờ)" : "(Đủ công)"}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             )}
           </div>

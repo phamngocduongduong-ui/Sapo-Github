@@ -6,15 +6,26 @@ import { sendEmail } from "@/lib/mail";
 import { getSession } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
 
-export async function updateApprovalStatus(id: string, type: string, newStatus: string) {
-  const data = { status: newStatus };
+import { notifyContractStatusChange } from "@/app/(dashboard)/sales/hop-dong/actions";
+
+export async function updateApprovalStatus(id: string, type: string, newStatus: string, rejectReason?: string) {
+  const data: any = { status: newStatus };
 
   switch (type) {
-    case "LaborContract":
+    case "LaborContract": {
+      if (rejectReason) {
+        const old = await (prisma as any).laborcontract.findUnique({ where: { id }, select: { note: true } });
+        data.note = old?.note ? `${old.note} (Từ chối: ${rejectReason})` : `Từ chối: ${rejectReason}`;
+      }
       await (prisma as any).laborcontract.update({ where: { id }, data });
       revalidatePath("/nhan-su/hop-dong");
       break;
-    case "LeaveRequest":
+    }
+    case "LeaveRequest": {
+      if (rejectReason) {
+        const old = await (prisma as any).leaverequest.findUnique({ where: { id }, select: { note: true } });
+        data.note = old?.note ? `${old.note} (Từ chối: ${rejectReason})` : `Từ chối: ${rejectReason}`;
+      }
       const leave = await (prisma as any).leaverequest.update({ where: { id }, data });
       if (newStatus === "Đã phê duyệt") {
         const emp = await prisma.employee.findFirst({
@@ -47,7 +58,12 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       }
       revalidatePath("/ca-nhan/nghi-phep");
       break;
-    case "SalaryChange":
+    }
+    case "SalaryChange": {
+      if (rejectReason) {
+        const old = await (prisma as any).salarychange.findUnique({ where: { id }, select: { note: true } });
+        data.note = old?.note ? `${old.note} (Từ chối: ${rejectReason})` : `Từ chối: ${rejectReason}`;
+      }
       const sc = await (prisma as any).salarychange.update({ where: { id }, data });
       if (newStatus === "Đã phê duyệt") {
         await (prisma as any).employee.updateMany({
@@ -84,7 +100,12 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       }
       revalidatePath("/nhan-su/tang-giam-luong");
       break;
-    case "TransferPromotion":
+    }
+    case "TransferPromotion": {
+      if (rejectReason) {
+        const old = await (prisma as any).transferpromotion.findUnique({ where: { id }, select: { note: true } });
+        data.note = old?.note ? `${old.note} (Từ chối: ${rejectReason})` : `Từ chối: ${rejectReason}`;
+      }
       const tp = await (prisma as any).transferpromotion.update({ where: { id }, data });
       if (newStatus === "Đã phê duyệt") {
         await (prisma as any).employee.updateMany({
@@ -127,7 +148,12 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       }
       revalidatePath("/nhan-su/thuyen-chuyen-bo-nhiem");
       break;
-    case "Resignation":
+    }
+    case "Resignation": {
+      if (rejectReason) {
+        const old = await (prisma as any).resignation.findUnique({ where: { id }, select: { note: true } });
+        data.note = old?.note ? `${old.note} (Từ chối: ${rejectReason})` : `Từ chối: ${rejectReason}`;
+      }
       const resignation = await (prisma as any).resignation.update({ where: { id }, data });
       if (newStatus === "Đã phê duyệt") {
         await (prisma as any).employee.updateMany({
@@ -164,18 +190,32 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
       }
       revalidatePath("/ca-nhan/nghi-viec");
       break;
-    case "Payroll":
+    }
+    case "Payroll": {
+      if (rejectReason) {
+        const old = await (prisma as any).payroll.findUnique({ where: { id }, select: { note: true } });
+        data.note = old?.note ? `${old.note} (Từ chối: ${rejectReason})` : `Từ chối: ${rejectReason}`;
+      }
       await (prisma as any).payroll.update({ where: { id }, data });
       revalidatePath("/nhan-su/bang-luong");
       break;
-    case "PurchaseOrder":
+    }
+    case "PurchaseOrder": {
+      if (rejectReason) {
+        const old = await (prisma as any).purchaseorder.findUnique({ where: { id }, select: { note: true } });
+        data.note = old?.note ? `${old.note} (Từ chối: ${rejectReason})` : `Từ chối: ${rejectReason}`;
+      }
       await (prisma as any).purchaseorder.update({ where: { id }, data });
       revalidatePath("/purchasing/lenh-mua");
       break;
+    }
     case "Contract": {
       const session = await getSession();
       const oldContract = await (prisma as any).contract.findUnique({ where: { id } });
-      await (prisma as any).contract.update({ where: { id }, data });
+      if (rejectReason) {
+        data.note = oldContract?.note ? `${oldContract.note} (Từ chối: ${rejectReason})` : `Từ chối: ${rejectReason}`;
+      }
+      const updatedContract = await (prisma as any).contract.update({ where: { id }, data });
 
       const user = await prisma.user.findUnique({ where: { id: session?.userId || "" } });
       const changedBy = user?.employeeName || user?.username || "Hệ thống";
@@ -187,9 +227,15 @@ export async function updateApprovalStatus(id: string, type: string, newStatus: 
         oldData: { status: oldContract?.status },
         newData: { status: newStatus },
         changedBy,
-        changeDetail: newStatus === "Đã phê duyệt" ? "Phê duyệt hợp đồng" : `Chuyển trạng thái hợp đồng sang: ${newStatus}`,
+        changeDetail: newStatus === "Đã phê duyệt" ? "Phê duyệt hợp đồng" : `Từ chối hợp đồng: ${rejectReason || ""}`,
       });
+
+      if (oldContract?.status !== newStatus) {
+        await notifyContractStatusChange(updatedContract, newStatus, changedBy);
+      }
+
       revalidatePath("/sales/hop-dong");
+      revalidatePath("/phe-duyet/hop-dong-ban-hang");
       break;
     }
   }

@@ -435,6 +435,7 @@ export default function PurchasingProposalPage() {
           table-layout: auto !important;
           border-collapse: collapse !important;
           border: 1px solid #cbd5e1 !important;
+          margin-bottom: 0px !important;
         }
         .base-table th {
           text-transform: uppercase !important;

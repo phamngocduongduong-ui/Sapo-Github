@@ -261,17 +261,82 @@ export async function getCurrentUser() {
   return session;
 }
 
-export async function getNotifications(limit: number = 3) {
-  return await (prisma as any).notification.findMany({
-    where: {
-      OR: [
-        { isRead: false },
-        { message: { contains: "Đã phê duyệt" } } // Include approved ones as requested
-      ]
-    },
-    orderBy: { createdAt: "desc" },
-    take: limit
+export async function getNotifications(limit: number = 20) {
+  const session = await getSession();
+  if (!session) return [];
+
+  const user = await (prisma as any).user.findUnique({
+    where: { id: session.userId },
+    include: {
+      permission: {
+        include: {
+          permissiondetail: true
+        }
+      }
+    }
   });
+
+  if (!user) return [];
+
+  const isAdmin = user.username === "admin" || user.role === "Admin";
+  const userName = (user.employeeName || user.username || "").trim().toLowerCase();
+  const usernameLower = user.username.trim().toLowerCase();
+
+  const userPermissions = new Set<string>();
+  if (user.permission) {
+    user.permission.forEach((p: any) => {
+      p.permissiondetail?.forEach((d: any) => {
+        if (d.canAccess) {
+          userPermissions.add(d.moduleKey);
+        }
+      });
+    });
+  }
+
+  let empNameLower = "";
+  if (user.employeeId) {
+    const emp = await (prisma as any).employee.findUnique({
+      where: { id: user.employeeId },
+      select: { fullName: true }
+    });
+    if (emp?.fullName) empNameLower = emp.fullName.trim().toLowerCase();
+  }
+
+  const allNotifications = await (prisma as any).notification.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 50
+  });
+
+  const filtered = allNotifications.filter((n: any) => {
+    if (isAdmin) return true;
+
+    const targetRole = n.targetRole;
+    if (!targetRole || targetRole === "ALL") return true;
+    if (targetRole === "ADMIN") return isAdmin;
+
+    const parts = targetRole.split("|");
+    for (const part of parts) {
+      if (part.startsWith("USER:")) {
+        const targetUsers = part.substring(5).split(",").map((u: string) => u.trim().toLowerCase());
+        if (
+          targetUsers.includes(userName) ||
+          targetUsers.includes(usernameLower) ||
+          (empNameLower && targetUsers.includes(empNameLower))
+        ) {
+          return true;
+        }
+      } else if (part.startsWith("PERM:")) {
+        const reqPerms = part.substring(5).split(",").map((p: string) => p.trim());
+        if (reqPerms.some((p: string) => userPermissions.has(p))) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  });
+
+  return filtered.slice(0, limit);
 }
 
 export async function markNotificationAsRead(id: string) {

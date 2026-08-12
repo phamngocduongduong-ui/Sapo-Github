@@ -282,8 +282,13 @@ export async function GET(request: Request) {
       case "purchase-orders": {
         let filter: any = {};
         if (!isAdmin) {
-          const { allBranches } = await getUserPermission(user.id, "TM_LENH_MUA");
-          if (allBranches) {
+          const { canAccess, allBranches } = await getUserPermission(user.id, "TM_LENH_MUA");
+          if (!canAccess) return NextResponse.json([]);
+
+          const userBranch = (user.branch || "").toLowerCase();
+          const isHCM = userBranch.includes("hcm") || userBranch.includes("hồ chí minh");
+
+          if (allBranches || isHCM || canAccess) {
             // See all branches
           } else {
             const activeBranch = session.activeBranch || user.branch?.split(",")[0]?.trim() || "";
@@ -297,16 +302,13 @@ export async function GET(request: Request) {
         }));
       }
       case "purchasing-proposals": {
-        let filter: any = {};
         if (!isAdmin) {
-          const { allBranches } = await getUserPermission(user.id, "TM_LENH_MUA");
-          if (allBranches) {
-            // See all branches
-          } else {
-            const activeBranch = session.activeBranch || user.branch?.split(",")[0]?.trim() || "";
-            filter = { branch: activeBranch };
+          const { canAccess } = await getUserPermission(user.id, "TM_LENH_MUA");
+          if (!canAccess) {
+            return NextResponse.json([]);
           }
         }
+        const filter: any = {};
         const [mProposals, pProposals] = await Promise.all([
           (prisma as any).maintenanceproposal.findMany({
             where: filter,
@@ -447,12 +449,28 @@ export async function GET(request: Request) {
         return NextResponse.json(proposals);
       }
       case "purchasing-proposal-approvals": {
-        const filter = await getUserModuleBranchFilter(user.id, "TM_PHE_DUYET_DE_NGHI", session.activeBranch, {
-          branchField: "branch"
+        const isAdmin = user.username === "admin" || user.role === "Admin";
+        let hasAccess = isAdmin;
+
+        const userWithPerms = await (prisma as any).user.findUnique({
+          where: { id: user.id },
+          include: { permission: { include: { permissiondetail: true } } }
         });
+
+        if (!hasAccess && userWithPerms?.permission) {
+          userWithPerms.permission.forEach((p: any) => {
+            p.permissiondetail?.forEach((d: any) => {
+              if (d.canAccess && ["PD_DE_NGHI_MH", "TM_PHE_DUYET_DE_NGHI", "PD_MUA_HANG", "TM_DE_NGHI", "PHE_DUYET"].includes(d.moduleKey)) {
+                hasAccess = true;
+              }
+            });
+          });
+        }
+
+        if (!hasAccess) return NextResponse.json([]);
+
         const proposals = await (prisma as any).purchasingproposal.findMany({
           where: {
-            ...filter,
             status: { in: ["Chờ duyệt", "Chờ thực hiện", "Đã phê duyệt", "Từ chối", "Hoàn thành"] }
           },
           include: { items: true },

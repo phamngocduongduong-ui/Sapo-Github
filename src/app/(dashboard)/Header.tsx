@@ -48,9 +48,7 @@ export default function Header({
       fetch("/api/user-permissions")
         .then(res => {
           if (!res.ok) {
-            // Xoá cookie session trên client side để tránh vòng lặp chuyển hướng của middleware
-            document.cookie = "session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-            window.location.href = "/login";
+            window.location.replace("/api/logout?reason=inactive");
             throw new Error("Không xác định được người dùng");
           }
           return res.json();
@@ -102,6 +100,47 @@ export default function Header({
     };
   }, []);
 
+  const [toastNotif, setToastNotif] = useState<any | null>(null);
+  const [dismissedToastIds, setDismissedToastIds] = useState<Set<string>>(new Set());
+  const playedNotifRef = useRef<Set<string>>(new Set());
+
+  function playNotificationSound() {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+
+      const playTing = (freq: number, startTime: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.3, startTime + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.3);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(startTime);
+        osc.stop(startTime + 0.3);
+      };
+
+      const now = ctx.currentTime;
+      // 1st "tinh ting"
+      playTing(987.77, now);
+      playTing(1318.51, now + 0.16);
+
+      // 2nd "tinh ting"
+      playTing(987.77, now + 0.5);
+      playTing(1318.51, now + 0.66);
+    } catch (e) {
+      console.error("Failed to play notification sound", e);
+    }
+  }
+
   useEffect(() => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 10000);
@@ -111,6 +150,17 @@ export default function Header({
   async function fetchNotifications() {
     const data = await getNotifications(notifLimit);
     setNotifications(data);
+    
+    const latestUnread = data.find((n: any) => !n.isRead && !dismissedToastIds.has(n.id));
+    if (latestUnread) {
+      if (!playedNotifRef.current.has(latestUnread.id)) {
+        playedNotifRef.current.add(latestUnread.id);
+        playNotificationSound();
+      }
+      setToastNotif(latestUnread);
+    } else {
+      setToastNotif(null);
+    }
   }
 
   async function handleMarkRead(id: string) {
@@ -555,6 +605,97 @@ export default function Header({
               @keyframes modalFadeIn {
                 from { opacity: 0; transform: scale(0.95); }
                 to { opacity: 1; transform: scale(1); }
+              }
+            `
+          }} />
+        </div>
+      )}
+
+      {/* Bottom Right Toast Notification (20px above footer top edge: 36px + 20px = 56px) */}
+      {toastNotif && (
+        <div style={{
+          position: "fixed",
+          bottom: "56px",
+          right: "20px",
+          zIndex: 99999,
+          backgroundColor: "#ffffff",
+          borderRadius: "10px",
+          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+          borderLeft: "5px solid #003466",
+          padding: "12px 16px",
+          maxWidth: "380px",
+          width: "calc(100vw - 40px)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "6px",
+          animation: "toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                backgroundColor: toastNotif.type === "SUCCESS" ? "#dcfce7" : (toastNotif.type === "ERROR" ? "#fee2e2" : "#e0f2fe"),
+                color: toastNotif.type === "SUCCESS" ? "#15803d" : (toastNotif.type === "ERROR" ? "#b91c1c" : "#0369a1"),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "14px"
+              }}>
+                🔔
+              </div>
+              <span style={{ fontWeight: 700, fontSize: "13px", color: "#003466" }}>
+                {toastNotif.title}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                handleMarkRead(toastNotif.id);
+                setDismissedToastIds(prev => new Set(prev).add(toastNotif.id));
+                setToastNotif(null);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#94a3b8",
+                cursor: "pointer",
+                fontSize: "16px",
+                lineHeight: 1,
+                padding: "2px"
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ fontSize: "12px", color: "#475569", lineHeight: "1.4" }}>
+            {toastNotif.message}
+          </div>
+          {toastNotif.link && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "4px" }}>
+              <Link
+                href={toastNotif.link}
+                onClick={() => {
+                  handleMarkRead(toastNotif.id);
+                  setToastNotif(null);
+                }}
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  color: "#003466",
+                  textDecoration: "underline"
+                }}
+              >
+                Xem chi tiết →
+              </Link>
+            </div>
+          )}
+          <style dangerouslySetInnerHTML={{
+            __html: `
+              @keyframes toastSlideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
               }
             `
           }} />

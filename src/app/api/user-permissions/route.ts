@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getSession, encrypt } from "@/lib/session";
 import { cookies } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 async function updateSessionActiveBranch(sessionPayload: any, newBranch: string) {
   try {
     sessionPayload.activeBranch = newBranch;
@@ -26,12 +28,12 @@ export async function GET() {
     const userId = session.userId;
     const user = await (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { username: true, role: true, employeeName: true, branch: true, permission: { select: { id: true } } }
+      select: { username: true, role: true, employeeName: true, branch: true, status: true, permission: { select: { id: true } } }
     });
 
-    if (!user) {
+    if (!user || user.status === "INACTIVE") {
       cookies().delete("session");
-      return NextResponse.json({ permissions: [] }, { status: 404 });
+      return NextResponse.json({ permissions: [], error: "Tài khoản của bạn đã bị ngưng hoạt động hoặc ngắt kết nối" }, { status: 401 });
     }
 
     const activeBranches = (await (prisma as any).branch.findMany({
@@ -60,11 +62,12 @@ export async function GET() {
         role: user.role,
         employeeName: user.employeeName, 
         branch: currentActive,
-        allowedBranches: allowed
+        allowedBranches: allowed,
+        permHash: `ADMIN:${user.role || ""}:${user.branch || ""}`
       });
     }
 
-    const permissionIds = (user as any).permission.map((p: any) => p.id);
+    const permissionIds = (user as any).permission.map((p: any) => p.id).sort();
     const allowed = userBranches;
     const defaultBranch = allowed.length > 0 ? allowed[0] : "Toàn bộ chi nhánh";
     let currentActive = session.activeBranch || defaultBranch;
@@ -75,6 +78,7 @@ export async function GET() {
     }
 
     if (permissionIds.length === 0) {
+      const permHash = `${user.role || ""}:${user.branch || ""}:EMPTY`;
       return NextResponse.json({ 
         permissions: [], 
         isAdmin: false,
@@ -82,7 +86,8 @@ export async function GET() {
         role: user.role,
         employeeName: user.employeeName,
         branch: currentActive,
-        allowedBranches: allowed
+        allowedBranches: allowed,
+        permHash
       });
     }
 
@@ -95,18 +100,40 @@ export async function GET() {
       select: { moduleKey: true }
     });
 
+    const uniquePerms = Array.from(new Set(permissions.map((p: any) => p.moduleKey))).sort();
+    const permHash = `${user.role || ""}:${user.branch || ""}:${permissionIds.join(",")}:${uniquePerms.join(",")}`;
+
     return NextResponse.json({ 
-      permissions: Array.from(new Set(permissions.map((p: any) => p.moduleKey))),
+      permissions: uniquePerms,
       isAdmin: false,
       username: user.username,
       role: user.role,
       employeeName: user.employeeName,
       branch: currentActive,
-      allowedBranches: allowed
+      allowedBranches: allowed,
+      permHash
     });
 
   } catch (error) {
     console.error("Error fetching permissions:", error);
     return NextResponse.json({ permissions: [] }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const session = await getSession();
+    if (!session || !session.userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const body = await req.json();
+    if (body.activeBranch) {
+      await updateSessionActiveBranch(session, body.activeBranch);
+      return NextResponse.json({ success: true, activeBranch: body.activeBranch });
+    }
+    return NextResponse.json({ error: "Missing activeBranch" }, { status: 400 });
+  } catch (error) {
+    console.error("Error updating active branch:", error);
+    return NextResponse.json({ error: "Failed to update active branch" }, { status: 500 });
   }
 }

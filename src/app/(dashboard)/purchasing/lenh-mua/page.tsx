@@ -12,6 +12,7 @@ import {
 } from "./actions";
 import HistoryModal from "../../HistoryModal";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
+import { FilePreviewModal } from "@/components/FilePreviewModal";
 
 function getPODisplayCode(po: any) {
   if (!po) return "";
@@ -27,6 +28,7 @@ export default function PurchaseOrderPage() {
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSupplierName, setSelectedSupplierName] = useState<string>("");
+  const [previewFile, setPreviewFile] = useState<any>(null);
   
   const [showModal, setShowModal] = useState(false);
   const [showProposalModal, setShowProposalModal] = useState(false);
@@ -134,17 +136,6 @@ export default function PurchaseOrderPage() {
       const res = await fetch("/api/user-permissions");
       const data = await res.json();
       setCurrentUser(data);
-      if (data && data.branch) {
-        const branchLower = data.branch.toLowerCase();
-        if (
-          !branchLower.includes("chi nhánh") && 
-          !branchLower.includes("toàn bộ") && 
-          !branchLower.includes("tất cả") &&
-          !data.branch.includes(",")
-        ) {
-          setFilterBranch(data.branch);
-        }
-      }
     } catch (e) {
       console.error("Failed to fetch user permissions", e);
     }
@@ -157,22 +148,9 @@ export default function PurchaseOrderPage() {
   // Left side: proposals that are approved and waiting to be ordered
   const filteredProposals = useMemo(() => {
     return proposals.filter(prop => {
-      const isPending = prop.proposalCode.startsWith("BT")
-        ? (prop.status === "Đã phê duyệt")
-        : (prop.status === "Chờ thực hiện" || prop.status === "Đã phê duyệt");
+      const isPending = prop.status === "Chờ thực hiện" || prop.status === "Đã phê duyệt";
 
       if (!isPending) return false;
-
-      // Phân quyền xem đề nghị theo chi nhánh hoạt động của user hiện tại
-      const userBranch = currentUser?.branch || "";
-      const hasHCM = currentUser?.isAdmin || userBranch.toLowerCase().includes("hcm") || userBranch.toLowerCase().includes("hồ chí minh");
-      
-      if (!hasHCM) {
-        const allowedBranches = userBranch.split(",").map(b => b.trim().toLowerCase());
-        if (!prop.branch || !allowedBranches.includes(prop.branch.trim().toLowerCase())) {
-          return false;
-        }
-      }
 
       const matchSearch = !filterSearch || 
         prop.proposalCode.toLowerCase().includes(filterSearch.toLowerCase()) ||
@@ -189,7 +167,7 @@ export default function PurchaseOrderPage() {
 
       return matchSearch && matchBranch && matchMonth;
     });
-  }, [proposals, filterSearch, filterBranch, filterMonth, currentUser]);
+  }, [proposals, filterSearch, filterBranch, filterMonth]);
 
   // Right side: created POs
   const filteredPOs = useMemo(() => {
@@ -731,6 +709,7 @@ export default function PurchaseOrderPage() {
           min-width: 1020px !important;
           table-layout: fixed !important;
           border-collapse: collapse !important;
+          margin-bottom: 0px !important;
         }
         .base-table th {
           text-transform: uppercase !important;
@@ -900,16 +879,10 @@ export default function PurchaseOrderPage() {
         }
 
         .left-deck {
-          background: #f8fafc;
-          border: 1px solid #cbd5e1;
-          border-radius: 6px;
-          padding: 12px;
+          width: 100%;
           display: flex;
           flex-direction: column;
           gap: 10px;
-          max-height: 680px;
-          overflow-y: auto;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
         }
         .empty-placeholder {
           text-align: center;
@@ -1405,7 +1378,20 @@ export default function PurchaseOrderPage() {
                           <td style={{ padding: "8px" }}>
                             {att.fileName ? (
                               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "12px", color: "#1e293b", fontWeight: 500 }}>📄 {att.fileName}</span>
+                                <span 
+                                  style={{ fontSize: "12px", color: "#1e293b", fontWeight: 500, cursor: "pointer", textDecoration: "underline" }}
+                                  onClick={() => setPreviewFile(att)}
+                                  title="Nhấn để xem trực tiếp"
+                                >
+                                  📄 {att.fileName}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewFile(att)}
+                                  style={{ fontSize: "11px", color: "#059669", background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "2px 8px", borderRadius: "4px", fontWeight: 700, cursor: "pointer" }}
+                                >
+                                  👁️ Xem trực tiếp
+                                </button>
                                 <a
                                   href={att.fileContent}
                                   download={att.fileName}
@@ -2429,6 +2415,10 @@ export default function PurchaseOrderPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {previewFile && (
+        <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
       )}
     </div>
   );

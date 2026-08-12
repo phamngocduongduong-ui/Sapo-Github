@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { 
   createPaymentProposal, 
@@ -8,6 +9,7 @@ import {
   deletePaymentProposal 
 } from "./actions";
 import { useRealTimeSync } from "@/lib/hooks/useRealTimeSync";
+import { User, CheckCircle2, XCircle } from "lucide-react";
 
 interface Supplier {
   id: string;
@@ -1240,87 +1242,103 @@ export default function PaymentProposalClient({
             </div>
           </div>
         )}
-        {customConfirm && (
-          <div className="modal-overlay-base" style={{ zIndex: 100000 }}>
-            <div className="modal-content-base" style={{ maxWidth: "440px", padding: "2rem", textAlign: "center" }}>
+        {customConfirm && typeof window !== "undefined" && createPortal(
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(15, 23, 42, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999999,
+            backdropFilter: "blur(2px)",
+            padding: "16px"
+          }}>
+            <div style={{
+              width: "100%",
+              maxWidth: "300px",
+              padding: "18px 16px 14px 16px",
+              textAlign: "center",
+              borderRadius: "16px",
+              background: "#ffffff",
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
+              transform: "translateY(-45px)"
+            }}>
+              {/* Centered Circular Icon Container */}
               <div style={{
-                width: "56px",
-                height: "56px",
+                width: "44px",
+                height: "44px",
                 borderRadius: "50%",
-                backgroundColor: "#fff7ed",
-                color: "#ea580c",
+                background: customConfirm.message.includes("từ chối") || customConfirm.message.includes("xóa") ? "#fee2e2" : "#e0f2fe",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 1.25rem",
-                fontSize: "1.75rem"
+                margin: "0 auto 10px auto"
               }}>
-                ⚠️
+                {customConfirm.message.includes("từ chối") || customConfirm.message.includes("xóa") ? (
+                  <XCircle size={22} color="#ef4444" strokeWidth={2.2} />
+                ) : (
+                  <CheckCircle2 size={22} color="#003466" strokeWidth={2.2} />
+                )}
               </div>
               
-              <h2 style={{
-                fontSize: "18px",
-                fontWeight: 700,
-                color: "#0f172a",
-                marginBottom: "0.75rem",
-                textTransform: "uppercase"
+              {/* Message Content */}
+              <div style={{
+                fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                fontSize: "13px",
+                fontWeight: 400,
+                color: "#334155",
+                marginBottom: "14px",
+                lineHeight: "1.3"
               }}>
-                Xác nhận thao tác
-              </h2>
+                {customConfirm.message.includes("từ chối") ? "Bạn có chắc chắn từ chối không?" : "Bạn có chắc chắn phê duyệt không?"}
+              </div>
               
-              <p style={{
-                fontSize: "14px",
-                color: "#475569",
-                lineHeight: "1.6",
-                marginBottom: "1.75rem"
-              }}>
-                {customConfirm.message}
-              </p>
-              
-              <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              {/* Action Buttons: Thoát & Đồng ý */}
+              <div style={{ display: "flex", gap: "8px" }}>
                 <button
                   type="button"
                   onClick={() => setCustomConfirm(null)}
                   style={{
                     flex: 1,
-                    padding: "10px 20px",
-                    backgroundColor: "#f1f5f9",
-                    color: "#475569",
-                    border: "1px solid #cbd5e1",
+                    height: "36px",
                     borderRadius: "8px",
-                    fontWeight: 600,
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s"
+                    background: "#f1f5f9",
+                    color: "#334155",
+                    fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    border: "none",
+                    cursor: "pointer"
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#e2e8f0"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
                 >
-                  Hủy bỏ
+                  Thoát
                 </button>
                 <button
                   type="button"
                   onClick={customConfirm.onConfirm}
                   style={{
                     flex: 1,
-                    padding: "10px 20px",
-                    backgroundColor: "#003466",
-                    color: "#ffffff",
-                    border: "none",
+                    height: "36px",
                     borderRadius: "8px",
-                    fontWeight: 600,
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s"
+                    background: customConfirm.message.includes("từ chối") || customConfirm.message.includes("xóa") ? "#ef4444" : "#003466",
+                    color: "#ffffff",
+                    fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    border: "none",
+                    cursor: "pointer"
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#002244"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#003466"}
                 >
                   Đồng ý
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </>

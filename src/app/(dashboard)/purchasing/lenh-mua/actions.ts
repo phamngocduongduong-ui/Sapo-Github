@@ -29,7 +29,10 @@ export async function getPurchaseOrders() {
   let filter: any = {};
   if (!isAdmin) {
     const { allBranches } = await getUserPermission(user.id, "TM_LENH_MUA");
-    if (allBranches) {
+    const userBranch = (user.branch || "").toLowerCase();
+    const isHCM = userBranch.includes("hcm") || userBranch.includes("hồ chí minh");
+
+    if (allBranches || isHCM) {
       // See all branches
     } else {
       const activeBranch = session.activeBranch || user.branch?.split(",")[0]?.trim() || "";
@@ -58,7 +61,10 @@ export async function getPheDuyetPurchaseOrders() {
   let branchFilter: any = undefined;
   if (!isAdmin) {
     const { allBranches } = await getUserPermission(user.id, "TM_LENH_MUA");
-    if (!allBranches) {
+    const userBranch = (user.branch || "").toLowerCase();
+    const isHCM = userBranch.includes("hcm") || userBranch.includes("hồ chí minh");
+
+    if (!allBranches && !isHCM) {
       branchFilter = session.activeBranch || user.branch?.split(",")[0]?.trim() || "";
     }
   }
@@ -662,16 +668,15 @@ export async function getMaintenanceProposals() {
 
   const isAdmin = user.username === "admin" || user.role === "Admin";
   
-  let filter: any = {};
   if (!isAdmin) {
-    const { allBranches } = await getUserPermission(user.id, "TM_LENH_MUA");
-    if (allBranches) {
-      // See all branches
-    } else {
-      const activeBranch = session.activeBranch || user.branch?.split(",")[0]?.trim() || "";
-      filter = { branch: activeBranch };
+    const { canAccess } = await getUserPermission(user.id, "TM_LENH_MUA");
+    if (!canAccess) {
+      return [];
     }
   }
+
+  // Purchasing staff need to view all approved proposals across all branches to create purchase orders
+  const filter: any = {};
 
   const [mProposals, pProposals] = await Promise.all([
     (prisma as any).maintenanceproposal.findMany({

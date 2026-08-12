@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, Send, RotateCcw, Check, X, Filter, Search, Plus, MoreHorizontal, History, Mail, CheckCircle, PowerOff, Clock, User } from "lucide-react";
+import { Pencil, Trash2, Send, RotateCcw, Check, X, Filter, Search, Plus, MoreHorizontal, History, Mail, CheckCircle, PowerOff, Clock, User, CheckCircle2, XCircle } from "lucide-react";
 import { createLeaveRequest, updateLeaveRequest, updateLeaveStatus } from "./actions";
 import HistoryModal from "../../HistoryModal";
 
@@ -1302,98 +1303,105 @@ export default function LeaveRequestTable({
       )}
 
       {/* Custom Confirmation Modal */}
-      {confirmUpdate && (
-        <div className="modal-overlay-base" style={{ zIndex: 9999 }}>
-          <div className="modal-content-base" style={{ maxWidth: "450px", textAlign: "center", padding: "2rem" }}>
+      {confirmUpdate && typeof window !== "undefined" && createPortal(
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          background: "rgba(15, 23, 42, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999999,
+          backdropFilter: "blur(2px)",
+          padding: "16px"
+        }}>
+          <div style={{
+            width: "100%",
+            maxWidth: "300px",
+            padding: "18px 16px 14px 16px",
+            textAlign: "center",
+            borderRadius: "16px",
+            background: "#ffffff",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+            transform: "translateY(-45px)"
+          }}>
+            {/* Centered Circular Icon */}
             <div style={{
-              width: "60px",
-              height: "60px",
+              width: "44px",
+              height: "44px",
               borderRadius: "50%",
-              background: "#fff7ed",
+              background: (confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy") ? "#fee2e2" : "#e0f2fe",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              margin: "0 auto 1.25rem",
-              color: "#f97316"
+              margin: "0 auto 10px auto"
             }}>
-              <Clock size={32} />
-            </div>
-            <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 auto 0.75rem", color: "#1e293b", textAlign: "center", fontFamily: "'Segoe UI', sans-serif" }}>
-              {confirmUpdate.status === "Chờ phê duyệt" ? "Gửi phê duyệt" :
-                confirmUpdate.status === "Tạo mới" ? "Thu hồi hồ sơ" :
-                  confirmUpdate.status === "Đã phê duyệt" ? "Phê duyệt hồ sơ" :
-                    "Xác nhận thay đổi"}
-            </h3>
-            <div style={{ color: "#475569", margin: "0 auto 1.75rem", lineHeight: "1.6", textAlign: "center", padding: "0 0.5rem", fontFamily: "'Segoe UI', sans-serif" }}>
-              {confirmUpdate.status === "Chờ phê duyệt" ? (
-                <>
-                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc muốn gửi hồ sơ để chờ phê duyệt không?</p>
-                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
-                    <PowerOff size={16} /> Đơn sẽ không được chỉnh sửa trong thời gian chờ phê duyệt.
-                  </p>
-                </>
-              ) : confirmUpdate.status === "Tạo mới" ? (
-                <>
-                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn muốn thu hồi hồ sơ không?</p>
-                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px", whiteSpace: "nowrap" }}>
-                    <RotateCcw size={16} /> Hồ sơ sẽ không trong danh sách chờ phê duyệt.
-                  </p>
-                </>
-              ) : confirmUpdate.status === "Đã phê duyệt" ? (
-                <>
-                  <p style={{ fontWeight: "normal", marginBottom: "0.75rem" }}>Bạn có chắc chắn đồng ý phê duyệt không?</p>
-                  <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: "600", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#fef2f2", padding: "8px", borderRadius: "6px" }}>
-                    <Check size={16} /> Hồ sơ sẽ có giá trị kể từ thời điểm phê duyệt.
-                  </p>
-                </>
+              {(confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy") ? (
+                <XCircle size={22} color="#ef4444" strokeWidth={2.2} />
               ) : (
-                <p>Bạn có chắc chắn muốn chuyển trạng thái đơn này sang <strong>"{confirmUpdate.status}"</strong> không?</p>
+                <CheckCircle2 size={22} color="#003466" strokeWidth={2.2} />
               )}
             </div>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+
+            {/* Simple Message */}
+            <div style={{
+              fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+              fontSize: "13px",
+              fontWeight: 400,
+              color: "#334155",
+              marginBottom: "14px",
+              lineHeight: "1.3"
+            }}>
+              {confirmUpdate.status === "Đã phê duyệt" ? "Bạn có chắc chắn phê duyệt không?" :
+               (confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy") ? "Bạn có chắc chắn từ chối không?" :
+               "Bạn có chắc chắn phê duyệt không?"}
+            </div>
+
+            {/* Buttons: Thoát & Đồng ý */}
+            <div style={{ display: "flex", gap: "8px" }}>
               <button 
                 type="button"
-                className="sapo-btn sapo-btn-secondary" 
                 style={{
                   flex: 1,
-                  padding: "10px 20px",
-                  backgroundColor: "#f1f5f9",
-                  color: "#475569",
-                  border: "1px solid #cbd5e1",
+                  height: "36px",
                   borderRadius: "8px",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  justifyContent: "center",
-                  height: "40px"
+                  background: "#f1f5f9",
+                  color: "#334155",
+                  fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  border: "none",
+                  cursor: "pointer"
                 }} 
                 onClick={() => setConfirmUpdate(null)}
               >
-                Hủy bỏ
+                Thoát
               </button>
               <button 
                 type="button"
-                className="sapo-btn" 
                 style={{
                   flex: 1,
-                  padding: "10px 20px",
-                  backgroundColor: confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy" ? "#ef4444" : "#003466",
-                  color: "#ffffff",
-                  border: "none",
+                  height: "36px",
                   borderRadius: "8px",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  justifyContent: "center",
-                  height: "40px"
+                  background: (confirmUpdate.status === "Từ chối" || confirmUpdate.status === "Đã hủy") ? "#ef4444" : "#003466",
+                  color: "#ffffff",
+                  fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  border: "none",
+                  cursor: "pointer"
                 }} 
                 onClick={executeStatusChange}
               >
-                Xác nhận
+                Đồng ý
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Custom Cancel Confirmation Modal */}

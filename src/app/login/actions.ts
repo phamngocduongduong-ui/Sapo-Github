@@ -1,6 +1,6 @@
 "use server"
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { encrypt, decrypt } from "@/lib/session";
 import { prisma } from "@/lib/db";
@@ -86,6 +86,10 @@ export async function login(prevState: any, formData: FormData) {
       }
     }
 
+    const userAgent = headers().get("user-agent") || "";
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    const isMobileForm = formData.get("isMobile") === "true";
+
     const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const session = await encrypt({ 
       userId: user.id, 
@@ -97,7 +101,11 @@ export async function login(prevState: any, formData: FormData) {
 
     cookies().set("session", session, { expires, httpOnly: true, path: "/" });
 
-    redirect("/");
+    if (isMobileUA || isMobileForm) {
+      redirect("/mobile");
+    } else {
+      redirect("/");
+    }
   } catch (error) {
     if ((error as any).digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error("Login database error:", error);

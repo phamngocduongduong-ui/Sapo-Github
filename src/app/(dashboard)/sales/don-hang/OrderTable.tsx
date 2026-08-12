@@ -809,6 +809,7 @@ export default function OrderTable({
           width: 100% !important;
           min-width: 1250px !important;
           table-layout: fixed !important;
+          margin-bottom: 0px !important;
         }
         .base-table th {
           text-transform: uppercase !important;
